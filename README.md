@@ -59,6 +59,7 @@ The page has two modes:
 | `X` `C` `T` `N`             | X-Ray / Section / Thermal / Normal view (in Explore)                     |
 | `Ctrl`/`Cmd` + `K`          | Command palette: jump to a scale or a part                               |
 | `F`                         | Trace one bit, card to atom (start / stop)                               |
+| `G`                         | Sources & glossary                                                       |
 | `Shift` + `F`               | Fullscreen                                                               |
 | `Esc`                       | Deselect, then leave Explore                                             |
 | Breadcrumb, scale rail, ◀ ▶ | Jump to any scale                                                        |
@@ -97,8 +98,17 @@ remembered; the `Sound` button and `M` still work at any time.
 
 ## Deep links
 
-The URL tracks the current scale and view mode (`#l=5&v=Section`), so a frame can be shared or
-bookmarked. `?nointro` skips the landing card, `?quality=low|high` forces a tier and `?debug`
+The URL tracks the current scale, the point inside it (in 5 % steps) and the view mode
+(`#l=5&p=40&v=Section`), so a frame can be shared or bookmarked. `#ref=sources` or
+`#ref=glossary` opens the Sources & glossary panel.
+
+## Sources & glossary
+
+`G`, the command palette, the finale and every "How accurate is this?" note open one panel:
+a glossary of the 23 terms the descent uses (each with a jump to the scale where it is on
+screen) and the documents the published figures come from: the NVIDIA RTX Blackwell
+architecture whitepaper, the RTX 5090 product page, JEDEC's GDDR7 (JESD239) release and the
+silicon lattice constant. `?nointro` skips the landing card, `?quality=low|high` forces a tier and `?debug`
 opens the lil-gui panel.
 
 Per-level controls appear in the inspector in Explore mode:

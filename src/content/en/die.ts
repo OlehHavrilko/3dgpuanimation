@@ -14,7 +14,7 @@ export const die = {
     film: 'No paint, no dye — that colour is thin-film interference',
     gpc: 'Twelve clusters, each one a small factory',
     sm: (total: number, enabled: number) => `${total} streaming multiprocessors · ${enabled} alive on this one`,
-    l2: '128 MB of L2 cache sits in the middle of the die',
+    l2: '128 MB of L2 cache sits in the middle of the die (96 MB enabled on the RTX 5090)',
     mc: 'Sixteen memory controllers, 512 bits wide',
     outro: 'Down into a single SM',
   },

@@ -42,6 +42,8 @@ export const ui = {
     view: 'View',
     labels: 'Toggle 3D labels',
     fullscreen: 'Fullscreen',
+    glossary: 'Glossary',
+    sources: 'Sources',
   },
   /** Scale bar: a familiar object at least `min` metres long. */
   scaleAnchors: [
