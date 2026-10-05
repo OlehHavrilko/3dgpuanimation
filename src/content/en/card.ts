@@ -10,7 +10,7 @@ export const card = {
     description: 'Founders Edition · 304 × 137 mm · dual-slot · 575 W. Everything below lives inside it.',
   },
   follow:
-    'Our electron arrives on the 12 V rail, through the 12V-2x6 connector; the VRM steps it down to ~1 V and pushes it into the GPU.',
+    'Trace: a bit of data arrives from the CPU over the PCIe 5.0 x16 fingers and crosses the flex cable to the GPU.',
   /** Story captions, in order (switch points live in the level). */
   captions: [
     'Two fans drive air straight through the fins. This is the machine.',

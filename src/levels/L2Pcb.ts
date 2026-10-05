@@ -53,7 +53,7 @@ export class PcbLevel extends BaseLevel {
     this.bloom = 1.1;
     this.bokeh = 1.4;
     this.sectionNormal = [0, 0, 1];
-    this.followCaption = C.follow;
+    this.followCaption = C.follow(1);
   }
 
   protected cameraKeys(): CameraKey[] {
@@ -465,6 +465,7 @@ export class PcbLevel extends BaseLevel {
     this.busTime += dt * (flow ?? 1);
     const trace = this.ctx.journey.trace;
     this.busUniforms.uTrace.value = trace ? trace.chip : -1;
+    if (trace) this.followCaption = C.follow(trace.chip + 1);
     for (let i = 0; i < MEM; i++) {
       const on = smoothstep(i, i + 0.9, lit);
       this.memGlow.array[i] = trace
@@ -541,18 +542,20 @@ export class PcbLevel extends BaseLevel {
     }
   }
 
-  private readonly followPath: [number, number, number][] = [
-    [15, 9, D / 2 - 4],
-    [15, 1.5, 47],
-    [-10, 1.5, 44.5],
-    [-34, 1.0, 44.5],
-    [-30, 0.4, 22],
-    [-8, 1.8, 6],
-    [0, 2.2, 0],
-  ];
+  /** Trace: out of the memory chip, along the middle line of its bus, into the GPU package. */
+  private followPaths = new Map<number, [number, number, number][]>();
 
   followPoint(t: number, out: THREE.Vector3) {
-    return splineAt(this.followPath, smoothstep(0.06, 0.98, t), out);
+    const chip = this.ctx.journey.trace?.chip ?? 0;
+    let path = this.followPaths.get(chip);
+    if (!path) {
+      const [mx, mz] = this.memPositions()[chip];
+      const lines = this.buses.filter((b) => b.chip === chip);
+      const bus = lines[Math.floor(lines.length / 2)].pts;
+      path = [[mx, 1.6, mz], ...bus.map(([x, z]): [number, number, number] => [x, 0.5, z]), [0, 2.2, 0]];
+      this.followPaths.set(chip, path);
+    }
+    return splineAt(path, smoothstep(0.06, 0.98, t), out);
   }
 
   getTransitionTarget() {

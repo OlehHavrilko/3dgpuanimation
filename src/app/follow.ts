@@ -4,9 +4,15 @@ import type { InteractionManager } from '../interaction/InteractionManager';
 import type { Settings } from './settings';
 import { content } from '../content';
 
+/** Memory chip the Trace reads from: #11 sits on the bus that feeds the SM the descent dives into. */
+export const TRACE_CHIP = 10;
+
 /**
- * "Follow the electron": scroll from the very top to the very bottom at a steady pace while each
- * level shows where "our" electron is. Pauses in Explore, stops on a second press (or F / Esc).
+ * Trace: one route through every scale. A bit arrives over PCIe, is read back from a GDDR7 chip
+ * over that chip's own bus, climbs into the die, crosses memory controller → L2 → SM, runs down
+ * the wiring to one transistor and ends as an electron in a silicon atom. The page scrolls from
+ * top to bottom at a steady pace while each level shows where it is. Pauses in Explore, stops
+ * on a second press (or F / Esc).
  */
 export function setupFollow(opts: {
   ctx: LevelContext;
@@ -23,6 +29,8 @@ export function setupFollow(opts: {
   let tour: gsap.core.Tween | null = null;
 
   function start() {
+    // A chip the visitor already traced keeps its route; otherwise the default one.
+    ctx.journey.trace = { chip: ctx.journey.trace?.chip ?? TRACE_CHIP };
     ctx.journey.follow = true;
     document.body.classList.add('following');
     button.textContent = content.ui.stop;
@@ -39,6 +47,7 @@ export function setupFollow(opts: {
   }
 
   function stop() {
+    if (ctx.journey.follow) ctx.journey.trace = null;
     ctx.journey.follow = false;
     document.body.classList.remove('following');
     button.textContent = content.ui.follow;

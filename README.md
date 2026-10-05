@@ -37,7 +37,7 @@ The page has two modes:
 | `M`                         | Toggle ambient sound (off by default)                                    |
 | `X` `C` `T` `N`             | X-Ray / Section / Thermal / Normal view (in Explore)                     |
 | `Ctrl`/`Cmd` + `K`          | Command palette: jump to a scale or a part                               |
-| `F`                         | Follow the electron (start / stop)                                       |
+| `F`                         | Trace one bit, card to atom (start / stop)                               |
 | `Shift` + `F`               | Fullscreen                                                               |
 | `Esc`                       | Deselect, then leave Explore                                             |
 | Breadcrumb, scale rail, ◀ ▶ | Jump to any scale                                                        |
@@ -119,13 +119,13 @@ Click any GDDR7 chip → **Trace signal**. The chip's own 32-bit bus lights up w
 
 Gate drive has four settings: OFF, ON, CLOCK, or MANUAL with a gate-voltage slider (threshold about 0.3 V). Live readouts show the channel state, the relative drain current and a rolling logic trace (`0 1 0 1 …`).
 
-### Follow the electron
+### Trace: one bit, card to atom
 
-Press the **Follow e⁻** button or `F`. The page scrolls itself through all eight scales while a glowing electron with a tail follows one physical path:
+Press **Trace** or `F`. The page scrolls itself through all eight scales while a glowing packet with a tail follows one bit of data along a single route:
 
-12V-2x6 connector → VRM → PCB → solder ball and substrate → on-die power grid → down the via stack → contact → source → channel → through the silicon crystal → a 3p orbital.
+PCIe 5.0 x16 fingers → flex cable → GPU · GDDR7 chip 11 → its own 32-bit bus → GPU package · solder ball → substrate → C4 bump · memory controller 11 → L2 → GPC → SM · down the via stack → contact → source → channel · through the silicon crystal → a 3p orbital.
 
-Each level shows its own narration. The tour pauses while you explore and stops on a second press or with `Esc`.
+The signal-trace visuals come along: on the board the chip's bus lights up while the others fade, and on the die the route glows from the memory controller to the SM the descent dives into. Each level shows its own narration. The journey pauses while you explore and stops on a second press or with `Esc`. If you traced a chip by hand first, the journey reads from that chip instead.
 
 The interaction layer lives in `src/interaction/` and is shared by every level:
 
@@ -136,7 +136,7 @@ The interaction layer lives in `src/interaction/` and is shared by every level:
 - `CommandPalette.ts` is the `Ctrl/Cmd+K` jump-to-anything dialog.
 - `entities.ts` resolves a level's pickables into titled entities without a pointer.
 - `pick.ts` holds the helpers levels use to declare what is pickable.
-- `FollowTracer.ts` draws the followed electron.
+- `FollowTracer.ts` draws the traced packet.
 
 Levels only describe _what_ can be picked (`pickables`, with `EntityInfo` metadata) and _which_ controls they offer (`controls`). They never handle input themselves.
 
@@ -162,7 +162,7 @@ npm run test:e2e       # build + Playwright smoke tests (tests/e2e/smoke.spec.ts
 npm run bench          # build + level activation benchmark → bench/<label>.{json,md}
 ```
 
-The smoke suite runs every level and every feature (Explore, hover/inspect, X-Ray / Section / Thermal, signal trace, transistor gate, Follow the electron, the guided tour, acts and finale, Share frame, labels, the command palette and deep links) in headless Chromium with SwiftShader, so it needs no GPU. It also checks that the level cache stays at current ± 1 and that renderer memory counters return to their starting values after a full 1 → 8 → 1 cycle. CI (`.github/workflows/ci.yml`) runs all of the above except the benchmark.
+The smoke suite runs every level and every feature (Explore, hover/inspect, X-Ray / Section / Thermal, signal trace, transistor gate, the Trace journey, the guided tour, acts and finale, Share frame, labels, the command palette and deep links) in headless Chromium with SwiftShader, so it needs no GPU. It also checks that the level cache stays at current ± 1 and that renderer memory counters return to their starting values after a full 1 → 8 → 1 cycle. CI (`.github/workflows/ci.yml`) runs all of the above except the benchmark.
 
 `BENCH=<label> npm run bench` walks 1 → 8 → 1 and records, per activation: build, warmup, first frame (program compile + upload), transition, programs compiled, geometries, textures, estimated GPU MB and JS heap. `BENCH=baseline BENCH_QUERY='&cache=0' npm run bench`, `BENCH=after npm run bench`, then `npm run bench:compare` writes `bench/comparison.md` (before/after for the level cache; `?cache=0` turns the cache off). SwiftShader numbers are CPU-bound: compare runs with each other, not with a real GPU.
 
@@ -183,7 +183,7 @@ In debug mode, `window.__teardown` exposes `{ settings, manager, renderer, ctx, 
 ```
 src/
   main.ts               wiring: renderer, levels, scroll, tour + intro, deep links, frame loop
-  app/                  settings, adaptive resolution, level warmup, Follow e⁻, sound, palette,
+  app/                  settings, adaptive resolution, level warmup, Trace, sound, palette,
                         debug GUI, static text
   content/              every user-facing string (en/); add a language = add a dictionary
   core/
