@@ -224,11 +224,14 @@ export class Story {
     void this.key.offsetWidth;
     this.key.classList.add('on');
     this.keyTimer = KEY_SECONDS;
+    // The number takes the centre of the screen; the HUD steps back so the two never overlap.
+    document.body.classList.add('keynum-on');
   }
 
   private hideKey() {
     this.key.classList.remove('on');
     this.keyTimer = 0;
+    document.body.classList.remove('keynum-on');
   }
 
   private setCleanShot(on: boolean) {

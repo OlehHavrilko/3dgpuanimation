@@ -1789,7 +1789,7 @@ body.context-lost::after {
 /* Logarithmic scale ruler: ten decades, a few familiar sizes, a marker that rides it. */
 #ruler {
   position: fixed;
-  right: calc(clamp(16px, 3vw, 40px) + 150px);
+  right: calc(clamp(16px, 3vw, 40px) + 190px);
   top: 50%;
   height: min(52vh, 460px);
   transform: translateY(-50%);
@@ -1849,10 +1849,14 @@ body.context-lost::after {
   background: var(--green);
   box-shadow: 0 0 12px var(--green);
 }
+/* The live value sits right of the track, clear of the decade labels on the left. */
 .ruler-marker span {
   position: absolute;
-  right: 22px;
+  left: 22px;
   top: 50%;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.6);
   transform: translateY(-50%);
   white-space: nowrap;
   color: var(--white);
@@ -1866,6 +1870,11 @@ body.cleanshot #ruler {
 body.idle:not(.exploring) #ruler {
   opacity: 0.55;
 }
+/* A key number owns the screen for a few seconds: the HUD fades back behind it. */
+body.keynum-on .hud-main,
+body.keynum-on:not(.exploring) #ruler {
+  opacity: 0.12;
+}
 @media (max-width: 640px) {
   #ruler {
     right: 12px;
@@ -1873,6 +1882,11 @@ body.idle:not(.exploring) #ruler {
   }
   .ruler-mark {
     display: none;
+  }
+  /* No room right of the track at the screen edge: back over the ticks, on its backdrop. */
+  .ruler-marker span {
+    left: auto;
+    right: 22px;
   }
 }
 
