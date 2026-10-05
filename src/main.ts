@@ -15,8 +15,10 @@ import { createPostFx } from './app/postfx';
 import { createSettings, readQuality } from './app/settings';
 import { setupTour } from './app/tour';
 import { setupDebugPanel } from './app/debugPanel';
+import { applyStaticText } from './app/staticText';
 
 gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
+applyStaticText();
 
 // ---------------------------------------------------------------- renderer + post
 const quality = readQuality(location.search);

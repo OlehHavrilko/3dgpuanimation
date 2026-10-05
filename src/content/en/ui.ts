@@ -1,0 +1,40 @@
+/** Interface text shared by every level (HUD, inspector, view modes, tour). */
+export const ui = {
+  traceSignal: 'Trace signal ▸',
+  followIntoDie: 'Follow into the die ▸',
+  diveIntoSm: 'Dive into the SM ▸',
+  endTrace: 'End trace',
+  recentre: 'Re-centre',
+  dive: (scale: string) => `Dive ▸ ${scale}`,
+  back: (scale: string) => `◂ ${scale}`,
+  explore: (scale: string) => `Explore · ${scale}`,
+  exploreHintPick: 'Hover anything to identify it, click to inspect. Drag to orbit, wheel to zoom.',
+  exploreHintPlain: 'Drag to orbit, wheel to zoom.',
+  traceStage: (i: number, n: number, kind: string) => `Trace ${i}/${n} · ${kind}`,
+  follow: 'Follow e⁻',
+  /** Text that ships in index.html, re-applied from here so every language comes from one place. */
+  static: {
+    explore: 'Explore',
+    scrollHint: 'scroll to descend',
+    fovLabel: 'field of view',
+    tipHint: 'click to inspect',
+    exploreHintMouse: 'drag · orbit   wheel · zoom   right-drag · pan   click · inspect   esc · exit',
+    exploreHintTouch: '1 finger · orbit   pinch · zoom   2 fingers · pan   tap · inspect',
+  },
+  stop: 'Stop',
+  views: {
+    view: 'View',
+    cut: 'Cut position',
+  },
+  thermal: {
+    load: 'GPU load',
+    fans: 'Fans',
+    boardPower: 'Board power',
+    hotspot: 'Hotspot (est.)',
+    clocks: 'Clocks',
+    throttling: (pct: number) => `THROTTLING ${pct}%`,
+    fullBoost: 'full boost',
+    model: 'Model',
+    illustrative: 'illustrative, not measured',
+  },
+};

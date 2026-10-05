@@ -2,9 +2,9 @@ import * as THREE from 'three';
 import { BaseLevel, setControlValue } from '../core/BaseLevel';
 import type { CameraKey } from '../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../core/types';
-import { mulberry32, smoothstep } from '../core/math';
+import { mulberry32, pickByT, smoothstep } from '../core/math';
+import { content } from '../content';
 import { pointScale } from '../core/points';
-import type { EntityInfo } from '../core/types';
 import { boxFrom, pickObject } from '../interaction/pick';
 
 /**
@@ -12,10 +12,10 @@ import { boxFrom, pickObject } from '../interaction/pick';
  * Electron density is sampled from hydrogen-like orbitals with Clementi-Raimondi
  * effective nuclear charges, then radially compressed (r^0.62) so 1s and 3p fit one frame.
  */
+const C = content.levels.atom;
+
 export const meta: LevelMeta = {
-  name: 'Silicon atom',
-  scale: '0.2 nm',
-  description: '14 protons, 14 neutrons, 14 electrons. Where every transistor ultimately happens.',
+  ...C.meta,
   unitMeters: 5e-12,
   weight: 1.1,
 };
@@ -85,8 +85,7 @@ export class AtomLevel extends BaseLevel {
     this.bloom = 1.25;
     this.bokeh = 0.8;
     this.sectionNormal = [0, 0, 1];
-    this.followCaption =
-      "Finally it is one of silicon's four valence electrons, in a 3p orbital: not a dot, but a cloud of probability. End of the journey.";
+    this.followCaption = C.follow;
   }
 
   protected cameraKeys(): CameraKey[] {
@@ -156,23 +155,7 @@ export class AtomLevel extends BaseLevel {
     this.nucleus.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.nucleusGroup.add(this.nucleus);
     this.scene.add(this.nucleusGroup);
-    this.pickables.push(
-      pickObject(
-        this.nucleusGroup,
-        {
-          title: '²⁸Si nucleus',
-          kind: 'Nucleus',
-          specs: [
-            ['Protons', '14'],
-            ['Neutrons', '14'],
-            ['Real radius', '~3.1 fm'],
-            ['Drawn', '~10⁴× too large'],
-          ],
-          note: 'Real scale: if the atom were a stadium, the nucleus would be a pea at the centre spot. It holds 99.98% of the mass.',
-        },
-        2,
-      ),
-    );
+    this.pickables.push(pickObject(this.nucleusGroup, C.entities.nucleus, 2));
   }
 
   private buildCloud() {
@@ -299,14 +282,14 @@ export class AtomLevel extends BaseLevel {
         const d = Math.sqrt(ray.distanceSqToPoint(new THREE.Vector3()));
         const n = d < (this.shellR[0] + this.shellR[1]) / 2 ? 1 : d < (this.shellR[2] + this.shellR[3]) / 2 ? 2 : 3;
         const r = n === 1 ? this.shellR[0] : n === 2 ? this.shellR[2] : this.shellR[4];
-        return { key: `shell${n}`, info: SHELL_INFO[n], box: boxFrom(-r, -r, -r, r, r, r) };
+        return { key: `shell${n}`, info: C.entities.shells[n], box: boxFrom(-r, -r, -r, r, r, r) };
       },
     });
 
     this.controls = [
       {
         kind: 'choice',
-        label: 'Orbitals',
+        label: C.controls.orbitals,
         options: ['All', '1s', '2s', '2p', '3s', '3p'],
         value: 'All',
         onChange: (v) => {
@@ -338,14 +321,7 @@ export class AtomLevel extends BaseLevel {
     const s = 1 + 0.03 * Math.sin(time * 0.9);
     this.nucleusGroup.scale.setScalar(s);
 
-    this.caption =
-      t < 0.25
-        ? 'Si · Z = 14 · 1s² 2s² 2p⁶ 3s² 3p²'
-        : t < 0.5
-          ? 'Electron density sampled from |ψ|², Slater-screened shells'
-          : t < 0.78
-            ? 'Valence 3s² 3p²: the four electrons that bond the lattice'
-            : '²⁸Si nucleus · 14 p⁺ + 14 n⁰ · drawn ~10⁴× too large';
+    this.caption = pickByT(t, [0.25, 0.5, 0.78], C.captions);
   }
 
   onExploreChange(active: boolean) {
@@ -366,39 +342,6 @@ export class AtomLevel extends BaseLevel {
     return this.target;
   }
 }
-
-const SHELL_INFO: Record<number, EntityInfo> = {
-  1: {
-    title: 'n = 1 shell · 1s²',
-    kind: 'Core electrons',
-    specs: [
-      ['Electrons', '2'],
-      ['Z_eff', '13.58'],
-      ['Mean radius', '~0.06 Å'],
-    ],
-    note: 'Pulled in by almost the full nuclear charge: tightly bound and chemically inert.',
-  },
-  2: {
-    title: 'n = 2 shell · 2s² 2p⁶',
-    kind: 'Core electrons',
-    specs: [
-      ['Electrons', '8'],
-      ['Z_eff', '9.0 (2s) · 9.9 (2p)'],
-      ['Shape', 'sphere + three dumbbells'],
-    ],
-    note: 'A closed neon-like core; the three 2p orbitals together add up to a spherical shell.',
-  },
-  3: {
-    title: 'n = 3 shell · 3s² 3p²',
-    kind: 'Valence electrons',
-    specs: [
-      ['Electrons', '4'],
-      ['Z_eff', '4.9 (3s) · 4.3 (3p)'],
-      ['Shape', '3p lobes along x and y'],
-    ],
-    note: 'These four form the four covalent bonds of the crystal (sp³ hybrids) and decide how silicon conducts.',
-  },
-};
 
 function randomUnit(out: THREE.Vector3, rng: () => number) {
   const z = rng() * 2 - 1;

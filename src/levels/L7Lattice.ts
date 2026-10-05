@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { BaseLevel, setControlValue } from '../core/BaseLevel';
 import type { CameraKey } from '../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../core/types';
-import { smoothstep } from '../core/math';
+import { pickByT, smoothstep } from '../core/math';
+import { content } from '../content';
 import { pointScale } from '../core/points';
 import { pickInstancedGroup, pickInstances } from '../interaction/pick';
 import { splineAt } from '../interaction/FollowTracer';
@@ -12,10 +13,10 @@ import { splineAt } from '../interaction/FollowTracer';
  * Diamond cubic = FCC lattice + a second FCC offset by (¼,¼,¼)a, a = 5.431 Å.
  * Bonds are found from geometry (nearest-neighbour distance a·√3/4 ≈ 2.35 Å).
  */
+const C = content.levels.lattice;
+
 export const meta: LevelMeta = {
-  name: 'Silicon lattice',
-  scale: '2 nm',
-  description: 'Inside the fin: a diamond-cubic crystal, every atom bonded to four neighbours.',
+  ...C.meta,
   unitMeters: 1e-10,
   weight: 1,
 };
@@ -70,8 +71,7 @@ export class LatticeLevel extends BaseLevel {
     this.bloom = 1.15;
     this.bokeh = 1.2;
     this.sectionNormal = [0, 0, 1];
-    this.followCaption =
-      'Inside the fin it is no longer a particle in a wire: it moves through the crystal from bond to bond.';
+    this.followCaption = C.follow;
     // Atom closest to the centre is the one we dive into.
     let best = Infinity;
     this.atoms.forEach((p, i) => {
@@ -177,24 +177,13 @@ export class LatticeLevel extends BaseLevel {
       mids.set([mid.x, mid.y, mid.z], i * 3);
     });
     this.group.add(bondMesh);
-    this.pickables.push(
-      pickInstancedGroup(bondMesh, {
-        title: 'Covalent bonds',
-        kind: 'Chemistry · sp³',
-        specs: [
-          ['Length', '2.35 Å'],
-          ['Angle', '109.47°'],
-          ['Electrons', '2 shared per bond'],
-        ],
-        note: 'Each Si atom shares its 4 valence electrons with 4 neighbours: a full octet everywhere, which is why pure silicon barely conducts.',
-      }),
-    );
+    this.pickables.push(pickInstancedGroup(bondMesh, C.entities.bonds));
     this.buildCarriers();
 
     this.controls = [
       {
         kind: 'choice',
-        label: 'Doping',
+        label: C.controls.doping,
         options: ['Mixed', 'Intrinsic', 'N-type', 'P-type'],
         value: 'Mixed',
         onChange: (v) => {
@@ -266,14 +255,7 @@ export class LatticeLevel extends BaseLevel {
     this.carrierPos.needsUpdate = true;
     this.carrierMat.uniforms.uScale.value = pointScale(this.ctx.renderer, this.ctx.camera);
 
-    this.caption =
-      t < 0.25
-        ? 'Diamond-cubic Si · a = 5.431 Å (green box = one unit cell, 8 atoms)'
-        : t < 0.5
-          ? '4 covalent bonds per atom · 2.35 Å · 109.5° — glow = shared electron pairs'
-          : t < 0.75
-            ? 'Dopants: phosphorus (white) donates an electron · boron (amber) leaves a hole'
-            : '5 × 10²² atoms per cm³ — zooming into one of them';
+    this.caption = pickByT(t, [0.25, 0.5, 0.75], C.captions);
   }
 
   /** Recolour atoms for the current doping mode and show the matching free carriers. */
@@ -305,38 +287,9 @@ export class LatticeLevel extends BaseLevel {
     const d = this.visibleDopant(i);
     const p = this.atoms[i];
     const pos = `${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)} Å`;
-    if (d === 'P')
-      return {
-        title: 'Phosphorus (P)',
-        kind: 'Dopant · n-type donor',
-        specs: [
-          ['Valence electrons', '5'],
-          ['Bonds', '4 — one electron left over'],
-          ['Position', pos],
-        ] as [string, string][],
-        note: 'The fifth electron is barely bound and wanders off at room temperature: a free negative carrier.',
-      };
-    if (d === 'B')
-      return {
-        title: 'Boron (B)',
-        kind: 'Dopant · p-type acceptor',
-        specs: [
-          ['Valence electrons', '3'],
-          ['Bonds', '4 — one missing an electron'],
-          ['Position', pos],
-        ] as [string, string][],
-        note: 'The missing electron is a "hole": neighbours hop into it, so the hole moves like a positive carrier.',
-      };
-    return {
-      title: i === this.centerIndex ? 'Silicon (Si) — the one we dive into' : 'Silicon (Si)',
-      kind: 'Atom · Z = 14',
-      specs: [
-        ['Neighbours', '4'],
-        ['Bond length', '2.35 Å'],
-        ['Covalent radius', '1.11 Å'],
-        ['Position', pos],
-      ] as [string, string][],
-    };
+    if (d === 'P') return C.entities.phosphorus(pos);
+    if (d === 'B') return C.entities.boron(pos);
+    return C.entities.silicon(pos, i === this.centerIndex);
   }
 
   /** Point sprites for the donor electrons (filled) and acceptor holes (rings). */

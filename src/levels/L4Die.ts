@@ -2,9 +2,9 @@ import * as THREE from 'three';
 import { BaseLevel, setControlValue } from '../core/BaseLevel';
 import type { CameraKey } from '../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../core/types';
-import { smoothstep } from '../core/math';
+import { pickByT, smoothstep } from '../core/math';
+import { content } from '../content';
 import {
-  type Block,
   DIE_W,
   DIE_H,
   EDGE,
@@ -30,10 +30,10 @@ import { splineAt } from '../interaction/FollowTracer';
  * The surface is a custom shader: thin-film interference in the oxide/passivation
  * stack gives the angle-dependent rainbow you see on real dies.
  */
+const C = content.levels.die;
+
 export const meta: LevelMeta = {
-  name: 'GB202 die',
-  scale: '1 cm',
-  description: 'Blackwell, TSMC 4N, ~750 mm², 92.2 billion transistors.',
+  ...C.meta,
   unitMeters: 0.001,
   weight: 1.1,
 };
@@ -63,8 +63,7 @@ export class DieLevel extends BaseLevel {
     this.bloom = 1.15;
     this.bokeh = 1.3;
     this.sectionNormal = [1, 0, 0];
-    this.followCaption =
-      'On the die: the power grid spreads current to all 170 active SMs; ours heads for one of them.';
+    this.followCaption = C.follow;
     // Dive into SM #3 of the third GPC in the top row.
     this.target = {
       position: smCenter(2, 1, 0, 3),
@@ -149,7 +148,7 @@ export class DieLevel extends BaseLevel {
     this.controls = [
       {
         kind: 'choice',
-        label: 'Highlight',
+        label: C.controls.highlight,
         options: ['None', 'GPC', 'SM', 'L2', 'Memory'],
         value: 'None',
         onChange: (v) => {
@@ -197,18 +196,18 @@ export class DieLevel extends BaseLevel {
       u.uSmReveal.value = smoothstep(0.32, 0.5, t) * SMS;
     }
 
-    this.caption =
-      t < 0.12
-        ? 'Thin-film interference: oxide thickness paints the colours'
-        : t < 0.33
-          ? '12 Graphics Processing Clusters (GPC)'
-          : t < 0.53
-            ? `${SMS} Streaming Multiprocessors · ${SMS_ENABLED} enabled on RTX 5090 · 21,760 CUDA cores`
-            : t < 0.69
-              ? 'L2 cache · 128 MB on die (96 MB enabled)'
-              : t < 0.86
-                ? '16 × 32-bit GDDR7 memory controllers = 512-bit bus'
-                : 'Zooming into one SM';
+    this.caption = pickByT(
+      t,
+      [0.12, 0.33, 0.53, 0.69, 0.86],
+      [
+        C.captions.film,
+        C.captions.gpc,
+        C.captions.sm(SMS, SMS_ENABLED),
+        C.captions.l2,
+        C.captions.mc,
+        C.captions.outro,
+      ],
+    );
   }
 
   /** Waypoints on the die for a trace that started at GDDR7 chip `chip` (plane-local coords). */
@@ -234,17 +233,17 @@ export class DieLevel extends BaseLevel {
     };
     const stages = [
       hit(w.mc, false, {
-        note: 'The PHY recovers the PAM3 symbols and the controller queues the burst for the cache.',
+        note: C.trace.mc,
       }),
       hit(w.l2, false, {
-        note: 'Every memory access passes through L2 first; a hit here would never have reached the DRAM at all.',
+        note: C.trace.l2,
       }),
-      hit(w.gpc, false, { note: 'The crossbar hands the cache line to the GPC that asked for it.' }),
+      hit(w.gpc, false, { note: C.trace.gpc }),
       hit(w.sm, true, {
-        note: "Destination: the SM's L1 / shared memory, where 128 CUDA cores and 4 tensor cores consume it.",
+        note: C.trace.sm,
         actions: [
-          { label: 'Dive into the SM ▸', run: () => this.ctx.go(4) },
-          { label: 'End trace', run: () => (this.ctx.journey.trace = null) },
+          { label: content.ui.diveIntoSm, run: () => this.ctx.go(4) },
+          { label: content.ui.endTrace, run: () => (this.ctx.journey.trace = null) },
         ],
       }),
     ];
@@ -287,7 +286,7 @@ export class DieLevel extends BaseLevel {
   /** Which floorplan block is at plane-local (x, y)? Far away the GPC, close up the individual SM. */
   private classify(x: number, y: number, smLevel: boolean) {
     const b = classifyBlock(x, y, smLevel, this.disabled);
-    return b ? { key: b.key, rect: b.rect, info: blockInfo(b) } : null;
+    return b ? { key: b.key, rect: b.rect, info: C.entities.block(b) } : null;
   }
 
   /** Across the on-die power grid to the SM we are about to dive into. */
@@ -313,71 +312,6 @@ export class DieLevel extends BaseLevel {
 function smCenter(gpcCol: number, row: number, smCol: number, smRow: number) {
   const [x, y] = smCenterLocal(gpcCol, row, smCol, smRow);
   return new THREE.Vector3(x, 0, -y);
-}
-
-/** Inspector text for a floorplan block. */
-function blockInfo(b: Block): EntityInfo {
-  switch (b.kind) {
-    case 'mc':
-      return {
-        title: `Memory controller ${b.index}`,
-        kind: 'Memory subsystem · GDDR7',
-        specs: [
-          ['Width', '32-bit'],
-          ['Feeds', 'one 2 GB GDDR7 chip'],
-          ['All 16', '512-bit · 1.79 TB/s'],
-        ],
-        note: 'Controller logic plus the PHY that drives signals off the die, through the package and across the PCB.',
-      };
-    case 'hub':
-      return {
-        title: 'Hub',
-        kind: 'Front end · I/O',
-        specs: [
-          ['GigaThread', 'work scheduler'],
-          ['Host', 'PCIe 5.0 × 16'],
-          ['Media', 'NVENC / NVDEC'],
-          ['Display', 'DP 2.1b / HDMI 2.1b'],
-        ],
-        note: 'Placement is schematic: NVIDIA publishes the block diagram, not the physical floorplan.',
-      };
-    case 'l2':
-      return {
-        title: `L2 cache · ${b.east ? 'east' : 'west'} partition`,
-        kind: 'Cache',
-        specs: [
-          ['Total on die', '128 MB'],
-          ['Enabled on 5090', '96 MB'],
-        ],
-        note: 'Shared by every SM: the last stop before data has to cross the memory bus.',
-      };
-    case 'gpc':
-      return {
-        title: `GPC ${b.gpc + 1}`,
-        kind: 'Graphics Processing Cluster',
-        specs: [
-          ['SMs', `${b.enabled} of 16 enabled`],
-          ['TPCs', '8'],
-          ['Raster engine', '1'],
-        ],
-        note: 'Zoom in closer to pick individual SMs.',
-      };
-    case 'sm':
-      return {
-        title: `SM ${b.sm + 1}${b.off ? ' (fused off)' : ''}`,
-        kind: `Streaming Multiprocessor · GPC ${b.gpc + 1}`,
-        specs: [
-          ['CUDA cores', '128'],
-          ['Tensor cores', '4 · 5th gen'],
-          ['RT core', '1 · 4th gen'],
-          ['L1 / shared', '128 KB'],
-          ['Status', b.off ? 'disabled on RTX 5090' : 'enabled'],
-        ],
-        note: b.off
-          ? 'GB202 has 192 SMs; the RTX 5090 ships with 170, so 22 are fused off to improve yield.'
-          : 'Dive in: below the die surface sit ~15 copper wiring layers and the transistors themselves.',
-      };
-  }
 }
 
 const FRAG = /* glsl */ `

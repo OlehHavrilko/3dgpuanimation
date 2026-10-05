@@ -2,6 +2,7 @@ import gsap from 'gsap';
 import type { LevelContext } from '../core/types';
 import type { InteractionManager } from '../interaction/InteractionManager';
 import type { Settings } from './settings';
+import { content } from '../content';
 
 /**
  * "Follow the electron": scroll from the very top to the very bottom at a steady pace while each
@@ -22,7 +23,7 @@ export function setupTour(opts: {
   function start() {
     ctx.journey.follow = true;
     document.body.classList.add('following');
-    button.textContent = 'Stop';
+    button.textContent = content.ui.stop;
     interaction.exitExplore();
     tour?.kill();
     if (settings.override) {
@@ -37,7 +38,7 @@ export function setupTour(opts: {
   function stop() {
     ctx.journey.follow = false;
     document.body.classList.remove('following');
-    button.textContent = 'Follow e⁻';
+    button.textContent = content.ui.follow;
     tour?.kill();
     tour = null;
   }

@@ -7,6 +7,7 @@ import { FollowTracer } from './FollowTracer';
 import { CameraController } from './CameraController';
 import { TraceRunner } from './TraceRunner';
 import { fitBracket, makeBracket } from './brackets';
+import { content } from '../content';
 
 /**
  * Shared interaction layer, independent of any particular level. It orchestrates:
@@ -329,27 +330,25 @@ export class InteractionManager {
     const actions: InspectorAction[] = [];
     for (const a of this.selected?.info.actions ?? []) actions.push(a);
     if (this.selected)
-      actions.push({ label: 'Re-centre', run: () => this.selected && this.cam.focusOn(this.selected.box) });
+      actions.push({ label: content.ui.recentre, run: () => this.selected && this.cam.focusOn(this.selected.box) });
     if (index < count - 1)
       actions.push({
-        label: `Dive ▸ ${this.manager.entries[index + 1].meta.scale}`,
+        label: content.ui.dive(this.manager.entries[index + 1].meta.scale),
         run: () => this.jumpToLevel(index + 1),
       });
     if (index > 0)
       actions.push({
-        label: `◂ ${this.manager.entries[index - 1].meta.scale}`,
+        label: content.ui.back(this.manager.entries[index - 1].meta.scale),
         run: () => this.jumpToLevel(index - 1),
       });
 
     const heading = this.selected
       ? this.selected.info
       : {
-          kind: `Explore · ${level.meta.scale}`,
+          kind: content.ui.explore(level.meta.scale),
           title: level.meta.name,
           specs: [] as [string, string][],
-          note: level.pickables?.length
-            ? 'Hover anything to identify it, click to inspect. Drag to orbit, wheel to zoom.'
-            : 'Drag to orbit, wheel to zoom.',
+          note: level.pickables?.length ? content.ui.exploreHintPick : content.ui.exploreHintPlain,
         };
     const controls = this.exploring
       ? [...this.views.controls((m: ViewMode) => this.setViewMode(m)), ...(level.controls ?? [])]

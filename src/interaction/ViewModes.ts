@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import type { Level, LevelControl, ThermalSpec } from '../core/types';
+import { content } from '../content';
+
+const T = content.ui;
 
 export type ViewMode = 'Normal' | 'X-Ray' | 'Section' | 'Thermal';
 
@@ -94,7 +97,7 @@ export class ViewModes {
     const list: LevelControl[] = [
       {
         kind: 'choice',
-        label: 'View',
+        label: T.views.view,
         options: this.available(),
         value: this.mode,
         onChange: (v) => onModeChange(v as ViewMode),
@@ -103,7 +106,7 @@ export class ViewModes {
     if (this.mode === 'Section') {
       list.push({
         kind: 'slider',
-        label: 'Cut position',
+        label: T.views.cut,
         min: 0,
         max: 100,
         step: 1,
@@ -287,7 +290,7 @@ export class ThermalSim {
     const list: LevelControl[] = [
       {
         kind: 'slider',
-        label: 'GPU load',
+        label: T.thermal.load,
         min: 0,
         max: 100,
         step: 1,
@@ -299,13 +302,13 @@ export class ThermalSim {
     if (this.spec.nodes.some((n) => n.fanCooled)) {
       list.push({
         kind: 'choice',
-        label: 'Fans',
+        label: T.thermal.fans,
         options: ['Stop', 'Idle', 'Load'],
         value: this.fan > 0.7 ? 'Load' : this.fan > 0.2 ? 'Idle' : 'Stop',
         onChange: (v) => (this.fan = v === 'Stop' ? 0 : v === 'Idle' ? 0.45 : 1),
       });
     }
-    list.push({ kind: 'readout', label: 'Board power', get: () => `${Math.round(this.totalPower())} W` });
+    list.push({ kind: 'readout', label: T.thermal.boardPower, get: () => `${Math.round(this.totalPower())} W` });
     for (const n of this.spec.nodes) {
       if (n.readout) list.push({ kind: 'readout', label: n.label, get: () => `${this.temp(n.id).toFixed(0)} °C` });
     }
@@ -314,16 +317,16 @@ export class ThermalSim {
       const pTn = this.spec.nodes.find((n) => n.id === tn)?.power ?? 0;
       list.push({
         kind: 'readout',
-        label: 'Hotspot (est.)',
+        label: T.thermal.hotspot,
         get: () => `${(this.temp(tn) + 0.025 * pTn * this.load * this.throttle).toFixed(0)} °C`,
       });
       list.push({
         kind: 'readout',
-        label: 'Clocks',
-        get: () => (this.throttle < 0.98 ? `THROTTLING ${Math.round(this.throttle * 100)}%` : 'full boost'),
+        label: T.thermal.clocks,
+        get: () => (this.throttle < 0.98 ? T.thermal.throttling(Math.round(this.throttle * 100)) : T.thermal.fullBoost),
       });
     }
-    list.push({ kind: 'readout', label: 'Model', get: () => 'illustrative, not measured' });
+    list.push({ kind: 'readout', label: T.thermal.model, get: () => T.thermal.illustrative });
     return list;
   }
 

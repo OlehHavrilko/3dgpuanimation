@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { BaseLevel, addGlowAttribute, makeInstanceGlow } from '../core/BaseLevel';
 import type { CameraKey } from '../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../core/types';
-import { mulberry32, smoothstep } from '../core/math';
+import { mulberry32, pickByT, smoothstep } from '../core/math';
+import { content } from '../content';
 import type { EntityInfo } from '../core/types';
 import { pickInstancedGroup, pickInstances } from '../interaction/pick';
 
@@ -14,10 +15,10 @@ import { pickInstancedGroup, pickInstances } from '../interaction/pick';
  * cut face, like an SEM cross-section. Each layer only extends as far as the camera can
  * see when it reaches it, which keeps instance counts sane.
  */
+const C = content.levels.metal;
+
 export const meta: LevelMeta = {
-  name: 'Metal stack',
-  scale: '10 µm',
-  description: '~15 copper layers wire 92 billion transistors together. Wires get thinner the deeper you go.',
+  ...C.meta,
   unitMeters: 1e-6,
   weight: 1.1,
 };
@@ -32,24 +33,7 @@ interface MetalLayer {
 }
 
 const PITCHES = [10, 4, 4, 1.6, 1.6, 0.72, 0.72, 0.32, 0.16, 0.08, 0.064, 0.048, 0.04, 0.036, 0.028, 0.028];
-const NAMES = [
-  'AP (Al pad)',
-  'M15',
-  'M14',
-  'M13',
-  'M12',
-  'M11',
-  'M10',
-  'M9',
-  'M8',
-  'M7',
-  'M6',
-  'M5',
-  'M4',
-  'M3',
-  'M2',
-  'M1',
-];
+const NAMES = C.layerNames;
 const CPP = 0.051; // contacted gate pitch (µm)
 const FIN_PITCH = 0.028;
 
@@ -68,8 +52,7 @@ export class MetalLevel extends BaseLevel {
     this.bloom = 1.1;
     this.bokeh = 1.2;
     this.sectionNormal = [0, 0, 1];
-    this.followCaption =
-      'Down through ~15 metal layers: via after via, from wires 10 µm wide to wires 28 nm apart, then into a contact.';
+    this.followCaption = C.follow;
     this.layout();
   }
 
@@ -208,17 +191,7 @@ export class MetalLevel extends BaseLevel {
       vias.length,
     );
     fill(viaMesh, vias);
-    this.pickables.push(
-      pickInstances(viaMesh, () => ({
-        title: 'Via',
-        kind: 'Interconnect · vertical',
-        specs: [
-          ['Joins', 'adjacent metal layers'],
-          ['Material', 'copper'],
-        ],
-        note: 'Wires on alternate layers run at right angles; vias are the only way a signal changes layer.',
-      })),
-    );
+    this.pickables.push(pickInstances(viaMesh, () => C.entities.via));
 
     // ---- low-k dielectric slabs (faint, so the copper reads)
     const dielectric = new THREE.MeshStandardMaterial({
@@ -261,14 +234,7 @@ export class MetalLevel extends BaseLevel {
       gates.setMatrixAt(i, m.compose(pos.set(x, y0 - 0.03, -span / 2), q, scl.set(0.016, 0.05, span)));
     }
     s.add(gates);
-    this.pickables.push(
-      pickInstancedGroup(gates, {
-        title: 'Gate lines',
-        kind: 'Front end of line',
-        specs: [['Gate pitch', `${Math.round(CPP * 1000)} nm`]],
-        note: 'The transistor level. Dive in (next scale).',
-      }),
-    );
+    this.pickables.push(pickInstancedGroup(gates, C.entities.gateLines(Math.round(CPP * 1000))));
 
     const nFins = Math.floor(span / FIN_PITCH);
     const fins = new THREE.InstancedMesh(
@@ -293,16 +259,7 @@ export class MetalLevel extends BaseLevel {
       contacts.setMatrixAt(i, m.compose(pos.set(x, y0 + 0.01, z), q, scl.set(0.014, 0.03, 0.014)));
     }
     s.add(contacts);
-    this.pickables.push(
-      pickInstances(contacts, () => ({
-        title: 'Contact',
-        kind: 'Middle of line',
-        specs: [
-          ['Material', 'tungsten / cobalt'],
-          ['Joins', 'transistor ↔ M1'],
-        ],
-      })),
-    );
+    this.pickables.push(pickInstances(contacts, () => C.entities.contact));
 
     const substrate = new THREE.Mesh(
       new THREE.BoxGeometry(span, 0.4, span),
@@ -323,37 +280,16 @@ export class MetalLevel extends BaseLevel {
 
     const idx = Math.min(this.layers.length - 1, Math.floor((t / 0.92) * 8) * 2);
     const l = this.layers[idx];
-    this.caption =
-      t < 0.12
-        ? 'Aluminium pad layer + ultra-thick global copper (power, clock)'
-        : t < 0.92
-          ? `${l.name} · pitch ${l.pitch >= 1 ? `${l.pitch} µm` : `${Math.round(l.pitch * 1000)} nm`}`
-          : `Contacts → FinFETs · gate pitch ${Math.round(CPP * 1000)} nm`;
+    this.caption = pickByT(
+      t,
+      [0.12, 0.92],
+      [C.captions.top, C.captions.layer(l.name, l.pitch), C.captions.feol(Math.round(CPP * 1000))],
+    );
   }
 
   private layerInfo(li: number): EntityInfo {
     const l = this.layers[li];
-    const pitch = l.pitch >= 1 ? `${l.pitch} µm` : `${Math.round(l.pitch * 1000)} nm`;
-    const role =
-      li === 0
-        ? 'bond pads / redistribution'
-        : li <= 2
-          ? 'power grid + clock (ultra-thick)'
-          : li <= 6
-            ? 'global routing'
-            : li <= 10
-              ? 'intermediate routing'
-              : 'local wiring inside standard cells';
-    return {
-      title: l.name,
-      kind: `Metal layer ${li === 0 ? '· aluminium' : '· copper'}`,
-      specs: [
-        ['Pitch', pitch],
-        ['Direction', l.alongZ ? 'front ↔ back' : 'left ↔ right'],
-        ['Role', role],
-      ],
-      note: 'Pitches are representative of a 4/5 nm-class stack; TSMC does not publish the exact 4N numbers.',
-    };
+    return C.entities.layer(l.name, l.pitch, l.alongZ, li);
   }
 
   /** Down the via stack: thick top metal to 28 nm wiring, then into a contact. */

@@ -1,4 +1,5 @@
 import type { EntityInfo, PickHit } from '../core/types';
+import { content } from '../content';
 
 /** Seconds each trace waypoint stays selected before the next one. */
 const STAGE_SECONDS = 3.6;
@@ -34,7 +35,7 @@ export class TraceRunner {
     run.i++;
     run.t = 0;
     const st = run.stages[run.i];
-    const info: EntityInfo = { ...st.info, kind: `Trace ${run.i + 1}/${run.stages.length} · ${st.info.kind}` };
+    const info: EntityInfo = { ...st.info, kind: content.ui.traceStage(run.i + 1, run.stages.length, st.info.kind) };
     this.onStage({ ...st, info });
   }
 }

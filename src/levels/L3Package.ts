@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import { BaseLevel, setControlValue } from '../core/BaseLevel';
 import type { CameraKey } from '../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../core/types';
-import { mulberry32, smoothstep, smootherstep } from '../core/math';
+import { mulberry32, pickByT, smootherstep, smoothstep } from '../core/math';
+import { content } from '../content';
+import type { LayerId } from '../content/en/package';
 import { canvasTexture, route45 } from '../core/canvas';
 import { pickInstancedGroup, pickObject } from '../interaction/pick';
 
@@ -12,33 +14,12 @@ import { pickInstancedGroup, pickObject } from '../interaction/pick';
  * glass-fibre core, and a field of solder balls underneath. Layer thicknesses are
  * exaggerated ~5x so they read on screen.
  */
+const C = content.levels.package;
+
 export const meta: LevelMeta = {
-  name: 'GB202 package',
-  scale: '5 cm',
-  description: 'Flip-chip BGA: the die sits face-down on an organic substrate that fans its pins out to the board.',
+  ...C.meta,
   unitMeters: 0.001,
   weight: 1,
-};
-
-/** Inspector text per substrate layer type. */
-const LAYER_NOTES: Record<string, [string, string][]> = {
-  'Solder mask': [
-    ['Material', 'epoxy resist'],
-    ['Role', 'protects bottom copper'],
-  ],
-  'Top solder mask': [
-    ['Material', 'epoxy resist'],
-    ['Role', 'protects top copper'],
-  ],
-  ABF: [
-    ['Material', 'Ajinomoto build-up film'],
-    ['Role', 'dielectric between copper layers'],
-  ],
-  'Glass-fibre core + PTH': [
-    ['Material', 'glass-weave epoxy'],
-    ['Vias', 'plated through-holes'],
-    ['Role', 'stiffness'],
-  ],
 };
 
 const SIZE = 50;
@@ -73,8 +54,7 @@ export class PackageLevel extends BaseLevel {
     this.bloom = 1.0;
     this.bokeh = 1.6;
     this.sectionNormal = [0, 0, 1];
-    this.followCaption =
-      'Up through a solder ball, the copper layers of the substrate and a C4 micro-bump: now it is inside the silicon.';
+    this.followCaption = C.follow;
   }
 
   protected cameraKeys(): CameraKey[] {
@@ -123,37 +103,25 @@ export class PackageLevel extends BaseLevel {
     const coreMat = new THREE.MeshStandardMaterial({ color: 0x3a2a14, roughness: 0.6, map: this.coreTexture() });
     const maskMat = new THREE.MeshStandardMaterial({ color: 0x2d4a1e, roughness: 0.45, metalness: 0.1 });
 
-    const stack: [string, number, THREE.Material][] = [
-      ['Solder mask', 0.1, maskMat],
-      ['Copper L8', 0.12, copperMat(routingB)],
-      ['ABF', 0.2, abf],
-      ['Copper L7', 0.12, copperMat(routingA)],
-      ['Glass-fibre core + PTH', 0.8, coreMat],
-      ['Copper L2', 0.12, copperMat(routingB)],
-      ['ABF', 0.2, abf],
-      ['Copper L1', 0.12, copperMat(routingA)],
-      ['Top solder mask', 0.1, maskMat],
+    const stack: [LayerId, number, THREE.Material][] = [
+      ['mask', 0.1, maskMat],
+      ['cu8', 0.12, copperMat(routingB)],
+      ['abf', 0.2, abf],
+      ['cu7', 0.12, copperMat(routingA)],
+      ['core', 0.8, coreMat],
+      ['cu2', 0.12, copperMat(routingB)],
+      ['abf', 0.2, abf],
+      ['cu1', 0.12, copperMat(routingA)],
+      ['topMask', 0.1, maskMat],
     ];
     let y = 0.3; // above the balls
-    stack.forEach(([name, th, mat]) => {
+    stack.forEach(([id, th, mat]) => {
+      const name = C.layers[id];
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(SIZE, th, SIZE), mat);
       mesh.position.y = y + th / 2;
       this.layers.push({ name, thickness: th, mesh, baseY: y + th / 2 });
       s.add(mesh);
-      const copper = name.startsWith('Copper');
-      this.pickables.push(
-        pickObject(mesh, {
-          title: name,
-          kind: 'Package substrate · layer',
-          specs: copper
-            ? [
-                ['Material', 'copper'],
-                ['Role', 'fans die signals out to the balls'],
-                ['Drawn thickness', `${th} mm (×5)`],
-              ]
-            : [...(LAYER_NOTES[name] ?? []), ['Drawn thickness', `${th} mm (×5)`]],
-        }),
-      );
+      this.pickables.push(pickObject(mesh, C.entities.layer(id, th)));
       y += th;
     });
 
@@ -189,17 +157,7 @@ export class PackageLevel extends BaseLevel {
     this.bumpsBaseY = y + 0.15;
     this.bumps.position.y = this.bumpsBaseY;
     s.add(this.bumps);
-    this.pickables.push(
-      pickInstancedGroup(this.bumps, {
-        title: 'C4 micro-bumps',
-        kind: 'Die attach',
-        specs: [
-          ['Modelled', (nx * nz).toLocaleString('en-US')],
-          ['Pitch (drawn)', '0.48 mm'],
-        ],
-        note: 'The die is flipped face-down: these solder bumps carry every signal and every amp between silicon and substrate.',
-      }),
-    );
+    this.pickables.push(pickInstancedGroup(this.bumps, C.entities.bumps(nx * nz)));
 
     // Die: ~29 x 26 mm (~750 mm²) bare silicon + underfill
     const underfill = new THREE.Mesh(
@@ -217,22 +175,7 @@ export class PackageLevel extends BaseLevel {
     this.dieBaseY = y + 0.3;
     this.dieGroup.position.y = this.dieBaseY;
     s.add(this.dieGroup);
-    this.pickables.push(
-      pickObject(
-        this.dieGroup,
-        {
-          title: 'GB202 die',
-          kind: 'Silicon · Blackwell',
-          specs: [
-            ['Area', '~750 mm²'],
-            ['Transistors', '92.2 billion'],
-            ['Process', 'TSMC 4N'],
-          ],
-          note: 'Dive in to see the floorplan (next scale).',
-        },
-        1,
-      ),
-    );
+    this.pickables.push(pickObject(this.dieGroup, C.entities.die, 1));
 
     // BGA solder balls under the substrate (~5000)
     const n = 72;
@@ -255,22 +198,12 @@ export class PackageLevel extends BaseLevel {
     this.balls.position.y = this.ballsBaseY;
     s.add(this.balls);
     this.ballCount = pos.length;
-    this.pickables.push(
-      pickInstancedGroup(this.balls, {
-        title: 'BGA solder balls',
-        kind: 'Package → board',
-        specs: [
-          ['Modelled', pos.length.toLocaleString('en-US')],
-          ['Pitch (drawn)', `${pitch} mm`],
-        ],
-        note: 'Power, ground and I/O: most balls carry current to and from the board, not data.',
-      }),
-    );
+    this.pickables.push(pickInstancedGroup(this.balls, C.entities.balls(pos.length, pitch)));
 
     this.controls = [
       {
         kind: 'slider',
-        label: 'Peel apart',
+        label: C.controls.peel,
         min: 0,
         max: 100,
         step: 1,
@@ -371,16 +304,17 @@ export class PackageLevel extends BaseLevel {
     this.target.position.set(0, this.dieGroup.position.y + 1.08, 0);
 
     const layerName = this.layers[Math.min(n - 1, Math.floor((1 - Math.min(1, (t - 0.25) / 0.35)) * n))]?.name;
-    this.caption =
-      t < 0.12
-        ? 'Flip-chip BGA: GB202 die on an organic substrate'
-        : t < 0.25
-          ? 'Peeling the substrate apart (thicknesses ×5)'
-          : t < 0.6
-            ? `Build-up stack · ${layerName}`
-            : t < 0.8
-              ? `${this.ballCount.toLocaleString('en-US')} BGA balls below · ~${(58 * 52).toLocaleString('en-US')} C4 bumps above`
-              : 'Die: TSMC 4N · ~750 mm² · 92.2 billion transistors';
+    this.caption = pickByT(
+      t,
+      [0.12, 0.25, 0.6, 0.8],
+      [
+        C.captions.intro,
+        C.captions.peel,
+        C.captions.stack(layerName ?? ''),
+        C.captions.counts(this.ballCount, 58 * 52),
+        C.captions.die,
+      ],
+    );
   }
 
   onExploreChange(active: boolean) {
