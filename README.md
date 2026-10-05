@@ -98,6 +98,21 @@ npm run build      # typecheck + production build into dist/
 npm run preview    # serve dist/
 ```
 
+### Checks
+
+```bash
+npm run lint           # ESLint (flat config, typescript-eslint + prettier)
+npm run format:check   # Prettier
+npm run typecheck      # tsc --noEmit
+npm test               # Vitest unit tests (tests/unit)
+npm run test:e2e       # build + Playwright smoke tests (tests/e2e/smoke.spec.ts)
+npm run bench          # build + level activation benchmark → bench/<label>.{json,md}
+```
+
+The smoke suite runs every level and every feature (Explore, hover/inspect, X-Ray / Section / Thermal, signal trace, transistor gate, Follow the electron) in headless Chromium with SwiftShader, so it needs no GPU. It also checks that the level cache stays at current ± 1 and that renderer memory counters return to their starting values after a full 1 → 8 → 1 cycle. CI (`.github/workflows/ci.yml`) runs all of the above except the benchmark.
+
+`BENCH=<label> npm run bench` walks 1 → 8 → 1 and records, per activation: build, warmup, first frame (program compile + upload), transition, programs compiled, geometries, textures, estimated GPU MB and JS heap. `BENCH=baseline BENCH_QUERY='&cache=0' npm run bench`, `BENCH=after npm run bench`, then `npm run bench:compare` writes `bench/comparison.md` (before/after for the level cache; `?cache=0` turns the cache off). SwiftShader numbers are CPU-bound: compare runs with each other, not with a real GPU.
+
 ### Debug mode
 
 Open `http://localhost:5173/?debug` to get a lil-gui panel with:
@@ -108,29 +123,36 @@ Open `http://localhost:5173/?debug` to get a lil-gui panel with:
 - jump buttons for every level
 - bloom and depth-of-field controls
 
-In debug mode, `window.__teardown` exposes `{ settings, manager, renderer }` for console scripting.
+In debug mode, `window.__teardown` exposes `{ settings, manager, renderer, ctx, interaction, profiler }` for console scripting and tests, and every level activation is logged as `[level] {…timings}`.
 
 ## Architecture
 
 ```
 src/
-  main.ts               renderer, post chain (DOF → bloom/vignette/ACES), ScrollTrigger, debug GUI
+  main.ts               wiring: renderer, levels, interaction, scroll, frame loop
+  app/                  settings, post chain (DOF → bloom/vignette/ACES), adaptive resolution,
+                        level warmup, Follow tour, debug GUI, static text
+  content/              every user-facing string (en/); add a language = add a dictionary
   core/
-    LevelManager.ts     timeline → level segments, scene swap, dive + flash
+    LevelManager.ts     timeline → level segments, current/next/previous cache, dive + flash
+    LevelProfiler.ts    build / warmup / first-frame / transition / memory per activation
     BaseLevel.ts        scene/camera-rig/dispose boilerplate, per-instance glow material patch
     CameraRig.ts        Catmull-Rom keyframed camera path
     Overlay.ts          HUD: scale label, name, caption, scale rail, live field of view
     types.ts            Level interface, EntityInfo, Pickable, LevelControl
     canvas.ts, points.ts, dispose.ts, math.ts
   interaction/
-    InteractionManager.ts  hover / select / Explore / keyboard / parallax
+    InteractionManager.ts  hover / select / Explore / keyboard / view modes, orchestration
+    CameraController.ts    Explore orbit, focus fly-to, inspector view shift
+    TraceRunner.ts         signal-trace stages
+    ViewModes.ts, FollowTracer.ts, brackets.ts
     Hud.ts                 tooltip, leader, spotlight, inspector, breadcrumb, nav
     pick.ts                pickObject / pickInstances / pickInstancedGroup helpers
   levels/
     L1Card.ts … L8Atom.ts, index.ts (ordered registry)
 ```
 
-**Powers of Ten without float problems.** Each level is its own `THREE.Scene` in its own local units: cm, mm, µm, nm, Å, and stylised pm for the atom. Only one level exists at a time. `LevelManager` maps scroll progress (0..1) onto weighted segments. When the scroll crosses a boundary, it disposes the old level and `init()`s the new one. All levels share one camera, and each level sets its near and far planes for its own units.
+**Powers of Ten without float problems.** Each level is its own `THREE.Scene` in its own local units: cm, mm, µm, nm, Å, and stylised pm for the atom. `LevelManager` maps scroll progress (0..1) onto weighted segments. The current level and its two neighbours stay built: in idle time the manager builds the next level, then the previous one, and warms each up (`app/warmup.ts`: `compileAsync` against an offscreen half-float target, so the programs match the composer's, then one tiny render with frustum culling off to upload every buffer and texture). Crossing a boundary is then a scene swap. Levels that leave the window are disposed. All levels share one camera, and each level sets its near and far planes for its own units.
 
 **Transition.** Each segment has two parts:
 
@@ -158,7 +180,8 @@ To add a level, extend `BaseLevel`, implement `build()`, `cameraKeys()`, `animat
 
 - Every repeated object uses `InstancedMesh`: fins, blades, chips, MLCCs, BGA balls, bumps, wires, vias, fins and gates, atoms, bonds.
 - Per-instance glow comes from an `aGlow` attribute patched into `MeshStandardMaterial`, so there are no material clones.
-- Levels dispose all their geometries, materials and textures on swap. Renderer memory counters stay flat while cycling through all levels.
+- At most three levels are alive. Levels outside the window dispose all their geometries, materials and textures, and renderer memory counters return to their starting values after a full cycle (checked in the smoke suite).
+- Shader compilation and GPU upload happen ahead of time, in idle callbacks, for the neighbours of the current level.
 - Pixel ratio is capped at 1.75, and DOF runs at half resolution. DOF is switched off entirely in Explore mode.
 - **Adaptive resolution.** If the frame rate stays below ~52 fps for 1.5 s, the render resolution steps down. After 8 s of smooth frames it steps back up. Hysteresis and cooldowns keep it from oscillating.
 - `?quality=low` forces pixel ratio 1, no MSAA and no DOF. `?quality=high` sets pixel ratio up to 2 with adaptation off.
