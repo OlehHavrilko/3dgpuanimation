@@ -359,14 +359,14 @@ export class PackageLevel extends BaseLevel {
     const layerName = this.layers[Math.min(n - 1, Math.floor((1 - Math.min(1, (t - 0.25) / 0.35)) * n))]?.name;
     this.caption =
       t < 0.12
-        ? 'Flip-chip BGA: GB202 die on an organic substrate'
+        ? 'The die sits face-down on a substrate that fans its pins out to the board'
         : t < 0.25
-          ? 'Peeling the substrate apart (thicknesses ×5)'
+          ? 'Peeling it apart — every layer drawn five times too thick to see'
           : t < 0.6
             ? `Build-up stack · ${layerName}`
             : t < 0.8
-              ? `${this.ballCount.toLocaleString('en-US')} BGA balls below · ~${(58 * 52).toLocaleString('en-US')} C4 bumps above`
-              : 'Die: TSMC 4N · ~750 mm² · 92.2 billion transistors';
+              ? `${this.ballCount.toLocaleString('en-US')} balls below, ${(58 * 52).toLocaleString('en-US')} bumps above — every one a wire`
+              : 'Now the die itself: 750 mm² of silicon';
   }
 
   onExploreChange(active: boolean) {

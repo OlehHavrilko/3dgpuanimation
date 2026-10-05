@@ -10,10 +10,14 @@ export class Overlay {
   private indexEl = document.getElementById('lvl-index')!;
   private fovEl = document.getElementById('fov-value')!;
   private hintEl = document.getElementById('scroll-hint')!;
+  private barFill = document.getElementById('scalebar-fill')!;
+  private barLabel = document.getElementById('scalebar-label')!;
+  private barAnchor = document.getElementById('scalebar-anchor')!;
   private ticks: HTMLElement[] = [];
   private caption = '';
   private shownIndex = -1;
   private lastFovText = '';
+  private lastBarKey = '';
 
   constructor(
     private metas: LevelMeta[],
@@ -82,6 +86,30 @@ export class Overlay {
       this.lastFovText = text;
       this.fovEl.textContent = text;
     }
+    this.setScaleBar(meters);
+  }
+
+  /**
+   * A physical scale bar for the current framing: pick a 1-2-5 length that lands near
+   * 120 px on screen and label it, plus a familiar object for a gut-level size check.
+   * This is what makes "0.2 nm" mean something.
+   */
+  private setScaleBar(meters: number) {
+    const width = Math.max(320, window.innerWidth);
+    const metersPerPixel = meters / width;
+    const raw = metersPerPixel * 120;
+    const pow = Math.pow(10, Math.floor(Math.log10(Math.max(raw, 1e-15))));
+    const norm = raw / pow;
+    const nice = (norm < 1.5 ? 1 : norm < 3.5 ? 2 : norm < 7.5 ? 5 : 10) * pow;
+    const px = Math.min(220, Math.max(40, nice / metersPerPixel));
+    const label = formatMeters(nice);
+    const anchor = anchorFor(nice);
+    const key = `${label}|${anchor}|${Math.round(px)}`;
+    if (key === this.lastBarKey) return;
+    this.lastBarKey = key;
+    this.barFill.style.width = `${px.toFixed(1)}px`;
+    this.barLabel.textContent = label;
+    this.barAnchor.textContent = anchor;
   }
 
   setProgress(p: number) {
@@ -98,4 +126,20 @@ function powerOfTen(label: string) {
   const meters = parseFloat(num) * (UNIT[unit] ?? 1);
   const e = Math.floor(Math.log10(meters) + 1e-9);
   return `10${String(e).replace(/./g, (c) => SUP[c] ?? c)} m`;
+}
+
+/** A familiar object of roughly the given length, for a gut-level sense of scale. */
+function anchorFor(m: number): string {
+  if (m >= 0.2) return 'a hand span';
+  if (m >= 0.04) return 'a grain of rice';
+  if (m >= 0.007) return 'a fingernail';
+  if (m >= 9e-4) return 'a grain of sand';
+  if (m >= 5e-5) return 'a human hair';
+  if (m >= 6e-6) return 'a red blood cell';
+  if (m >= 6e-7) return 'a bacterium';
+  if (m >= 4e-7) return 'a wavelength of light';
+  if (m >= 4e-8) return 'a virus';
+  if (m >= 5e-9) return 'a strand of DNA';
+  if (m >= 3.5e-10) return 'a few silicon atoms';
+  return 'a single atom';
 }

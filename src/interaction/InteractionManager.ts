@@ -5,6 +5,7 @@ import type { LevelManager } from '../core/LevelManager';
 import { Hud, type InspectorAction } from './Hud';
 import { ViewModes, type ViewMode } from './ViewModes';
 import { FollowTracer } from './FollowTracer';
+import { QUALITY, type Quality } from '../core/quality';
 
 const _v = new THREE.Vector3();
 const _v2 = new THREE.Vector3();
@@ -25,6 +26,14 @@ export class InteractionManager {
   exploring = false;
   /** Explore toggled (the guided tour pauses while the user explores). */
   onExploreToggle: ((active: boolean) => void) | null = null;
+  /** Space bar hook, wired to the guided tour by the app. */
+  onSpace: (() => void) | null = null;
+  /** `L` hook, wired to the 3D label layer by the app. */
+  onLabels: (() => void) | null = null;
+  /** `M` hook, wired to the ambience by the app. */
+  onSound: (() => void) | null = null;
+  /** Selection change, used for audio feedback. */
+  onSelect: ((hit: PickHit | null) => void) | null = null;
 
   private raycaster = new THREE.Raycaster();
   private ndc = new THREE.Vector2(9, 9);
@@ -54,6 +63,7 @@ export class InteractionManager {
     private manager: LevelManager,
     private canvas: HTMLCanvasElement,
     private jumpToLevel: (index: number) => void,
+    private quality: Quality = QUALITY,
   ) {
     this.views = new ViewModes(ctx.renderer);
     this.hoverBracket = makeBracket(0x9cff3a, 0.65);
@@ -70,6 +80,7 @@ export class InteractionManager {
     window.addEventListener('wheel', () => this.onScrollish(), { passive: true });
     window.addEventListener('scroll', () => this.onScrollish(), { passive: true });
     window.addEventListener('keydown', (e) => this.onKey(e));
+    window.addEventListener('resize', () => this.hud.invalidateRect());
     window.addEventListener('pointermove', (e) => {
       this.mouse.set((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1);
       this.wake();
@@ -165,18 +176,50 @@ export class InteractionManager {
   private onKey(e: KeyboardEvent) {
     const t = e.target as HTMLElement | null;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
-    if (e.key === 'ArrowRight' || e.key === 'PageDown') {
-      e.preventDefault();
-      this.go(1);
-    } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
-      e.preventDefault();
-      this.go(-1);
-    } else if (e.key === 'e' || e.key === 'E' || e.key === 'у' || e.key === 'У') {
-      this.toggleExplore();
-    } else if (e.key === 'Escape') {
-      this.stopTrace();
-      if (this.selected) this.select(null);
-      else if (this.exploring) this.exitExplore();
+    if (document.body.classList.contains('palette')) return;
+    // `e.code` is layout-independent, so the shortcuts work on Russian/Cyrillic keyboards too.
+    switch (e.code) {
+      case 'ArrowRight':
+      case 'PageDown':
+        e.preventDefault();
+        this.go(1);
+        break;
+      case 'ArrowLeft':
+      case 'PageUp':
+        e.preventDefault();
+        this.go(-1);
+        break;
+      case 'KeyE':
+        this.toggleExplore();
+        break;
+      case 'KeyL':
+        this.onLabels?.();
+        break;
+      case 'KeyM':
+        this.onSound?.();
+        break;
+      case 'Space':
+        e.preventDefault();
+        this.onSpace?.();
+        break;
+      case 'KeyF':
+        toggleFullscreen();
+        break;
+      case 'Escape':
+        this.stopTrace();
+        if (this.selected) this.select(null);
+        else if (this.exploring) this.exitExplore();
+        break;
+      default:
+        if (/^Digit[1-8]$/.test(e.code)) {
+          const i = Number(e.code.slice(5)) - 1;
+          if (i < this.manager.entries.length) this.jumpToLevel(i);
+        } else if (this.exploring) {
+          if (e.code === 'KeyX') this.setViewMode('X-Ray');
+          else if (e.code === 'KeyC') this.setViewMode('Section');
+          else if (e.code === 'KeyT' && this.views.available().includes('Thermal')) this.setViewMode('Thermal');
+          else if (e.code === 'KeyN') this.setViewMode('Normal');
+        }
     }
   }
 
@@ -234,6 +277,7 @@ export class InteractionManager {
       this.selectBracket.visible = false;
       this.hud.hideSpot();
     }
+    this.onSelect?.(hit);
     this.refreshPanel();
     this.updateCrumbs(this.manager.currentIndex);
   }
@@ -286,6 +330,7 @@ export class InteractionManager {
     this.hud.hideSpot();
     this.views.setFocus(null);
     this.views.setMode('Normal');
+    this.hud.setThermalLegend(false);
     this.manager.current?.onExploreChange?.(false);
     this.onExploreToggle?.(false);
     // Glide back to the scripted camera instead of snapping.
@@ -342,6 +387,17 @@ export class InteractionManager {
     return this.exploring && this.controls ? this.controls.target : null;
   }
 
+  /** Key of the entity currently under the pointer (for label highlighting). */
+  get hoverKey(): string | null {
+    return this.hover?.key ?? null;
+  }
+
+  /** Programmatic selection, used by the label layer and the command palette. */
+  selectEntity(hit: PickHit) {
+    if (!this.exploring) this.enterExplore();
+    this.select(hit);
+  }
+
   // ---------------------------------------------------------------- per frame
   /** Runs after the level positioned the camera (and after the dive). */
   update(dt: number, content = 0) {
@@ -373,8 +429,8 @@ export class InteractionManager {
       cam.position.lerpVectors(b.pos, cam.position, e);
       cam.quaternion.slerpQuaternions(b.quat, cam.quaternion, e);
       if (b.t >= 1) this.returnBlend = null;
-    } else {
-      // Cinematic parallax: a fraction of a degree, eased.
+    } else if (!this.quality.reducedMotion) {
+      // Cinematic parallax: a fraction of a degree, eased. Disabled by OS "reduce motion".
       this.parallax.lerp(this.mouse, 1 - Math.exp(-dt * 2.5));
       const look = this.manager.current?.getLookAt();
       if (look && this.manager.current) {
@@ -485,6 +541,7 @@ export class InteractionManager {
     if (!this.exploring) this.enterExplore();
     this.views.setMode(mode);
     if (mode === 'X-Ray') this.views.setFocus(this.selected?.object ?? null);
+    this.hud.setThermalLegend(mode === 'Thermal');
     this.refreshPanel();
   }
 
@@ -499,6 +556,11 @@ export class InteractionManager {
 }
 
 // ---------------------------------------------------------------- corner brackets
+function toggleFullscreen() {
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  else document.documentElement.requestFullscreen?.().catch(() => {});
+}
+
 function makeBracket(color: number, opacity: number) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(48 * 3), 3));

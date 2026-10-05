@@ -197,16 +197,16 @@ export class DieLevel extends BaseLevel {
 
     this.caption =
       t < 0.12
-        ? 'Thin-film interference: oxide thickness paints the colours'
+        ? 'No paint, no dye — that colour is thin-film interference'
         : t < 0.33
-          ? '12 Graphics Processing Clusters (GPC)'
+          ? 'Twelve clusters, each one a small factory'
           : t < 0.53
-            ? `${SMS} Streaming Multiprocessors · ${SMS_ENABLED} enabled on RTX 5090 · 21,760 CUDA cores`
+            ? `${SMS} streaming multiprocessors · ${SMS_ENABLED} alive on this one`
             : t < 0.69
-              ? 'L2 cache · 128 MB on die (96 MB enabled)'
+              ? '128 MB of L2 cache sits in the middle of the die'
               : t < 0.86
-                ? '16 × 32-bit GDDR7 memory controllers = 512-bit bus'
-                : 'Zooming into one SM';
+                ? 'Sixteen memory controllers, 512 bits wide'
+                : 'Down into a single SM';
   }
 
   /** Waypoints on the die for a trace that started at GDDR7 chip `chip` (plane-local coords). */

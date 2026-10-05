@@ -268,12 +268,12 @@ export class LatticeLevel extends BaseLevel {
 
     this.caption =
       t < 0.25
-        ? 'Diamond-cubic Si · a = 5.431 Å (green box = one unit cell, 8 atoms)'
+        ? 'Under everything, a crystal: silicon atoms in a diamond lattice'
         : t < 0.5
-          ? '4 covalent bonds per atom · 2.35 Å · 109.5° — glow = shared electron pairs'
+          ? 'Each atom holds four neighbours at 109.5° — these bonds are the material'
           : t < 0.75
-            ? 'Dopants: phosphorus (white) donates an electron · boron (amber) leaves a hole'
-            : '5 × 10²² atoms per cm³ — zooming into one of them';
+            ? 'Phosphorus donates an electron · boron leaves a hole'
+            : '5 × 10²² atoms in a single cubic centimetre';
   }
 
   /** Recolour atoms for the current doping mode and show the matching free carriers. */

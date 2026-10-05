@@ -560,14 +560,14 @@ export class TransistorLevel extends BaseLevel {
 
     this.caption =
       t < 0.25
-        ? 'FinFET array · fin pitch ~28 nm · gate pitch ~51 nm'
+        ? 'FinFETs: fins 28 nm apart, gates 51 nm apart'
         : t < 0.5
-          ? 'Each gate switches on its own clock: watch the high-k collars light up'
+          ? 'Every gate has its own clock — watch them switch'
           : t < 0.75
-            ? 'High-k dielectric (HfO₂, ~1–2 nm) insulates gate from channel'
+            ? 'A high-k layer one nanometre thick decides whether current flows'
             : this.gateOn > 0.5
-              ? 'Gate ON → inversion layer forms, electrons flow source → drain'
-              : 'Gate OFF → barrier up, electrons pile up at the source';
+              ? 'Gate on: electrons pour from source to drain'
+              : 'Gate off: the barrier holds them back';
   }
 
   onExploreChange(active: boolean) {

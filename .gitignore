@@ -2,3 +2,6 @@ node_modules
 dist
 *.log
 .DS_Store
+
+# Local UX-recording harness (Playwright browsers, sysroot) — machine-specific, ~1.8 GB
+.ux-harness/

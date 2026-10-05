@@ -9,9 +9,12 @@
   </head>
   <body>
     <canvas id="gl"></canvas>
+    <canvas id="dissolve" aria-hidden="true"></canvas>
     <div id="spot"></div>
     <div id="flash"></div>
     <svg id="leader" aria-hidden="true"><polyline points="" /><circle r="3" /></svg>
+    <div id="labels"></div>
+    <div id="palette" aria-hidden="true"></div>
     <div id="tip" role="tooltip">
       <div class="tip-kind"></div>
       <div class="tip-title"></div>
@@ -41,11 +44,20 @@
         <div class="fov">
           <span class="fov-label">field of view</span>
           <span id="fov-value">&mdash;</span>
+          <div id="scalebar">
+            <div class="scalebar-track"><div id="scalebar-fill"></div></div>
+            <div class="scalebar-meta">
+              <span id="scalebar-label">&mdash;</span>
+              <span id="scalebar-anchor"></span>
+            </div>
+          </div>
         </div>
         <div id="nav">
           <button id="nav-prev" type="button" title="Previous scale (&larr;)">&#9664;</button>
           <button id="nav-explore" type="button" title="Explore mode (E)">Explore</button>
           <button id="nav-follow" type="button" title="Follow one electron through every scale (F)">Follow e&#8315;</button>
+          <button id="nav-labels" type="button" title="3D labels (L)">Labels</button>
+          <button id="nav-sound" type="button" title="Ambient sound (M)">Sound</button>
           <button id="nav-next" type="button" title="Next scale (&rarr;)">&#9654;</button>
         </div>
         <div id="scroll-hint">scroll to descend <span>&darr;</span></div>
@@ -54,6 +66,12 @@
         <span class="mouse">drag&nbsp;· orbit &nbsp; wheel&nbsp;· zoom &nbsp; right-drag&nbsp;· pan &nbsp; click&nbsp;· inspect &nbsp; esc&nbsp;· exit</span>
         <span class="touch">1 finger&nbsp;· orbit &nbsp; pinch&nbsp;· zoom &nbsp; 2 fingers&nbsp;· pan &nbsp; tap&nbsp;· inspect</span>
       </div>
+    </div>
+
+    <div id="thermal-legend" aria-hidden="true">
+      <span class="tl-title">&deg;C</span>
+      <div class="tl-bar"></div>
+      <div class="tl-ticks"><span>105</span><span>80</span><span>55</span><span>25</span></div>
     </div>
 
     <aside id="inspector" aria-live="polite">
@@ -66,6 +84,95 @@
       <div class="insp-actions"></div>
       <div class="insp-controls"></div>
     </aside>
+
+    <div id="tour" aria-hidden="true">
+      <button id="tour-play" type="button">Play</button>
+      <div class="tour-body">
+        <div class="tour-meta">
+          <span id="tour-label">01 · GeForce RTX 5090 — 30 cm</span>
+          <span id="tour-time">0:00 / 1:58</span>
+        </div>
+        <div id="tour-track">
+          <div id="tour-fill"></div>
+          <div id="tour-head"></div>
+        </div>
+      </div>
+      <button id="tour-close" type="button" title="End tour">&times;</button>
+    </div>
+
+    <div id="sound-invite" role="dialog" aria-label="Ambient sound" aria-hidden="true">
+      <span class="si-glyph">&#9835;</span>
+      <span class="si-text">This descent has a sound. Ambient, procedural, off by default.</span>
+      <button id="si-on" type="button" class="primary">Turn it on</button>
+      <button id="si-off" type="button">No thanks</button>
+    </div>
+
+    <!-- Act title card: two seconds of stillness at each act boundary. -->
+    <div id="act" aria-hidden="true">
+      <div class="act-inner">
+        <div class="act-roman" id="act-roman">Act I</div>
+        <h2 class="act-title" id="act-title">The Machine</h2>
+        <div class="act-route" id="act-route">GPU · PCB · Package</div>
+        <p class="act-blurb" id="act-blurb">This is the machine.</p>
+      </div>
+    </div>
+
+    <!-- The anchor number, surfaced only at the moment it explains the frame. -->
+    <div id="keynum" aria-hidden="true">
+      <div class="kn-value"><span id="kn-number">92.2</span><span id="kn-unit">billion transistors</span></div>
+      <p id="kn-caption"></p>
+    </div>
+
+    <!-- Finale: the descent ends on a chord, not on a stop(). -->
+    <div id="finale" aria-hidden="true">
+      <div class="fin-inner">
+        <div class="fin-tag">End of the descent</div>
+        <h2 class="fin-title">You reached the bottom.</h2>
+        <p class="fin-sub">Nine orders of magnitude. One object, all the way down.</p>
+        <div class="fin-chain">
+          <div class="fin-node"><b>GPU</b><span>30 cm</span></div>
+          <span class="fin-arrow">&rarr;</span>
+          <div class="fin-node"><b>Transistor</b><span>50 nm</span></div>
+          <span class="fin-arrow">&rarr;</span>
+          <div class="fin-node"><b>Silicon</b><span>2 nm</span></div>
+          <span class="fin-arrow">&rarr;</span>
+          <div class="fin-node"><b>Atom</b><span>0.2 nm</span></div>
+        </div>
+        <div class="fin-stats">
+          <div><b>92.2 B</b><span>transistors</span></div>
+          <div><b>15</b><span>metal layers</span></div>
+          <div><b>&asymp;0.1 nm</b><span>across an atom</span></div>
+        </div>
+        <div class="fin-actions">
+          <button id="fin-replay" type="button" class="primary">Replay</button>
+          <button id="fin-explore" type="button">Explore</button>
+          <button id="fin-share" type="button">Share frame</button>
+          <a id="fin-source" href="https://github.com/OlehHavrilko/3dgpuanimation" target="_blank" rel="noopener">Source &amp; credits</a>
+        </div>
+      </div>
+    </div>
+
+    <div id="intro">
+      <div class="intro-card">
+        <div class="intro-tag">GPU <span class="arrow">&#9656;</span> ATOM</div>
+        <h1>One descent.<br />Nine orders of magnitude.</h1>
+        <p class="intro-lede">
+          From a 30 cm graphics card to the silicon atom at its heart — modelled and rendered
+          live in your browser. No video, no downloaded assets.
+        </p>
+        <ol class="intro-acts">
+          <li><b>I</b> The Machine</li>
+          <li><b>II</b> The Computation</li>
+          <li><b>III</b> The Matter</li>
+        </ol>
+        <div class="intro-actions">
+          <button id="intro-tour" type="button" class="primary">Start the descent</button>
+          <button id="intro-explore" type="button">Scroll it yourself</button>
+        </div>
+        <div class="intro-keys">space play / pause &nbsp;·&nbsp; e explore &nbsp;·&nbsp; f fullscreen</div>
+        <div class="intro-load"><div id="intro-load-fill"></div></div>
+      </div>
+    </div>
 
     <div id="scroll-space"></div>
     <script type="module" src="/src/main.ts"></script>

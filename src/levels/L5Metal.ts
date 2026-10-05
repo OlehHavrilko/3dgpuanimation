@@ -302,10 +302,10 @@ export class MetalLevel extends BaseLevel {
     const l = this.layers[idx];
     this.caption =
       t < 0.12
-        ? 'Aluminium pad layer + ultra-thick global copper (power, clock)'
+        ? 'Fifteen layers of copper, stacked like city highways'
         : t < 0.92
           ? `${l.name} · pitch ${l.pitch >= 1 ? `${l.pitch} µm` : `${Math.round(l.pitch * 1000)} nm`}`
-          : `Contacts → FinFETs · gate pitch ${Math.round(CPP * 1000)} nm`;
+          : 'The wires end here — next stop, the transistors';
   }
 
   private layerInfo(li: number): EntityInfo {
