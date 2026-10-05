@@ -1,4 +1,3 @@
-import gsap from 'gsap';
 import type { LevelMeta } from './types';
 import { formatMeters } from './math';
 
@@ -32,17 +31,21 @@ export class Overlay {
     if (index === this.shownIndex) return;
     this.shownIndex = index;
     const m = this.metas[index];
-    const targets = [this.scaleEl, this.nameEl, this.descEl];
-    gsap.killTweensOf(targets);
     this.scaleEl.textContent = m.scale;
     this.nameEl.textContent = m.name;
     this.descEl.textContent = m.description;
     this.indexEl.textContent = `${String(index + 1).padStart(2, '0')} / ${String(this.metas.length).padStart(2, '0')}`;
-    gsap.fromTo(
-      targets,
-      { opacity: 0, y: 14, filter: 'blur(6px)' },
-      { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.9, ease: 'power3.out', stagger: 0.08, delay: 0.1 },
-    );
+    // Web Animations (wall-clock driven) so titles appear on time even after a heavy level init.
+    [this.scaleEl, this.nameEl, this.descEl].forEach((el, i) => {
+      el.getAnimations().forEach((a) => a.cancel());
+      el.animate(
+        [
+          { opacity: 0, transform: 'translateY(14px)', filter: 'blur(6px)' },
+          { opacity: 1, transform: 'none', filter: 'blur(0px)' },
+        ],
+        { duration: 900, delay: 100 + i * 80, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'both' },
+      );
+    });
     this.ticks.forEach((t, i) => {
       t.classList.toggle('active', i === index);
       t.classList.toggle('done', i < index);
