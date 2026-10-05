@@ -9,7 +9,8 @@ export const transistor = {
     scale: '50 nm',
     description: 'Each gate wraps a silicon fin on three sides; a voltage on it opens a channel for electrons.',
   },
-  follow: 'Into a transistor: down the contact, into the source, and across the channel the gate has just switched on.',
+  follow:
+    'The bit arrives as a voltage on the gate. The channel opens, and an electron crosses from the source under it: ours.',
   captions: {
     array: 'FinFETs: fins 28 nm apart, gates 51 nm apart',
     clocks: 'Every gate has its own clock — watch them switch',

@@ -119,7 +119,9 @@ export class InteractionManager {
     }
     if (this.exploring) this.exitExplore(true);
     // A trace in progress continues on this level if it has a plan (after the arrival flash).
-    this.trace.start(this.ctx.journey.trace ? level.tracePlan?.() : null, 0.9);
+    // The Trace journey scrolls on its own, so it never hands the camera to the stage walk.
+    const walk = this.ctx.journey.trace && !this.ctx.journey.follow;
+    this.trace.start(walk ? level.tracePlan?.() : null, 0.9);
     this.refreshPanel();
     this.updateCrumbs(index);
     this.hud.setNav(index, this.manager.entries.length);
