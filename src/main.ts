@@ -361,6 +361,7 @@ if (debug) {
     tour,
     story,
     labels,
+    gsap,
   };
   setupDebugPanel({ settings, manager, metas: LEVELS.map((l) => l.meta), post, scrollToProgress });
 }
