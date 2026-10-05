@@ -4,6 +4,7 @@ import type { CameraKey } from '../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../core/types';
 import { mulberry32, smoothstep } from '../core/math';
 import { pointScale } from '../core/points';
+import { pickInstances, pickObject } from '../interaction/pick';
 
 /**
  * Level 6 — FinFETs. Units: nanometres.
@@ -56,6 +57,10 @@ export class TransistorLevel extends BaseLevel {
   private head = new Float32Array(ELECTRONS * 3);
   private eVel = new Float32Array(ELECTRONS);
   private gateOn = 0;
+  /** Explore controls: gate mode and clock speed. */
+  private gateMode: 'OFF' | 'ON' | 'CLOCK' = 'CLOCK';
+  private clockSpeed = 1;
+  private clockT = 0;
   private finZ = (i: number) => (i - CENTER_FIN) * FIN_PITCH;
   private gateX = (i: number) => (i - CENTER_GATE) * CPP;
   private target: TransitionTarget;
@@ -86,10 +91,10 @@ export class TransistorLevel extends BaseLevel {
     ];
   }
 
-  /** On-state (0..1) of gate i at time t. Gates run the same clock with a phase shift. */
-  private gateState(i: number, time: number) {
+  /** On-state (0..1) of gate i. Gates run the same clock with a phase shift. */
+  private gateState(i: number) {
     const phase = i === CENTER_GATE ? 0 : i * 0.9 + 1.3;
-    return smoothstep(-0.25, 0.25, Math.sin(time * 1.9 + phase));
+    return smoothstep(-0.25, 0.25, Math.sin(this.clockT * 1.9 + phase));
   }
 
   protected build() {
@@ -138,6 +143,13 @@ export class TransistorLevel extends BaseLevel {
     sti.scale.set(lenX + 200, 20, lenZ + 200);
     sti.position.y = -10;
     s.add(sti);
+    this.pickables.push(
+      pickObject(sti, {
+        title: 'Shallow trench isolation',
+        kind: 'Oxide · SiO₂',
+        specs: [['Role', 'insulates neighbouring fins']],
+      }),
+    );
 
     // ---- fins (silicon). The focused one is separate so it can turn translucent.
     const finMat = addRimLight(
@@ -150,6 +162,17 @@ export class TransistorLevel extends BaseLevel {
       fins.setMatrixAt(i, m.compose(pos.set(0, (FIN_H - 20) / 2, this.finZ(i)), q, scl.set(lenX, FIN_H + 20, FIN_W)));
     }
     s.add(fins);
+    const finInfo = {
+      title: 'Silicon fin',
+      kind: 'Channel · crystalline Si',
+      specs: [
+        ['Width', `~${FIN_W} nm`],
+        ['Height', `~${FIN_H} nm`],
+        ['Pitch', `~${FIN_PITCH} nm`],
+      ] as [string, string][],
+      note: 'Current flows along the fin; the gate wraps it on three sides, so it can switch the channel off far better than a flat (planar) transistor.',
+    };
+    this.pickables.push(pickInstances(fins, () => finInfo));
     this.focusFinMat = addRimLight(
       new THREE.MeshStandardMaterial({ color: 0x566170, roughness: 0.3, metalness: 0.5, transparent: true }),
       GREEN,
@@ -159,6 +182,7 @@ export class TransistorLevel extends BaseLevel {
     focusFin.scale.set(lenX, FIN_H + 20, FIN_W);
     focusFin.position.set(0, (FIN_H - 20) / 2, fz);
     s.add(focusFin);
+    this.pickables.push(pickObject(focusFin, finInfo));
 
     // ---- high-k collars: where each fin passes through each gate. None under the focused gate:
     // it turns translucent and has its own shell, and a row of collars behind it would read as a slab.
@@ -182,6 +206,16 @@ export class TransistorLevel extends BaseLevel {
     this.collarGate = Uint8Array.from(collarGate);
     this.collarGlow = addGlowAttribute(collars);
     s.add(collars);
+    const collarInfo = {
+      title: 'High-k gate dielectric',
+      kind: 'Insulator · HfO₂',
+      specs: [
+        ['Thickness', '~1–2 nm'],
+        ['Glows', 'while its gate is on'],
+      ] as [string, string][],
+      note: 'A few atomic layers that keep gate current out of the channel while letting its electric field through.',
+    };
+    this.pickables.push(pickInstances(collars, () => collarInfo));
 
     // ---- gates (metal stacks wrapping every fin) + SiN caps with a glowing contact line
     const gateMat = addRimLight(
@@ -205,6 +239,16 @@ export class TransistorLevel extends BaseLevel {
     this.capGate = Uint8Array.from(capGate);
     this.capGlow = addGlowAttribute(caps);
     s.add(gates, caps);
+    const gateInfo = {
+      title: 'Metal gate',
+      kind: 'Gate stack · TiN / W',
+      specs: [
+        ['Length', `~${GATE_L} nm`],
+        ['Pitch (CPP)', `~${CPP} nm`],
+      ] as [string, string][],
+      note: 'A voltage on the gate pulls electrons to the fin surface (inversion layer) and the transistor turns on.',
+    };
+    this.pickables.push(pickInstances(gates, () => gateInfo), pickInstances(caps, () => ({ title: 'Gate cap', kind: 'Insulator · SiN', specs: [['Role', 'protects the gate during contact etch']] })));
 
     // The focused gate: its own translucent materials.
     this.focusGateMat = addRimLight(
@@ -223,6 +267,7 @@ export class TransistorLevel extends BaseLevel {
     focusGate.scale.set(GATE_L, GATE_H, lenZ - 8);
     focusGate.position.set(cx, GATE_H / 2, 0);
     s.add(focusGate);
+    this.pickables.push(pickObject(focusGate, { ...gateInfo, title: 'Metal gate (this transistor)' }));
     this.focusCapMat = new THREE.MeshStandardMaterial({
       color: 0x161c23,
       roughness: 0.45,
@@ -252,6 +297,14 @@ export class TransistorLevel extends BaseLevel {
       }
     }
     s.add(epi);
+    this.pickables.push(
+      pickInstances(epi, () => ({
+        title: 'Source / drain',
+        kind: 'Epitaxy · SiP',
+        specs: [['Shape', 'faceted crystal'], ['Doping', 'n-type (phosphorus)']],
+        note: 'Grown on the fin between gates: the reservoir electrons come from (source) and drain into (drain).',
+      })),
+    );
 
     // ---- trench contacts (tungsten) + a few M0 copper lines, kept off the focused fin
     const rng = mulberry32(6);
@@ -267,6 +320,7 @@ export class TransistorLevel extends BaseLevel {
       contacts.setMatrixAt(g, m.compose(pos.set(this.gateX(g) + CPP / 2, FIN_H + 22, z0), q, scl.set(13, 34, w)));
     }
     s.add(contacts);
+    this.pickables.push(pickInstances(contacts, () => ({ title: 'Trench contact', kind: 'Middle of line · W', specs: [['Joins', 'source/drain ↔ M0']] })));
     const copper = addRimLight(
       new THREE.MeshStandardMaterial({ color: 0xd9844c, metalness: 1, roughness: 0.3 }),
       0xffb070,
@@ -280,6 +334,27 @@ export class TransistorLevel extends BaseLevel {
       m0.setMatrixAt(i, m.compose(pos.set(x, FIN_H + 52, z), q, scl.set(len, 14, 12)));
     }
     s.add(m0);
+    this.pickables.push(pickInstances(m0, () => ({ title: 'M0 wire', kind: 'Interconnect · copper', specs: [['Layer', 'lowest metal']] })));
+
+    this.controls = [
+      {
+        kind: 'choice',
+        label: 'Gate voltage',
+        options: ['OFF', 'ON', 'CLOCK'],
+        value: 'CLOCK',
+        onChange: (v) => (this.gateMode = v as 'OFF' | 'ON' | 'CLOCK'),
+      },
+      {
+        kind: 'slider',
+        label: 'Clock speed',
+        min: 0.1,
+        max: 3,
+        step: 0.05,
+        value: 1,
+        format: (v) => `${v.toFixed(2)}×`,
+        onInput: (v) => (this.clockSpeed = v),
+      },
+    ];
 
     // ---- glowing high-k shell around the focused channel
     // Mostly clear, with glowing edges (Fresnel) so it reads as a thin shell, not a slab.
@@ -388,16 +463,17 @@ export class TransistorLevel extends BaseLevel {
   }
 
   protected animate(t: number, dt: number, time: number) {
+    this.clockT += dt * this.clockSpeed;
     // ---- array activity: every gate on its own phase
     const cArr = this.collarGlow.array as Float32Array;
-    for (let i = 0; i < cArr.length; i++) cArr[i] = 0.12 + 1.1 * this.gateState(this.collarGate[i], time);
+    for (let i = 0; i < cArr.length; i++) cArr[i] = 0.12 + 1.1 * this.gateState(this.collarGate[i]);
     this.collarGlow.needsUpdate = true;
     const gArr = this.capGlow.array as Float32Array;
-    for (let i = 0; i < gArr.length; i++) gArr[i] = 0.04 + 0.45 * this.gateState(this.capGate[i], time);
+    for (let i = 0; i < gArr.length; i++) gArr[i] = 0.04 + 0.45 * this.gateState(this.capGate[i]);
     this.capGlow.needsUpdate = true;
 
     // ---- the focused transistor
-    const v = this.gateState(CENTER_GATE, time);
+    const v = this.gateMode === 'OFF' ? 0 : this.gateMode === 'ON' ? 1 : this.gateState(CENTER_GATE);
     this.gateOn = v;
     const reveal = smoothstep(0.45, 0.75, t);
     this.focusGateMat.opacity = 1 - 0.9 * reveal;
@@ -449,6 +525,15 @@ export class TransistorLevel extends BaseLevel {
             : this.gateOn > 0.5
               ? 'Gate ON → inversion layer forms, electrons flow source → drain'
               : 'Gate OFF → barrier up, electrons pile up at the source';
+  }
+
+  onExploreChange(active: boolean) {
+    if (!active) {
+      this.gateMode = 'CLOCK';
+      this.clockSpeed = 1;
+      this.controls[0].value = 'CLOCK';
+      this.controls[1].value = 1;
+    }
   }
 
   getTransitionTarget() {

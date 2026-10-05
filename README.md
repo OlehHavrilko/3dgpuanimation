@@ -15,6 +15,43 @@ A scroll-driven 3D teardown of a **GeForce RTX 5090 Founders Edition**, from the
 | 7 | Silicon lattice | 2 nm | Diamond cubic built from the lattice maths (a = 5.431 Å, bonds found at a·√3/4). Shows a unit cell, glowing bond pairs, and P and B dopants. |
 | 8 | Silicon atom | 0.2 nm | A nucleus of 14 p⁺ + 14 n⁰ packed by relaxation. The electron cloud (~86k points) is sampled from hydrogen-like 1s/2s/2p/3s/3p orbitals with Clementi–Raimondi Z_eff, and pulses slowly. |
 
+## Interaction
+
+The page has two modes:
+
+- **Cinematic** (default): scroll and the camera directs. A faint mouse parallax makes it feel like a space, not a video.
+- **Explore**: press `E`, the **Explore** button, or click any object. The scroll timeline freezes and the camera is yours.
+
+| Input | What it does |
+|-------|--------------|
+| Hover | Identifies a part: corner bracket, tooltip with a leader line, key specs |
+| Click | Inspects it: spotlight, inspector panel, the camera glides to it |
+| Drag / wheel / right-drag | Orbit / zoom / pan (Explore) |
+| `←` `→` | Previous / next scale, flying through the dive |
+| `Esc` | Deselect, then leave Explore |
+| Breadcrumb, scale rail, ◀ ▶ | Jump to any scale |
+
+Per-level controls appear in the inspector in Explore mode:
+
+| Level | Controls |
+|-------|----------|
+| 1 · Card | Disassembly slider (0–100 %); fans Stop / Idle / Load |
+| 2 · PCB | Data flow Off / Slow / Realtime / Burst |
+| 3 · Package | Peel-apart slider |
+| 4 · Die | Highlight GPC / SM / L2 / Memory. Hovering far away gives GPCs; close up gives individual SMs, including the 22 fused off on the 5090 |
+| 5 · Metal | Hover any wire for its layer, pitch and role |
+| 6 · FinFET | Gate voltage OFF / ON / CLOCK; clock speed |
+| 7 · Lattice | Doping Mixed / Intrinsic / N-type (free electrons) / P-type (holes) |
+| 8 · Atom | Orbitals All / 1s / 2s / 2p / 3s / 3p; hover a shell |
+
+The interaction layer lives in `src/interaction/` and is shared by every level:
+
+- `InteractionManager.ts` handles raycasting, hover and selection, Explore mode (OrbitControls), camera fly-to, keyboard input and parallax.
+- `Hud.ts` handles the DOM: tooltip, leader line, spotlight, inspector, breadcrumb and nav.
+- `pick.ts` holds the helpers levels use to declare what is pickable.
+
+Levels only describe *what* can be picked (`pickables`, with `EntityInfo` metadata) and *which* controls they offer (`controls`). They never handle input themselves.
+
 ## Run
 
 Requires Node 18+.
@@ -48,8 +85,12 @@ src/
     BaseLevel.ts        scene/camera-rig/dispose boilerplate, per-instance glow material patch
     CameraRig.ts        Catmull-Rom keyframed camera path
     Overlay.ts          HUD: scale label, name, caption, scale rail, live field of view
-    types.ts            Level interface
+    types.ts            Level interface, EntityInfo, Pickable, LevelControl
     canvas.ts, points.ts, dispose.ts, math.ts
+  interaction/
+    InteractionManager.ts  hover / select / Explore / keyboard / parallax
+    Hud.ts                 tooltip, leader, spotlight, inspector, breadcrumb, nav
+    pick.ts                pickObject / pickInstances / pickInstancedGroup helpers
   levels/
     L1Card.ts … L8Atom.ts, index.ts (ordered registry)
 ```

@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
 import {
   BloomEffect,
   DepthOfFieldEffect,
@@ -17,8 +18,9 @@ import { LevelManager } from './core/LevelManager';
 import { Overlay } from './core/Overlay';
 import type { LevelContext } from './core/types';
 import { LEVELS } from './levels';
+import { InteractionManager } from './interaction/InteractionManager';
 
-gsap.registerPlugin(ScrollTrigger);
+gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 
 // ---------------------------------------------------------------- renderer
 const canvas = document.getElementById('gl') as HTMLCanvasElement;
@@ -40,7 +42,7 @@ const pmrem = new THREE.PMREMGenerator(renderer);
 const envMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 pmrem.dispose();
 
-const ctx: LevelContext = { renderer, camera, envMap };
+const ctx: LevelContext = { renderer, camera, envMap, view: { freeCamera: false } };
 
 // ---------------------------------------------------------------- post
 const composer = new EffectComposer(renderer, {
@@ -67,10 +69,16 @@ composer.addPass(new EffectPass(camera, bloom, vignette, toneMapping));
 // ---------------------------------------------------------------- levels + UI
 const flashEl = document.getElementById('flash')!;
 const manager = new LevelManager(ctx, LEVELS, flashEl);
-const overlay = new Overlay(LEVELS.map((l) => l.meta));
+const overlay = new Overlay(
+  LEVELS.map((l) => l.meta),
+  (i) => jumpToLevel(i),
+);
+const interaction = new InteractionManager(ctx, manager, canvas, (i) => jumpToLevel(i));
+manager.onBeforeDispose = (level) => interaction.detach(level.scene);
 manager.onSwap = (index, level) => {
   renderPass.mainScene = level.scene;
   overlay.showLevel(index);
+  interaction.attach(level, index);
 };
 
 const scrollSpace = document.getElementById('scroll-space')!;
@@ -90,6 +98,25 @@ gsap.to(scrollState, {
 
 const maxScroll = () => document.documentElement.scrollHeight - window.innerHeight;
 const scrollToProgress = (p: number) => window.scrollTo({ top: p * maxScroll(), behavior: 'instant' });
+
+/**
+ * Fly to another scale by scrolling there: going forward passes through each dive, so the
+ * transition stays cinematic. Leaves Explore mode first (it locks the scroll).
+ */
+function jumpToLevel(index: number) {
+  interaction.exitExplore();
+  const p = manager.progressForLevel(index);
+  if (settings.override) {
+    gsap.to(settings, { progress: p, duration: 1.6, ease: 'power2.inOut' });
+    return;
+  }
+  const hops = Math.abs(index - manager.currentIndex);
+  gsap.to(window, {
+    scrollTo: { y: p * maxScroll(), autoKill: true },
+    duration: Math.min(1.4 + 0.7 * hops, 4.5),
+    ease: 'power2.inOut',
+  });
+}
 
 // ---------------------------------------------------------------- debug (?debug)
 const settings = {
@@ -165,14 +192,24 @@ function frame(now: number) {
   manager.setProgress(p);
   const state = manager.tick(dt, simTime);
   const level = manager.current!;
+  interaction.update(rawDt);
+  const exploreFocus = interaction.getFocusOverride();
 
   overlay.setCaption(level.caption);
-  overlay.setFov(state.fovMeters);
+  overlay.setFov(
+    exploreFocus
+      ? 2 *
+          camera.position.distanceTo(exploreFocus) *
+          Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) *
+          camera.aspect *
+          level.meta.unitMeters
+      : state.fovMeters,
+  );
   overlay.setProgress(p);
 
   // Per-level post settings (DOF works in the level's local units).
   bloom.intensity = settings.bloom * (level.bloom ?? 1);
-  const focus = manager.getFocusPoint(state);
+  const focus = exploreFocus ?? manager.getFocusPoint(state);
   dof.cocMaterial.adoptCameraSettings(camera); // near/far change per level
   if (focus) {
     dof.target = focus;

@@ -45,6 +45,8 @@ export class LevelManager {
   current: Level | null = null;
   currentIndex = -1;
   onSwap: ((index: number, level: Level) => void) | null = null;
+  /** Fired right before the outgoing level is disposed. */
+  onBeforeDispose: ((level: Level) => void) | null = null;
 
   private progress = 0;
   private flashPulse = 0;
@@ -92,6 +94,7 @@ export class LevelManager {
 
   private activate(index: number) {
     if (this.current) {
+      this.onBeforeDispose?.(this.current);
       this.current.dispose();
       this.current = null;
     }
@@ -122,7 +125,7 @@ export class LevelManager {
     const cam = this.ctx.camera;
     let focusDist = cam.position.distanceTo(level.getFocus?.() ?? level.getLookAt());
 
-    if (dive > 0) {
+    if (dive > 0 && !this.ctx.view.freeCamera) {
       focusDist = this.applyDive(level, dive);
     }
 
@@ -179,7 +182,7 @@ export class LevelManager {
   getFocusPoint(state: FrameState): THREE.Vector3 | null {
     const level = this.current;
     if (!level) return null;
-    if (state.dive > 0) return this.tmpFocus;
+    if (state.dive > 0 && !this.ctx.view.freeCamera) return this.tmpFocus;
     return level.getFocus?.() ?? level.getLookAt();
   }
 

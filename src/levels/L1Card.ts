@@ -3,6 +3,7 @@ import { BaseLevel } from '../core/BaseLevel';
 import type { CameraKey } from '../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../core/types';
 import { smoothstep, smootherstep } from '../core/math';
+import { pickInstancedGroup, pickInstances, pickObject } from '../interaction/pick';
 
 /**
  * Level 1 — GeForce RTX 5090 Founders Edition. Units: centimetres.
@@ -45,6 +46,9 @@ export class CardLevel extends BaseLevel {
     io: THREE.Group;
   };
   private finBaseX: number[] = [];
+  private explodeOverride: number | null = null;
+  private fanOverride: number | null = null;
+  private lastExplode = 0;
   private centerFinX: number[] = [];
   private mtx = new THREE.Matrix4();
   private logoMat!: THREE.MeshStandardMaterial;
@@ -134,6 +138,18 @@ export class CardLevel extends BaseLevel {
       fan.add(blur);
       this.fanBlurs.push(blurMat);
       fansGroup.add(fan);
+      this.pickables.push(
+        pickObject(fan, {
+          title: `Fan ${this.fans.length + 1}`,
+          kind: 'Cooling · axial fan',
+          specs: [
+            ['Blades', '7, joined by an outer ring'],
+            ['Airflow', 'straight through the fins'],
+            ['Layout', 'double flow-through'],
+          ],
+          note: 'Both fans sit on the same face and push air through the card instead of across it: the short main PCB leaves the fin stacks open on both sides.',
+        }),
+      );
       this.fans.push(fan);
     }
     s.add(fansGroup);
@@ -187,6 +203,17 @@ export class CardLevel extends BaseLevel {
     logo.position.set(0, 3.3, HGT / 2 + 0.01);
     shroud.add(logo);
     s.add(shroud);
+    this.pickables.push(
+      pickObject(shroud, {
+        title: 'Shroud',
+        kind: 'Enclosure · aluminium frame',
+        specs: [
+          ['Size', '304 × 137 mm'],
+          ['Thickness', 'dual-slot'],
+          ['Finish', 'dark gunmetal'],
+        ],
+      }),
+    );
 
     // ---------- two side fin stacks (flow-through) + a short centre stack over the vapor chamber
     const perSide = 64;
@@ -198,10 +225,29 @@ export class CardLevel extends BaseLevel {
       this.finBaseX.push(side * (FIN_IN + u * (LEN / 2 - 0.4 - FIN_IN)));
     }
     s.add(fins);
+    this.pickables.push(
+      pickInstancedGroup(fins, {
+        title: 'Fin stacks',
+        kind: 'Cooling · heatsink',
+        specs: [
+          ['Stacks', '2 (one per fan)'],
+          ['Fins modelled', String(perSide * 2)],
+          ['Material', 'aluminium'],
+        ],
+        note: 'Heat arrives through the copper heat pipes and leaves into the air pushed between the fins.',
+      }),
+    );
     const centerFins = new THREE.InstancedMesh(new THREE.BoxGeometry(0.035, 1.8, 9.5), aluminium, 44);
     centerFins.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     for (let i = 0; i < 44; i++) this.centerFinX.push(-5 + (10 * i) / 43);
     s.add(centerFins);
+    this.pickables.push(
+      pickInstancedGroup(centerFins, {
+        title: 'Centre fin block',
+        kind: 'Cooling · heatsink',
+        specs: [['Sits on', 'the vapor chamber']],
+      }),
+    );
 
     // ---------- 3D vapor chamber + heat pipes running into both side stacks
     const cooler = new THREE.Group();
@@ -230,6 +276,18 @@ export class CardLevel extends BaseLevel {
       }
     });
     s.add(cooler);
+    this.pickables.push(
+      pickObject(cooler, {
+        title: '3D vapor chamber + heat pipes',
+        kind: 'Cooling · two-phase',
+        specs: [
+          ['Interface', 'liquid metal on the GPU'],
+          ['Heat pipes (modelled)', '5'],
+          ['Material', 'copper'],
+        ],
+        note: 'Water inside the chamber boils over the GPU, condenses in the fins and wicks back: up to 575 W moved with a few degrees of drop.',
+      }),
+    );
 
     // ---------- boards
     this.buildMainPcb(darkPlastic);
@@ -240,8 +298,47 @@ export class CardLevel extends BaseLevel {
     const bottom = new THREE.Mesh(new THREE.BoxGeometry(2 * PCB_HALF + 1, 0.16, HGT - 0.6), gunmetal);
     bottom.position.set(0, -0.55, 0);
     s.add(bottom);
+    this.pickables.push(pickObject(bottom, { title: 'Bottom cover', kind: 'Enclosure', specs: [['Covers', 'main PCB only']] }));
+    this.pickables.push(
+      pickObject(pcie, {
+        title: 'PCIe board',
+        kind: 'Board · interface',
+        specs: [
+          ['Link', 'PCIe 5.0 × 16'],
+          ['Connection', 'flex cable to main PCB'],
+        ],
+      }),
+      pickObject(io, {
+        title: 'Display I/O board',
+        kind: 'Board · outputs',
+        specs: [
+          ['Outputs', '3 × DisplayPort 2.1b'],
+          ['', '1 × HDMI 2.1b'],
+        ],
+      }),
+    );
 
     this.parts = { fans: fansGroup, shroud, fins, centerFins, cooler, bottom, pcie, io };
+
+    this.controls = [
+      {
+        kind: 'slider',
+        label: 'Disassembly',
+        min: 0,
+        max: 100,
+        step: 1,
+        value: 0,
+        format: (v) => `${Math.round(v)}%`,
+        onInput: (v) => (this.explodeOverride = v / 100),
+      },
+      {
+        kind: 'choice',
+        label: 'Fans',
+        options: ['Stop', 'Idle', 'Load'],
+        value: 'Stop',
+        onChange: (v) => (this.fanOverride = v === 'Stop' ? 0 : v === 'Idle' ? 0.25 : 1),
+      },
+    ];
   }
 
   private buildMainPcb(darkPlastic: THREE.Material) {
@@ -250,6 +347,17 @@ export class CardLevel extends BaseLevel {
     const pcb = new THREE.Mesh(new THREE.BoxGeometry(2 * PCB_HALF, 0.16, 11), pcbMat);
     pcb.position.set(0, -0.35, 0.4);
     s.add(pcb);
+    this.pickables.push(
+      pickObject(pcb, {
+        title: 'Main PCB',
+        kind: 'Board · main',
+        specs: [
+          ['Carries', 'GPU, 16 GDDR7, VRM'],
+          ['Size', 'compact, mid-card'],
+        ],
+        note: 'Dive in to see it up close (next scale).',
+      }),
+    );
 
     // GB202 package + bare die
     const substrate = new THREE.Mesh(
@@ -264,6 +372,22 @@ export class CardLevel extends BaseLevel {
     );
     die.position.set(0, -0.12, 0);
     s.add(die);
+    this.pickables.push(
+      pickObject(
+        die,
+        {
+          title: 'GB202',
+          kind: 'GPU · Blackwell',
+          specs: [
+            ['Transistors', '92.2 billion'],
+            ['Die area', '~750 mm²'],
+            ['Process', 'TSMC 4N'],
+            ['SMs', '170 of 192 enabled'],
+          ],
+        },
+        1,
+      ),
+    );
 
     // 16 GDDR7 chips, four per side
     const mem = new THREE.InstancedMesh(new THREE.BoxGeometry(1.4, 0.1, 1.2), darkPlastic, 16);
@@ -276,6 +400,18 @@ export class CardLevel extends BaseLevel {
       mem.setMatrixAt(k++, this.mtx.makeTranslation(3.9, -0.22, u * 0.85));
     }
     s.add(mem);
+    this.pickables.push(
+      pickInstances(mem, (i) => ({
+        title: `GDDR7 #${i + 1}`,
+        kind: 'Memory · GDDR7',
+        specs: [
+          ['Capacity', '2 GB'],
+          ['Interface', '32-bit'],
+          ['Speed', '28 Gbps'],
+        ],
+        note: '16 chips × 32 bits = the 512-bit bus: 1.79 TB/s together.',
+      })),
+    );
 
     // Power stages / chokes along the board edges
     const choke = new THREE.InstancedMesh(
@@ -288,11 +424,26 @@ export class CardLevel extends BaseLevel {
       choke.setMatrixAt(i, this.mtx.makeTranslation(-5.4 + (i % 15) * 0.77, -0.05, row ? 5.3 : -4.75));
     }
     s.add(choke);
+    this.pickables.push(
+      pickInstances(choke, () => ({
+        title: 'Power stage choke',
+        kind: 'Power delivery · VRM',
+        specs: [['Input', '12 V'], ['Output', '~1 V core']],
+        note: 'Many phases in parallel step 12 V down to the ~1 V the GPU runs at, hundreds of amps in total.',
+      })),
+    );
 
     // 12V-2x6 power connector
     const conn = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.9, 0.8), darkPlastic);
     conn.position.set(1.5, 0.2, 5.55);
     s.add(conn);
+    this.pickables.push(
+      pickObject(conn, {
+        title: '12V-2x6 connector',
+        kind: 'Power input',
+        specs: [['Rated', 'up to 600 W'], ['Card TGP', '575 W']],
+      }),
+    );
   }
 
   /** Separate PCIe board on the bottom edge, tied to the main PCB by a flex cable. */
@@ -350,13 +501,16 @@ export class CardLevel extends BaseLevel {
 
   protected animate(t: number, dt: number, time: number) {
     // Fans spin down between t = 0.1 and 0.3.
-    const speed = 1 - smoothstep(0.1, 0.3, t);
+    const speed = this.fanOverride ?? 1 - smoothstep(0.1, 0.3, t);
     this.fanAngle += dt * (2 + 24 * speed) * (speed > 0.002 ? 1 : 0);
     this.fans.forEach((f, i) => (f.rotation.y = this.fanAngle + i));
     this.fanBlurs.forEach((m) => (m.opacity = 0.72 * speed));
 
     // Exploded view: parts move out along the stack normal (+Y); fin stacks also slide outward.
-    const e = smootherstep(0.3, 0.62, t);
+    // Explore mode slider drives the explode directly; eased so it travels smoothly.
+    const target = this.explodeOverride ?? smootherstep(0.3, 0.62, t);
+    const e = this.explodeOverride === null ? target : this.lastExplode + (target - this.lastExplode) * Math.min(1, dt * 8);
+    this.lastExplode = e;
     const p = this.parts;
     p.fans.position.y = 10.5 * e;
     p.shroud.position.y = 7.4 * e;
@@ -389,6 +543,19 @@ export class CardLevel extends BaseLevel {
             : t < 0.9
               ? 'Compact main PCB + separate PCIe and display boards on flex cables'
               : 'Diving into the board';
+  }
+
+  onExploreChange(active: boolean) {
+    if (active) {
+      // Start the controls from what is on screen.
+      const [explode, fans] = this.controls;
+      explode.value = Math.round(this.lastExplode * 100);
+      const sp = this.fanBlurs[0]?.opacity / 0.72 || 0;
+      if (fans.kind === 'choice') fans.value = sp > 0.6 ? 'Load' : sp > 0.05 ? 'Idle' : 'Stop';
+    } else {
+      this.explodeOverride = null;
+      this.fanOverride = null;
+    }
   }
 
   getTransitionTarget() {

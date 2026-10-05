@@ -4,6 +4,8 @@ import type { CameraKey } from '../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../core/types';
 import { mulberry32 } from '../core/math';
 import { pointScale } from '../core/points';
+import type { EntityInfo } from '../core/types';
+import { boxFrom, pickObject } from '../interaction/pick';
 
 /**
  * Level 8 — a single silicon atom. Units: stylised (~5 pm per unit).
@@ -59,6 +61,11 @@ export class AtomLevel extends BaseLevel {
   private nucleus!: THREE.InstancedMesh;
   private nucleonBase: THREE.Vector3[] = [];
   private nucleusGroup = new THREE.Group();
+  /** Mean display radius per shell (for picking + brackets). */
+  private shellR: number[] = [];
+  /** Orbital visibility: current (animated) and target per shell. */
+  private show = [1, 1, 1, 1, 1];
+  private showTarget = [1, 1, 1, 1, 1];
   private m = new THREE.Matrix4();
   private target: TransitionTarget = { position: new THREE.Vector3(), radius: 1.4 };
 
@@ -137,6 +144,23 @@ export class AtomLevel extends BaseLevel {
     this.nucleus.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.nucleusGroup.add(this.nucleus);
     this.scene.add(this.nucleusGroup);
+    this.pickables.push(
+      pickObject(
+        this.nucleusGroup,
+        {
+          title: '²⁸Si nucleus',
+          kind: 'Nucleus',
+          specs: [
+            ['Protons', '14'],
+            ['Neutrons', '14'],
+            ['Real radius', '~3.1 fm'],
+            ['Drawn', '~10⁴× too large'],
+          ],
+          note: 'Real scale: if the atom were a stadium, the nucleus would be a pea at the centre spot. It holds 99.98% of the mass.',
+        },
+        2,
+      ),
+    );
   }
 
   private buildCloud() {
@@ -151,6 +175,7 @@ export class AtomLevel extends BaseLevel {
     const dir = new THREE.Vector3();
     const c = new THREE.Color();
 
+    const radSum = SHELLS.map(() => 0);
     SHELLS.forEach((sh, si) => {
       const n = sh.points;
       const sampleR = radialSampler(sh.n, sh.l, sh.zeff);
@@ -166,6 +191,7 @@ export class AtomLevel extends BaseLevel {
           while (rng() > dir.dot(axis) ** 2);
         }
         const rd = RADIAL_K * Math.pow(r, RADIAL_EXP);
+        radSum[si] += rd;
         positions[k * 3] = dir.x * rd;
         positions[k * 3 + 1] = dir.y * rd;
         positions[k * 3 + 2] = dir.z * rd;
@@ -179,6 +205,7 @@ export class AtomLevel extends BaseLevel {
       }
     });
 
+    this.shellR = radSum.map((sum, si) => sum / SHELLS[si].points);
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geo.setAttribute('aShell', new THREE.BufferAttribute(shellIdx, 1));
@@ -195,11 +222,13 @@ export class AtomLevel extends BaseLevel {
         uTime: { value: 0 },
         uSize: { value: 0.32 },
         uScale: { value: 1 },
+        uShow: { value: this.show },
       },
       vertexShader: /* glsl */ `
         attribute float aShell;
         attribute float aRand;
         attribute float aAlpha;
+        uniform float uShow[5];
         uniform float uTime;
         uniform float uSize;
         uniform float uScale;
@@ -217,7 +246,7 @@ export class AtomLevel extends BaseLevel {
           gl_PointSize = min(uSize * uScale * (0.6 + aRand * 0.8) / dist, 48.0);
           vColor = color * (0.75 + 0.35 * pulse);
           // Fade points that get too close to the lens.
-          vAlpha = smoothstep(0.8, 6.0, dist) * aAlpha;
+          vAlpha = smoothstep(0.8, 6.0, dist) * aAlpha * uShow[int(aShell + 0.5)];
         }
       `,
       fragmentShader: /* glsl */ `
@@ -235,10 +264,41 @@ export class AtomLevel extends BaseLevel {
     const cloud = new THREE.Points(geo, this.cloudMat);
     cloud.frustumCulled = false;
     this.scene.add(cloud);
+
+    // Invisible proxy so the cloud can be hovered: the shell is picked from how close the ray
+    // passes to the nucleus.
+    const outer = Math.max(...this.shellR) * 1.6;
+    const proxy = new THREE.Mesh(new THREE.SphereGeometry(outer, 16, 12), new THREE.MeshBasicMaterial());
+    proxy.visible = false;
+    this.scene.add(proxy);
+    this.pickables.push({
+      object: proxy,
+      resolve: (hit) => {
+        const ray = new THREE.Ray(this.ctx.camera.position.clone(), hit.point.clone().sub(this.ctx.camera.position).normalize());
+        const d = Math.sqrt(ray.distanceSqToPoint(new THREE.Vector3()));
+        const n = d < (this.shellR[0] + this.shellR[1]) / 2 ? 1 : d < (this.shellR[2] + this.shellR[3]) / 2 ? 2 : 3;
+        const r = n === 1 ? this.shellR[0] : n === 2 ? this.shellR[2] : this.shellR[4];
+        return { key: `shell${n}`, info: SHELL_INFO[n], box: boxFrom(-r, -r, -r, r, r, r) };
+      },
+    });
+
+    this.controls = [
+      {
+        kind: 'choice',
+        label: 'Orbitals',
+        options: ['All', '1s', '2s', '2p', '3s', '3p'],
+        value: 'All',
+        onChange: (v) => {
+          const k = ['1s', '2s', '2p', '3s', '3p'].indexOf(v);
+          this.showTarget = this.showTarget.map((_, i) => (k < 0 || i === k ? 1 : 0));
+        },
+      },
+    ];
   }
 
-  protected animate(t: number, _dt: number, time: number) {
+  protected animate(t: number, dt: number, time: number) {
     this.cloudMat.uniforms.uTime.value = time;
+    for (let i = 0; i < 5; i++) this.show[i] += (this.showTarget[i] - this.show[i]) * Math.min(1, dt * 5);
     this.cloudMat.uniforms.uScale.value = pointScale(this.ctx.renderer, this.ctx.camera);
 
     // Nucleons jitter (zero-point motion, purely decorative).
@@ -267,10 +327,48 @@ export class AtomLevel extends BaseLevel {
             : '²⁸Si nucleus · 14 p⁺ + 14 n⁰ · drawn ~10⁴× too large';
   }
 
+  onExploreChange(active: boolean) {
+    if (!active) this.showTarget = [1, 1, 1, 1, 1];
+    else this.controls[0].value = 'All';
+  }
+
   getTransitionTarget() {
     return this.target;
   }
 }
+
+const SHELL_INFO: Record<number, EntityInfo> = {
+  1: {
+    title: 'n = 1 shell · 1s²',
+    kind: 'Core electrons',
+    specs: [
+      ['Electrons', '2'],
+      ['Z_eff', '13.58'],
+      ['Mean radius', '~0.06 Å'],
+    ],
+    note: 'Pulled in by almost the full nuclear charge: tightly bound and chemically inert.',
+  },
+  2: {
+    title: 'n = 2 shell · 2s² 2p⁶',
+    kind: 'Core electrons',
+    specs: [
+      ['Electrons', '8'],
+      ['Z_eff', '9.0 (2s) · 9.9 (2p)'],
+      ['Shape', 'sphere + three dumbbells'],
+    ],
+    note: 'A closed neon-like core; the three 2p orbitals together add up to a spherical shell.',
+  },
+  3: {
+    title: 'n = 3 shell · 3s² 3p²',
+    kind: 'Valence electrons',
+    specs: [
+      ['Electrons', '4'],
+      ['Z_eff', '4.9 (3s) · 4.3 (3p)'],
+      ['Shape', '3p lobes along x and y'],
+    ],
+    note: 'These four form the four covalent bonds of the crystal (sp³ hybrids) and decide how silicon conducts.',
+  },
+};
 
 function randomUnit(out: THREE.Vector3, rng: () => number) {
   const z = rng() * 2 - 1;

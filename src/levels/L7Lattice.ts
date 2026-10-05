@@ -3,6 +3,7 @@ import { BaseLevel } from '../core/BaseLevel';
 import type { CameraKey } from '../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../core/types';
 import { pointScale } from '../core/points';
+import { pickInstancedGroup, pickInstances } from '../interaction/pick';
 
 /**
  * Level 7 — crystalline silicon. Units: ångström.
@@ -48,6 +49,13 @@ export class LatticeLevel extends BaseLevel {
   private atoms = latticeAtoms();
   private centerIndex = 0;
   private dopants = new Map<number, 'P' | 'B'>();
+  private atomMesh!: THREE.InstancedMesh;
+  /** Which dopants are shown: scripted = both; Explore control can pick a type. */
+  private doping: 'Mixed' | 'Intrinsic' | 'N-type' | 'P-type' = 'Mixed';
+  private carriers!: THREE.Points;
+  private carrierMat!: THREE.ShaderMaterial;
+  private carrierPos!: THREE.BufferAttribute;
+  private carrierAtoms: number[] = [];
   private bondGlow!: THREE.ShaderMaterial;
   private atomMat!: THREE.MeshPhysicalMaterial;
   private group = new THREE.Group();
@@ -131,17 +139,14 @@ export class LatticeLevel extends BaseLevel {
       clearcoatRoughness: 0.3,
     });
     const atoms = new THREE.InstancedMesh(new THREE.SphereGeometry(ATOM_R, 24, 16), this.atomMat, this.atoms.length);
-    const si = new THREE.Color(0x6f7b88);
-    const pCol = new THREE.Color(0xf6fff0).multiplyScalar(2.2);
-    const bCol = new THREE.Color(0xffb347).multiplyScalar(1.8);
-    const centerCol = new THREE.Color(0xb6f06a).multiplyScalar(1.4);
     this.atoms.forEach((p, i) => {
-      const dop = this.dopants.get(i);
-      const scale = dop ? 1.15 : 1;
+      const scale = this.dopants.has(i) ? 1.15 : 1;
       atoms.setMatrixAt(i, m.compose(p, q.identity(), v.setScalar(scale)));
-      atoms.setColorAt(i, dop === 'P' ? pCol : dop === 'B' ? bCol : i === this.centerIndex ? centerCol : si);
     });
+    this.atomMesh = atoms;
+    this.applyDoping();
     this.group.add(atoms);
+    this.pickables.push(pickInstances(atoms, (i) => this.atomInfo(i)));
 
     // Bonds: every pair at the nearest-neighbour distance
     const bonds: [THREE.Vector3, THREE.Vector3][] = [];
@@ -167,6 +172,32 @@ export class LatticeLevel extends BaseLevel {
       mids.set([mid.x, mid.y, mid.z], i * 3);
     });
     this.group.add(bondMesh);
+    this.pickables.push(
+      pickInstancedGroup(bondMesh, {
+        title: 'Covalent bonds',
+        kind: 'Chemistry · sp³',
+        specs: [
+          ['Length', '2.35 Å'],
+          ['Angle', '109.47°'],
+          ['Electrons', '2 shared per bond'],
+        ],
+        note: 'Each Si atom shares its 4 valence electrons with 4 neighbours: a full octet everywhere, which is why pure silicon barely conducts.',
+      }),
+    );
+    this.buildCarriers();
+
+    this.controls = [
+      {
+        kind: 'choice',
+        label: 'Doping',
+        options: ['Mixed', 'Intrinsic', 'N-type', 'P-type'],
+        value: 'Mixed',
+        onChange: (v) => {
+          this.doping = v as 'Mixed' | 'Intrinsic' | 'N-type' | 'P-type';
+          this.applyDoping();
+        },
+      },
+    ];
 
     // Shared electron pairs: a soft glow at each bond centre
     const glowGeo = new THREE.BufferGeometry();
@@ -217,6 +248,19 @@ export class LatticeLevel extends BaseLevel {
     this.bondGlow.uniforms.uScale.value = pointScale(this.ctx.renderer, this.ctx.camera);
     this.bondGlow.uniforms.uTime.value = time;
 
+    // Free carriers wander around their dopant: electron (P) or hole (B).
+    const arr = this.carrierPos.array as Float32Array;
+    this.carrierAtoms.forEach((ai, k) => {
+      const c = this.atoms[ai];
+      const a = time * (0.6 + k * 0.13) + k * 2.1;
+      const r = 2.6 + 0.6 * Math.sin(time * 0.7 + k);
+      arr[k * 3] = c.x + Math.cos(a) * r;
+      arr[k * 3 + 1] = c.y + Math.sin(a * 1.3) * r * 0.6;
+      arr[k * 3 + 2] = c.z + Math.sin(a) * r;
+    });
+    this.carrierPos.needsUpdate = true;
+    this.carrierMat.uniforms.uScale.value = pointScale(this.ctx.renderer, this.ctx.camera);
+
     this.caption =
       t < 0.25
         ? 'Diamond-cubic Si · a = 5.431 Å (green box = one unit cell, 8 atoms)'
@@ -225,6 +269,124 @@ export class LatticeLevel extends BaseLevel {
           : t < 0.75
             ? 'Dopants: phosphorus (white) donates an electron · boron (amber) leaves a hole'
             : '5 × 10²² atoms per cm³ — zooming into one of them';
+  }
+
+  /** Recolour atoms for the current doping mode and show the matching free carriers. */
+  private applyDoping() {
+    const si = new THREE.Color(0x6f7b88);
+    const pCol = new THREE.Color(0xf6fff0).multiplyScalar(2.2);
+    const bCol = new THREE.Color(0xffb347).multiplyScalar(1.8);
+    const centerCol = new THREE.Color(0xb6f06a).multiplyScalar(1.4);
+    this.atoms.forEach((_, i) => {
+      const dop = this.visibleDopant(i);
+      this.atomMesh.setColorAt(i, dop === 'P' ? pCol : dop === 'B' ? bCol : i === this.centerIndex ? centerCol : si);
+    });
+    if (this.atomMesh.instanceColor) this.atomMesh.instanceColor.needsUpdate = true;
+    if (this.carrierMat) {
+      this.carrierMat.uniforms.uShowP.value = this.doping === 'N-type' || this.doping === 'Mixed' ? 1 : 0;
+      this.carrierMat.uniforms.uShowB.value = this.doping === 'P-type' || this.doping === 'Mixed' ? 1 : 0;
+    }
+  }
+
+  private visibleDopant(i: number) {
+    const d = this.dopants.get(i);
+    if (!d || this.doping === 'Intrinsic') return undefined;
+    if (this.doping === 'N-type' && d !== 'P') return undefined;
+    if (this.doping === 'P-type' && d !== 'B') return undefined;
+    return d;
+  }
+
+  private atomInfo(i: number) {
+    const d = this.visibleDopant(i);
+    const p = this.atoms[i];
+    const pos = `${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)} Å`;
+    if (d === 'P')
+      return {
+        title: 'Phosphorus (P)',
+        kind: 'Dopant · n-type donor',
+        specs: [
+          ['Valence electrons', '5'],
+          ['Bonds', '4 — one electron left over'],
+          ['Position', pos],
+        ] as [string, string][],
+        note: 'The fifth electron is barely bound and wanders off at room temperature: a free negative carrier.',
+      };
+    if (d === 'B')
+      return {
+        title: 'Boron (B)',
+        kind: 'Dopant · p-type acceptor',
+        specs: [
+          ['Valence electrons', '3'],
+          ['Bonds', '4 — one missing an electron'],
+          ['Position', pos],
+        ] as [string, string][],
+        note: 'The missing electron is a "hole": neighbours hop into it, so the hole moves like a positive carrier.',
+      };
+    return {
+      title: i === this.centerIndex ? 'Silicon (Si) — the one we dive into' : 'Silicon (Si)',
+      kind: 'Atom · Z = 14',
+      specs: [
+        ['Neighbours', '4'],
+        ['Bond length', '2.35 Å'],
+        ['Covalent radius', '1.11 Å'],
+        ['Position', pos],
+      ] as [string, string][],
+    };
+  }
+
+  /** Point sprites for the donor electrons (filled) and acceptor holes (rings). */
+  private buildCarriers() {
+    this.carrierAtoms = [...this.dopants.keys()];
+    const kinds = new Float32Array(this.carrierAtoms.map((i) => (this.dopants.get(i) === 'P' ? 0 : 1)));
+    const geo = new THREE.BufferGeometry();
+    this.carrierPos = new THREE.BufferAttribute(new Float32Array(this.carrierAtoms.length * 3), 3);
+    geo.setAttribute('position', this.carrierPos);
+    geo.setAttribute('aKind', new THREE.BufferAttribute(kinds, 1));
+    this.carrierMat = new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      uniforms: { uScale: { value: 1 }, uShowP: { value: 1 }, uShowB: { value: 1 } },
+      vertexShader: /* glsl */ `
+        attribute float aKind;
+        uniform float uScale;
+        uniform float uShowP;
+        uniform float uShowB;
+        varying float vKind;
+        varying float vShow;
+        void main() {
+          vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          gl_Position = projectionMatrix * mv;
+          gl_PointSize = clamp(1.1 * uScale / -mv.z, 2.0, 70.0);
+          vKind = aKind;
+          vShow = aKind < 0.5 ? uShowP : uShowB;
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        varying float vKind;
+        varying float vShow;
+        void main() {
+          if (vShow < 0.5) discard;
+          vec2 uv = gl_PointCoord * 2.0 - 1.0;
+          float r = length(uv);
+          if (r > 1.0) discard;
+          // electron: bright core; hole: hollow amber ring
+          float a = vKind < 0.5 ? exp(-r * r * 6.0) : smoothstep(0.55, 0.7, r) * (1.0 - smoothstep(0.85, 1.0, r));
+          vec3 c = vKind < 0.5 ? vec3(0.75, 1.0, 0.45) : vec3(1.0, 0.7, 0.3);
+          gl_FragColor = vec4(c * a * 1.6, a);
+        }
+      `,
+    });
+    this.carriers = new THREE.Points(geo, this.carrierMat);
+    this.carriers.frustumCulled = false;
+    this.group.add(this.carriers);
+    this.applyDoping();
+  }
+
+  onExploreChange(active: boolean) {
+    this.doping = 'Mixed';
+    if (active) this.controls[0].value = 'Mixed';
+    this.applyDoping();
   }
 
   getTransitionTarget() {

@@ -3,6 +3,8 @@ import { BaseLevel, addGlowAttribute, makeInstanceGlow } from '../core/BaseLevel
 import type { CameraKey } from '../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../core/types';
 import { mulberry32 } from '../core/math';
+import type { EntityInfo } from '../core/types';
+import { pickInstancedGroup, pickInstances } from '../interaction/pick';
 
 /**
  * Level 5 — back-end-of-line interconnect, in cross-section. Units: micrometres.
@@ -163,15 +165,36 @@ export class MetalLevel extends BaseLevel {
     const copperMesh = new THREE.InstancedMesh(unit, copperMat, copper.length);
     fill(copperMesh, copper);
     this.glow = addGlowAttribute(copperMesh);
+    // Which layer a wire belongs to follows from its height.
+    const wireInfo = (i: number): EntityInfo | null => {
+      copperMesh.getMatrixAt(i, m);
+      pos.setFromMatrixPosition(m);
+      const li = this.layers.findIndex((l) => pos.y <= l.top + 1e-6 && pos.y >= l.top - l.thick - 1e-6);
+      return li < 0 ? null : this.layerInfo(li);
+    };
+    this.pickables.push(pickInstances(copperMesh, wireInfo));
     this.glowSeed = new Float32Array(copper.length).map(() => (rng() < 0.04 ? rng() * 100 : -1));
 
-    fill(
-      new THREE.InstancedMesh(unit.clone(), new THREE.MeshStandardMaterial({ color: 0xc8ccd2, metalness: 1, roughness: 0.35 }), alu.length),
-      alu,
+    const aluMesh = new THREE.InstancedMesh(
+      unit.clone(),
+      new THREE.MeshStandardMaterial({ color: 0xc8ccd2, metalness: 1, roughness: 0.35 }),
+      alu.length,
     );
-    fill(
-      new THREE.InstancedMesh(unit.clone(), new THREE.MeshStandardMaterial({ color: 0xb06a3a, metalness: 1, roughness: 0.4 }), vias.length),
-      vias,
+    fill(aluMesh, alu);
+    this.pickables.push(pickInstances(aluMesh, () => this.layerInfo(0)));
+    const viaMesh = new THREE.InstancedMesh(
+      unit.clone(),
+      new THREE.MeshStandardMaterial({ color: 0xb06a3a, metalness: 1, roughness: 0.4 }),
+      vias.length,
+    );
+    fill(viaMesh, vias);
+    this.pickables.push(
+      pickInstances(viaMesh, () => ({
+        title: 'Via',
+        kind: 'Interconnect · vertical',
+        specs: [['Joins', 'adjacent metal layers'], ['Material', 'copper']],
+        note: 'Wires on alternate layers run at right angles; vias are the only way a signal changes layer.',
+      })),
     );
 
     // ---- low-k dielectric slabs (faint, so the copper reads)
@@ -215,6 +238,14 @@ export class MetalLevel extends BaseLevel {
       gates.setMatrixAt(i, m.compose(pos.set(x, y0 - 0.03, -span / 2), q, scl.set(0.016, 0.05, span)));
     }
     s.add(gates);
+    this.pickables.push(
+      pickInstancedGroup(gates, {
+        title: 'Gate lines',
+        kind: 'Front end of line',
+        specs: [['Gate pitch', `${Math.round(CPP * 1000)} nm`]],
+        note: 'The transistor level. Dive in (next scale).',
+      }),
+    );
 
     const nFins = Math.floor(span / FIN_PITCH);
     const fins = new THREE.InstancedMesh(
@@ -239,6 +270,13 @@ export class MetalLevel extends BaseLevel {
       contacts.setMatrixAt(i, m.compose(pos.set(x, y0 + 0.01, z), q, scl.set(0.014, 0.03, 0.014)));
     }
     s.add(contacts);
+    this.pickables.push(
+      pickInstances(contacts, () => ({
+        title: 'Contact',
+        kind: 'Middle of line',
+        specs: [['Material', 'tungsten / cobalt'], ['Joins', 'transistor ↔ M1']],
+      })),
+    );
 
     const substrate = new THREE.Mesh(
       new THREE.BoxGeometry(span, 0.4, span),
@@ -265,6 +303,31 @@ export class MetalLevel extends BaseLevel {
         : t < 0.92
           ? `${l.name} · pitch ${l.pitch >= 1 ? `${l.pitch} µm` : `${Math.round(l.pitch * 1000)} nm`}`
           : `Contacts → FinFETs · gate pitch ${Math.round(CPP * 1000)} nm`;
+  }
+
+  private layerInfo(li: number): EntityInfo {
+    const l = this.layers[li];
+    const pitch = l.pitch >= 1 ? `${l.pitch} µm` : `${Math.round(l.pitch * 1000)} nm`;
+    const role =
+      li === 0
+        ? 'bond pads / redistribution'
+        : li <= 2
+          ? 'power grid + clock (ultra-thick)'
+          : li <= 6
+            ? 'global routing'
+            : li <= 10
+              ? 'intermediate routing'
+              : 'local wiring inside standard cells';
+    return {
+      title: l.name,
+      kind: `Metal layer ${li === 0 ? '· aluminium' : '· copper'}`,
+      specs: [
+        ['Pitch', pitch],
+        ['Direction', l.alongZ ? 'front ↔ back' : 'left ↔ right'],
+        ['Role', role],
+      ],
+      note: 'Pitches are representative of a 4/5 nm-class stack; TSMC does not publish the exact 4N numbers.',
+    };
   }
 
   getTransitionTarget() {

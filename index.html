@@ -9,11 +9,22 @@
   </head>
   <body>
     <canvas id="gl"></canvas>
+    <div id="spot"></div>
     <div id="flash"></div>
+    <svg id="leader" aria-hidden="true"><polyline points="" /><circle r="3" /></svg>
+    <div id="tip" role="tooltip">
+      <div class="tip-kind"></div>
+      <div class="tip-title"></div>
+      <div class="tip-specs"></div>
+      <div class="tip-hint">click to inspect</div>
+    </div>
 
     <div id="hud">
       <header class="hud-top">
-        <span class="brand">GPU <span class="arrow">&#9656;</span> ATOM</span>
+        <div class="top-left">
+          <span class="brand">GPU <span class="arrow">&#9656;</span> ATOM</span>
+          <nav id="crumbs" aria-label="Scale breadcrumb"></nav>
+        </div>
         <span id="lvl-index">01 / 08</span>
       </header>
 
@@ -31,9 +42,25 @@
           <span class="fov-label">field of view</span>
           <span id="fov-value">&mdash;</span>
         </div>
+        <div id="nav">
+          <button id="nav-prev" type="button" title="Previous scale (&larr;)">&#9664;</button>
+          <button id="nav-explore" type="button" title="Explore mode (E)">Explore</button>
+          <button id="nav-next" type="button" title="Next scale (&rarr;)">&#9654;</button>
+        </div>
         <div id="scroll-hint">scroll to descend <span>&darr;</span></div>
       </footer>
+      <div id="explore-hint">drag&nbsp;· orbit &nbsp; wheel&nbsp;· zoom &nbsp; right-drag&nbsp;· pan &nbsp; click&nbsp;· inspect &nbsp; esc&nbsp;· exit</div>
     </div>
+
+    <aside id="inspector" aria-live="polite">
+      <button class="insp-close" type="button" title="Close (Esc)">&times;</button>
+      <div class="insp-kind"></div>
+      <h2 class="insp-title"></h2>
+      <dl class="insp-specs"></dl>
+      <p class="insp-note"></p>
+      <div class="insp-actions"></div>
+      <div class="insp-controls"></div>
+    </aside>
 
     <div id="scroll-space"></div>
     <script type="module" src="/src/main.ts"></script>

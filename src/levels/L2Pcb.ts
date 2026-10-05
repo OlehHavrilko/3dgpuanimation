@@ -4,6 +4,7 @@ import type { CameraKey } from '../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../core/types';
 import { mulberry32, range, smoothstep } from '../core/math';
 import { canvasTexture, route45 } from '../core/canvas';
+import { pickInstancedGroup, pickInstances, pickObject } from '../interaction/pick';
 
 /**
  * Level 2 — the RTX 5090 FE main board. Units: millimetres.
@@ -27,6 +28,9 @@ export class PcbLevel extends BaseLevel {
   readonly meta = meta;
   private memGlow!: THREE.InstancedBufferAttribute;
   private busUniforms = { uLit: { value: 0 }, uTime: { value: 0 } };
+  /** Explore-mode data-flow override: null = scripted, else pulse speed multiplier (0 = off). */
+  private flowOverride: number | null = null;
+  private busTime = 0;
   private dieMat!: THREE.MeshStandardMaterial;
   private gpuLight!: THREE.PointLight;
   private target: TransitionTarget = {
@@ -241,12 +245,34 @@ export class PcbLevel extends BaseLevel {
     const tab = new THREE.Mesh(new THREE.BoxGeometry(92, 1.6, 16), edgeMat);
     tab.position.set(-26, -0.8, -D / 2 - 14);
     this.scene.add(tab);
+    this.pickables.push(
+      pickObject(tab, {
+        title: 'PCIe board',
+        kind: 'Board · interface',
+        specs: [
+          ['Link', 'PCIe 5.0 × 16'],
+          ['Bandwidth', '~64 GB/s each way'],
+        ],
+        note: 'On the 5090 FE the slot connector lives on its own small board, tied to the main PCB by a flex cable.',
+      }),
+    );
     const flex = new THREE.Mesh(
       new THREE.BoxGeometry(30, 0.3, 10),
       new THREE.MeshStandardMaterial({ color: 0xc98a2e, roughness: 0.4, metalness: 0.3 }),
     );
     flex.position.set(-15, 0.15, -D / 2 - 2);
     this.scene.add(flex);
+    this.pickables.push(pickObject(flex, { title: 'Flex cable', kind: 'Interconnect', specs: [['Joins', 'PCIe board ↔ main PCB']] }));
+    this.pickables.push(
+      pickObject(body, {
+        title: 'Main PCB',
+        kind: 'Board · main',
+        specs: [
+          ['Carries', 'GPU, memory, power'],
+          ['Traces shown', '45° routed buses'],
+        ],
+      }),
+    );
   }
 
   private buildComponents(mem: [number, number][]) {
@@ -264,6 +290,14 @@ export class PcbLevel extends BaseLevel {
     );
     substrate.position.y = 0.65;
     s.add(substrate);
+    this.pickables.push(
+      pickObject(substrate, {
+        title: 'GB202 package',
+        kind: 'GPU · flip-chip BGA',
+        specs: [['Contains', 'die + organic substrate']],
+        note: 'Dive in to peel it apart (next scale).',
+      }),
+    );
     this.dieMat = new THREE.MeshStandardMaterial({
       color: 0x8c96a6,
       metalness: 1,
@@ -275,6 +309,21 @@ export class PcbLevel extends BaseLevel {
     const die = new THREE.Mesh(new THREE.BoxGeometry(29, 0.8, 26), this.dieMat);
     die.position.y = 1.7;
     s.add(die);
+    this.pickables.push(
+      pickObject(
+        die,
+        {
+          title: 'GB202 die',
+          kind: 'GPU · Blackwell',
+          specs: [
+            ['Transistors', '92.2 billion'],
+            ['Area', '~750 mm²'],
+            ['Process', 'TSMC 4N'],
+          ],
+        },
+        1,
+      ),
+    );
 
     // Memory chips with per-instance glow
     const memMat = makeInstanceGlow(
@@ -289,6 +338,19 @@ export class PcbLevel extends BaseLevel {
     });
     this.memGlow = addGlowAttribute(memMesh);
     s.add(memMesh);
+    this.pickables.push(
+      pickInstances(memMesh, (i) => ({
+        title: `GDDR7 · M${i + 1}`,
+        kind: 'Memory',
+        specs: [
+          ['Capacity', '2 GB'],
+          ['Bus', `32-bit · channel ${i + 1} of 16`],
+          ['Data rate', '28 Gbps / pin'],
+          ['Bandwidth', '112 GB/s'],
+        ],
+        note: 'Each chip has its own 32-bit controller on the die; 16 × 112 GB/s = 1.79 TB/s.',
+      })),
+    );
 
     // Package decoupling caps (tiny MLCCs ringed around the die)
     const mlccMat = new THREE.MeshStandardMaterial({ color: 0xb08a5a, roughness: 0.5, metalness: 0.2 });
@@ -321,6 +383,14 @@ export class PcbLevel extends BaseLevel {
       mlcc.setMatrixAt(i, m.compose(v.set(x, y, z), q, one));
     });
     s.add(mlcc);
+    this.pickables.push(
+      pickInstances(mlcc, () => ({
+        title: 'MLCC capacitor',
+        kind: 'Passive · decoupling',
+        specs: [['Modelled', String(mlcc.count)]],
+        note: 'Tiny ceramic capacitors smooth the current spikes when thousands of cores switch at once.',
+      })),
+    );
 
     // Power delivery: two rows of chokes + power stages along the long edges
     const chokes = new THREE.InstancedMesh(
@@ -340,6 +410,18 @@ export class PcbLevel extends BaseLevel {
       stages.setMatrixAt(i, m.makeTranslation(x, 0.5, row * 44.5));
     }
     s.add(chokes, stages);
+    this.pickables.push(
+      pickInstances(chokes, (i) => ({
+        title: `Power phase ${i + 1}`,
+        kind: 'Power delivery · choke',
+        specs: [['Input', '12 V'], ['Output', '~1 V']],
+      })),
+      pickInstances(stages, () => ({
+        title: 'Power stage (DrMOS)',
+        kind: 'Power delivery · switch',
+        specs: [['Role', 'switches 12 V at ~1 MHz']],
+      })),
+    );
 
     const polyGeo = new THREE.CylinderGeometry(2.6, 2.6, 5.5, 20);
     const polys = new THREE.InstancedMesh(
@@ -351,6 +433,7 @@ export class PcbLevel extends BaseLevel {
       polys.setMatrixAt(i, m.makeTranslation(i < 6 ? -66 : 66, 2.75, -27 + (i % 6) * 11));
     }
     s.add(polys);
+    this.pickables.push(pickInstances(polys, () => ({ title: 'Polymer capacitor', kind: 'Passive · bulk', specs: [['Role', 'input/output filtering']] })));
 
     // PCIe 5.0 x16 gold fingers on the separate PCIe board (with the x1 key notch)
     const gold = new THREE.MeshStandardMaterial({ color: 0xffc35a, metalness: 1, roughness: 0.2 });
@@ -360,24 +443,47 @@ export class PcbLevel extends BaseLevel {
       fingers.setMatrixAt(i, m.makeTranslation(x, 0.04, -D / 2 - 18.5));
     }
     s.add(fingers);
+    this.pickables.push(
+      pickInstancedGroup(fingers, {
+        title: 'PCIe gold fingers',
+        kind: 'Interface',
+        specs: [
+          ['Contacts', '82 per side'],
+          ['Generation', 'PCIe 5.0 × 16'],
+        ],
+      }),
+    );
 
     // 12V-2x6 power connector
     const plastic = new THREE.MeshStandardMaterial({ color: 0x101113, roughness: 0.6 });
     const conn = new THREE.Mesh(new THREE.BoxGeometry(19, 9, 8), plastic);
     conn.position.set(15, 4.5, D / 2 - 4);
     s.add(conn);
+    this.pickables.push(pickObject(conn, { title: '12V-2x6 connector', kind: 'Power input', specs: [['Rated', '600 W']] }));
+
+    this.controls = [
+      {
+        kind: 'choice',
+        label: 'Data flow',
+        options: ['Off', 'Slow', 'Realtime', 'Burst'],
+        value: 'Realtime',
+        onChange: (v) => (this.flowOverride = { Off: 0, Slow: 0.3, Realtime: 1, Burst: 2.6 }[v] ?? 1),
+      },
+    ];
   }
 
-  protected animate(t: number, _dt: number, time: number) {
+  protected animate(t: number, dt: number, time: number) {
     // Memory chips light up one after another, walking clockwise around the GPU.
-    const lit = range(t, 0.18, 0.66) * MEM;
+    const flow = this.flowOverride;
+    const lit = flow === null ? range(t, 0.18, 0.66) * MEM : flow > 0 ? MEM : 0;
+    this.busTime += dt * (flow ?? 1);
     for (let i = 0; i < MEM; i++) {
       const on = smoothstep(i, i + 0.9, lit);
       this.memGlow.array[i] = on * (0.16 + 0.06 * Math.sin(time * 5 + i * 1.3));
     }
     this.memGlow.needsUpdate = true;
     this.busUniforms.uLit.value = lit;
-    this.busUniforms.uTime.value = time;
+    this.busUniforms.uTime.value = this.busTime;
     const all = smoothstep(0.62, 0.8, t);
     this.dieMat.emissiveIntensity = all * (0.25 + 0.1 * Math.sin(time * 3));
     this.gpuLight.intensity = all * 900;
@@ -390,6 +496,16 @@ export class PcbLevel extends BaseLevel {
           : t < 0.9
             ? '1.79 TB/s of memory bandwidth converging on GB202'
             : 'Into the GPU package';
+  }
+
+  onExploreChange(active: boolean) {
+    if (active) {
+      this.flowOverride = 1;
+      const c = this.controls[0];
+      if (c.kind === 'choice') c.value = 'Realtime';
+    } else {
+      this.flowOverride = null;
+    }
   }
 
   getTransitionTarget() {

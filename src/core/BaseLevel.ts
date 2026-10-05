@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Level, LevelContext, LevelMeta, TransitionTarget } from './types';
+import type { Level, LevelContext, LevelControl, LevelMeta, Pickable, TransitionTarget } from './types';
 import { CameraRig, type CameraKey } from './CameraRig';
 import { disposeObject } from './dispose';
 
@@ -13,6 +13,8 @@ export abstract class BaseLevel implements Level {
   caption = '';
   bloom = 1;
   bokeh = 1.5;
+  pickables: Pickable[] = [];
+  controls: LevelControl[] = [];
 
   protected rig!: CameraRig;
   protected readonly lookAt = new THREE.Vector3();
@@ -44,10 +46,20 @@ export abstract class BaseLevel implements Level {
       cam.fov = fov;
       cam.updateProjectionMatrix();
     }
-    this.rig.apply(cam, t);
-    this.lookAt.copy(this.rig.look);
+    // In Explore mode the user owns the camera; the level keeps animating.
+    if (!this.ctx.view.freeCamera) {
+      this.rig.apply(cam, t);
+      this.lookAt.copy(this.rig.look);
+    }
     this.animate(t, dt, time);
   }
+
+  /** Where the camera would be for content time t (used to glide back after Explore). */
+  rigPose(t: number) {
+    return this.rig.evaluate(t);
+  }
+
+  onExploreChange(_active: boolean) {}
 
   getLookAt() {
     return this.lookAt;
