@@ -309,6 +309,8 @@ export class CardLevel extends BaseLevel {
         ['fins', 'case', 1.5],
       ],
       throttleNode: 'gpu',
+      // Double flow-through: each fan pushes air straight through its fin stack and out.
+      airflow: { inlets: this.fans, radius: FAN_R * 0.92, through: 'fins' },
     };
 
     this.controls = [

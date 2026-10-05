@@ -58,6 +58,8 @@ export const ui = {
     throttling: (pct: number) => `THROTTLING ${pct}%`,
     fullBoost: 'full boost',
     model: 'Model',
+    flow: (from: string, to: string) => `${from} → ${to}`,
+    toAir: 'Into the air',
     illustrative: 'illustrative, not measured',
   },
 };

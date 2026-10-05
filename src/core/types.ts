@@ -111,6 +111,16 @@ export interface ThermalSpec {
   links: [string, string, number][];
   /** Node that throttles when it passes 90 °C. */
   throttleNode?: string;
+  /**
+   * Forced air for the Thermal view: air is pulled in over each inlet (a fan), driven down
+   * (-Y) through the `through` node (the fin stack) and leaves below it, warming on the way.
+   */
+  airflow?: {
+    inlets: THREE.Object3D[];
+    /** Inlet radius, level units. */
+    radius: number;
+    through: string;
+  };
 }
 
 export interface LevelMeta {

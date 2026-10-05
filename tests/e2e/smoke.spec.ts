@@ -88,10 +88,20 @@ test('view modes: X-Ray, Section, Thermal, back to Normal', async ({ page }) => 
       timeout: 60_000,
     })
     .toBeGreaterThan(30);
+  // Heat path and forced air are drawn, and the inspector reads out the path in watts.
+  expect(
+    await page.evaluate(() => {
+      const f = (window as any).__teardown.interaction.views.flow;
+      return { links: !!f?.linkPts, air: !!f?.air };
+    }),
+  ).toEqual({ links: true, air: true });
+  await expect(page.locator('#inspector')).toContainText('→');
+  await expect(page.locator('#inspector')).toContainText('Into the air');
 
   await mode('Normal');
   expect(await probe()).toEqual({ mode: 'Normal', clip: 0, swapped: 0 });
   expect(await caps()).toBe(0);
+  expect(await page.evaluate(() => (window as any).__teardown.interaction.views.flow)).toBeNull();
   expectNoErrors(errors);
 });
 

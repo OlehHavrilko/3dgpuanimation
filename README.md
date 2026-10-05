@@ -106,6 +106,7 @@ The inspector's **View** control offers four modes:
   - Heat visibly spreads die → vapor chamber → heat pipes → fins.
   - You can set GPU load and fan mode.
   - Live readouts show temperatures, an estimated hotspot and board power. Throttling starts above 90 °C.
+  - The heat path is drawn and read out in watts: sparks run along every conduction link from the hotter part to the cooler one (GPU → vapour chamber → fin stacks under each fan), and on the card the forced air is visible too: drawn in over each fan, swirled, pushed through the fins and out, blue intake turning amber as it picks up heat. Fan mode changes the air speed; the readouts end with how much heat goes into the air.
 
 ### Signal trace
 

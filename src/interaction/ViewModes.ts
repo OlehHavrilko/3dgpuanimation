@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Level, LevelControl, ThermalSpec } from '../core/types';
 import { content } from '../content';
 import type { SectionStack } from '../core/sectionStack';
+import { ThermalFlow } from './ThermalFlow';
 
 const T = content.ui;
 
@@ -32,6 +33,7 @@ export class ViewModes {
   private caps = new SectionCaps();
   private focus: THREE.Object3D | null = null;
   thermal: ThermalSim | null = null;
+  private flow: ThermalFlow | null = null;
 
   constructor(private renderer: THREE.WebGLRenderer) {
     (this.neutralMat.uniforms.uColor.value as THREE.Color).set(0x161a2e);
@@ -65,6 +67,8 @@ export class ViewModes {
     }
     this.thermal?.dispose();
     this.thermal = null;
+    this.flow?.dispose();
+    this.flow = null;
     this.mode = mode;
     const level = this.level;
     if (!level) return;
@@ -79,6 +83,7 @@ export class ViewModes {
     else if (mode === 'Thermal' && level.thermal) {
       this.thermal = new ThermalSim(level.thermal);
       this.thermal.apply(level.scene, (mesh, mat) => this.swap(mesh, mat), this.neutralMat);
+      this.flow = new ThermalFlow(level.scene, level.thermal, this.thermal);
     }
   }
 
@@ -94,6 +99,7 @@ export class ViewModes {
   update(dt: number) {
     if (this.mode === 'Section') this.placePlane();
     this.thermal?.step(dt * 2.5); // time-lapse: heat visibly spreads in a few seconds
+    if (this.thermal) this.flow?.update(dt, this.thermal.fan);
   }
 
   /** Mode-specific controls for the inspector. */
@@ -292,6 +298,14 @@ export class ThermalSim {
     return this.spec.nodes.reduce((s, n) => s + this.power(n), 0);
   }
 
+  /** Heat leaving into the air right now (W). */
+  airPower() {
+    return this.spec.nodes.reduce((s, n) => {
+      const g = (n.toAir ?? 0) * (n.fanCooled ? 0.12 + 0.88 * this.fan : 1);
+      return s + g * (this.temp(n.id) - AMBIENT_C);
+    }, 0);
+  }
+
   controls(): LevelControl[] {
     const list: LevelControl[] = [
       {
@@ -315,6 +329,29 @@ export class ThermalSim {
       });
     }
     list.push({ kind: 'readout', label: T.thermal.boardPower, get: () => `${Math.round(this.totalPower())} W` });
+    // The main heat path, link by link from the throttling chip, then into the air.
+    const label = (id: string) => this.spec.nodes.find((n) => n.id === id)?.label ?? id;
+    let at = this.spec.throttleNode;
+    const seen = new Set<string>();
+    while (at && !seen.has(at)) {
+      seen.add(at);
+      const from = at;
+      const next = this.spec.links
+        .filter(([a, b]) => (a === from || b === from) && !seen.has(a === from ? b : a))
+        .sort((x, y) => y[2] - x[2])[0];
+      // The path ends where most of the heat leaves into the air instead of the next part.
+      const toAir = this.spec.nodes.find((n) => n.id === from)?.toAir ?? 0;
+      if (!next || toAir >= next[2]) break;
+      const [a, b, g] = next;
+      const to = a === from ? b : a;
+      list.push({
+        kind: 'readout',
+        label: T.thermal.flow(label(from), label(to)),
+        get: () => `${Math.max(0, Math.round(g * (this.temp(from) - this.temp(to))))} W`,
+      });
+      at = to;
+    }
+    list.push({ kind: 'readout', label: T.thermal.toAir, get: () => `${Math.max(0, Math.round(this.airPower()))} W` });
     for (const n of this.spec.nodes) {
       if (n.readout) list.push({ kind: 'readout', label: n.label, get: () => `${this.temp(n.id).toFixed(0)} °C` });
     }
