@@ -7,6 +7,7 @@ import { content } from '../content';
 import { canvasTexture, route45 } from '../core/canvas';
 import { pickInstancedGroup, pickInstances, pickObject } from '../interaction/pick';
 import { splineAt } from '../interaction/FollowTracer';
+import { boardStack } from '../core/sectionStack';
 
 /**
  * Level 2 — the RTX 5090 FE main board. Units: millimetres.
@@ -282,11 +283,14 @@ export class PcbLevel extends BaseLevel {
     const edgeMat = new THREE.MeshStandardMaterial({ color: 0x0a2614, roughness: 0.7 });
     const body = new THREE.Mesh(new THREE.BoxGeometry(W, 1.6, D), edgeMat);
     body.position.y = -0.8;
+    // Section view: a 14-layer board (local y +0.8 is the top face).
+    body.userData.section = boardStack(1.6, 0.8);
     this.scene.add(body);
     this.tp.pcb.push(body);
     // Separate PCIe 5.0 x16 board below the main board's edge, joined by a flex cable.
     const tab = new THREE.Mesh(new THREE.BoxGeometry(92, 1.6, 16), edgeMat);
     tab.position.set(-26, -0.8, -D / 2 - 14);
+    tab.userData.section = boardStack(1.6, 0.8);
     this.scene.add(tab);
     this.tp.pcb.push(tab);
     this.pickables.push(pickObject(tab, C.entities.pcieBoard));

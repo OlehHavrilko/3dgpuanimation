@@ -6,6 +6,10 @@ import { pickByT, smoothstep, smootherstep } from '../core/math';
 import { content } from '../content';
 import { pickInstancedGroup, pickInstances, pickObject } from '../interaction/pick';
 import { splineAt } from '../interaction/FollowTracer';
+import { boardStack, scaleStack } from '../core/sectionStack';
+
+/** Section view: the 14-layer board, in centimetres (1.6 mm thick, top at local y = +0.08). */
+const CARD_BOARD_STACK = scaleStack(boardStack(1.6, 0.8), 0.1);
 
 /**
  * Level 1 — GeForce RTX 5090 Founders Edition. Units: centimetres.
@@ -332,6 +336,7 @@ export class CardLevel extends BaseLevel {
     const s = this.scene;
     const pcbMat = new THREE.MeshStandardMaterial({ color: 0x0d3a1c, roughness: 0.55, metalness: 0.1 });
     const pcb = new THREE.Mesh(new THREE.BoxGeometry(2 * PCB_HALF, 0.16, 11), pcbMat);
+    pcb.userData.section = CARD_BOARD_STACK;
     pcb.position.set(0, -0.35, 0.4);
     s.add(pcb);
     this.pickables.push(pickObject(pcb, C.entities.mainPcb));
@@ -395,6 +400,7 @@ export class CardLevel extends BaseLevel {
     const g = new THREE.Group();
     const pcbMat = new THREE.MeshStandardMaterial({ color: 0x0d3a1c, roughness: 0.55, metalness: 0.1 });
     const board = new THREE.Mesh(new THREE.BoxGeometry(9.2, 0.16, 1.6), pcbMat);
+    board.userData.section = CARD_BOARD_STACK;
     board.position.set(-2.6, -0.35, -6.2);
     g.add(board);
     const gold = new THREE.MeshStandardMaterial({ color: 0xffc35a, metalness: 1, roughness: 0.22 });
@@ -432,6 +438,7 @@ export class CardLevel extends BaseLevel {
       new THREE.MeshStandardMaterial({ color: 0x0d3a1c, roughness: 0.55 }),
     );
     board.position.set(-LEN / 2 + 0.9, -0.35, -1.5);
+    board.userData.section = CARD_BOARD_STACK;
     g.add(board);
     const cable = new THREE.Mesh(
       new THREE.BoxGeometry(8.2, 0.03, 1.0),

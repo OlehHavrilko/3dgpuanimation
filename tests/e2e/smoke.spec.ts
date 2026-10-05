@@ -70,8 +70,16 @@ test('view modes: X-Ray, Section, Thermal, back to Normal', async ({ page }) => 
   expect(await probe()).toMatchObject({ mode: 'X-Ray', clip: 0 });
   expect((await probe()).swapped).toBeGreaterThan(10);
 
+  const caps = () =>
+    page.evaluate(() => {
+      let n = 0;
+      (window as any).__teardown.manager.current.scene.traverse((o: any) => o.userData.sectionCap && n++);
+      return n;
+    });
   await mode('Section');
   expect(await probe()).toMatchObject({ mode: 'Section', clip: 1 });
+  // Cut solids are filled: every opaque solid gets a cap twin.
+  expect(await caps()).toBeGreaterThan(10);
 
   await mode('Thermal');
   expect((await probe()).mode).toBe('Thermal');
@@ -83,6 +91,7 @@ test('view modes: X-Ray, Section, Thermal, back to Normal', async ({ page }) => 
 
   await mode('Normal');
   expect(await probe()).toEqual({ mode: 'Normal', clip: 0, swapped: 0 });
+  expect(await caps()).toBe(0);
   expectNoErrors(errors);
 });
 
