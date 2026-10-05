@@ -24,6 +24,11 @@ test('landing: attract drift, then Start the descent runs the guided tour', asyn
 test('acts and key numbers appear where they belong', async ({ page }) => {
   const errors = await openApp(page);
   await goToLevel(page, 2, 0.5);
+  // Act cards never come back to back: let the Act I card's cooldown run out first (it counts
+  // frame time, which is slow under SwiftShader).
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__teardown.story.cardCooldown), { timeout: 120_000 })
+    .toBeLessThanOrEqual(0);
   await goToLevel(page, 3, 0.1); // first scale of Act II
   await expect(page.locator('#act')).toHaveClass(/on/);
   await expect(page.locator('#act-title')).toHaveText('The Computation');

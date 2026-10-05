@@ -12,6 +12,7 @@ import { Overlay } from './core/Overlay';
 import { PostFX } from './core/PostFX';
 import { Story } from './core/Story';
 import { Tour, type TourSegment } from './core/Tour';
+import { projectSphere } from './core/seam';
 import { QUALITY } from './core/quality';
 import type { LevelContext } from './core/types';
 import { LEVELS } from './levels';
@@ -76,10 +77,11 @@ const ctx: LevelContext = {
 };
 
 // Current + previous + next stay built and warmed up (QUALITY.levelCache; ?cache=0 turns it off).
-const manager = new LevelManager(ctx, LEVELS, document.getElementById('flash')!, {
+const manager = new LevelManager(ctx, LEVELS, {
   keep: QUALITY.levelCache,
   prepare: QUALITY.levelCache > 0 ? createWarmup(renderer, camera, post.composer) : undefined,
 });
+post.seam.camera = manager.seamCamera;
 const profiler = new LevelProfiler(renderer);
 manager.profiler = profiler;
 const overlay = new Overlay(
@@ -96,8 +98,9 @@ let dissolveCapturedFor = -1;
 
 manager.onDeactivate = (level) => {
   interaction.detach(level.scene);
-  // Freeze the outgoing frame; play() is called on the other side of the swap.
-  if (!interaction.exploring) dissolve.reveal();
+  // A swap inside the seam needs no cover: the next level is already on screen. Anything else
+  // (a scrub that skipped the seam) freezes the outgoing frame; play() runs after the swap.
+  if (!interaction.exploring && !manager.lastSwapContinuous) dissolve.reveal();
 };
 manager.onSwap = (index, level) => {
   post.setScene(level.scene);
@@ -107,7 +110,8 @@ manager.onSwap = (index, level) => {
   labels.setLevel(level);
   sound.ambience.setScene(index);
   sound.ambience.whoosh();
-  dissolve.play();
+  if (manager.lastSwapContinuous) dissolve.reset();
+  else dissolve.play();
   dissolveCapturedFor = -1;
   applyDeepLink(index);
 };
@@ -399,6 +403,7 @@ function frame(now: number) {
   }
   story.update(state, rawDt);
   interaction.update(rawDt, state.content);
+  manager.syncSeamCamera(); // after parallax: the next level sees the final camera
   labels.update(camera, interaction.hoverKey);
   labelTimer -= rawDt;
   if (labelTimer <= 0) {
@@ -426,14 +431,27 @@ function frame(now: number) {
 
   // Per-level post settings (DOF works in the level's local units).
   const { dof, dofPass, bloom } = post;
-  bloom.intensity = settings.bloom * (level.bloom ?? 1) * post.grade.bloom;
+  // Seamless descent: while the next scale is revealed, its look blends in with it.
+  const next = manager.seamLevel;
+  post.seam.scene = next?.scene ?? null;
+  post.seamPass.enabled = !!next;
+  post.setGradeBlend(state.index, next ? state.index + 1 : state.index, next ? state.seam : 0);
+  if (next) {
+    post.seam.mix = state.seam;
+    const target = level.getTransitionTarget();
+    post.seam.radius = projectSphere(camera, target.position, target.radius, post.seam.centre);
+  }
+  const levelBloom = (level.bloom ?? 1) + ((next?.bloom ?? 1) - (level.bloom ?? 1)) * state.seam;
+  bloom.intensity = settings.bloom * levelBloom * post.grade.bloom;
   const focus = exploreFocus ?? manager.getFocusPoint(state);
   dof.cocMaterial.adoptCameraSettings(camera); // near/far change per level
   if (focus) {
     dof.target = focus;
     dof.cocMaterial.focusRange = camera.position.distanceTo(focus) * 0.55;
   }
-  dof.bokehScale = (level.bokeh ?? 1.5) * settings.bokeh;
+  // DOF uses the current level's depth: fade it out as the next scale takes over, and back in
+  // once the new level has settled.
+  dof.bokehScale = (level.bokeh ?? 1.5) * settings.bokeh * (1 - state.seam) * state.arrival;
   // Depth of field is for the cinematic story; in Explore it only gets in the way (and costs).
   dofPass.enabled = settings.dof && !interaction.exploring;
 

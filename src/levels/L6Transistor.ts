@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { BaseLevel, addGlowAttribute, addRimLight, makeInstanceGlow, setControlValue } from '../core/BaseLevel';
-import type { CameraKey } from '../core/CameraRig';
+import { entry, type CameraKey } from '../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../core/types';
 import { mulberry32, pickByT, smoothstep } from '../core/math';
 import { content } from '../content';
@@ -91,7 +91,7 @@ export class TransistorLevel extends BaseLevel {
     const cx = this.gateX(CENTER_GATE);
     const cz = this.finZ(FOCUS_FIN);
     return [
-      { t: 0.0, pos: [460, 330, 560], look: [0, 0, 0] },
+      ...entry({ t: 0, pos: [460, 330, 560], look: [0, 0, 0] }, 0.3),
       { t: 0.3, pos: [cx + 190, 150, cz + 230], look: [cx, 20, cz - 50] },
       { t: 0.55, pos: [cx + 85, 78, cz + 120], look: [cx, 25, cz] },
       // Straight-on to the focused gate: source epi on the left, drain on the right.
@@ -209,7 +209,7 @@ export class TransistorLevel extends BaseLevel {
 
     // ---- gates (metal stacks wrapping every fin) + SiN caps with a glowing contact line
     const gateMat = addRimLight(
-      new THREE.MeshStandardMaterial({ color: 0x9ba3ae, metalness: 1, roughness: 0.26 }),
+      new THREE.MeshStandardMaterial({ color: 0x9ba3ae, metalness: 1, roughness: 0.4 }),
       0xd8ffe0,
       0.1,
       4,
@@ -240,7 +240,7 @@ export class TransistorLevel extends BaseLevel {
       new THREE.MeshStandardMaterial({
         color: 0x9ba3ae,
         metalness: 1,
-        roughness: 0.26,
+        roughness: 0.4,
         transparent: true,
         emissive: GREEN,
         emissiveIntensity: 0,

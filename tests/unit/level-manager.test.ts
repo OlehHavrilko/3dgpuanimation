@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
-import { CONTENT_SHARE, LevelManager, type LevelEntry, type LevelManagerOptions } from '../../src/core/LevelManager';
+import {
+  CONTENT_SHARE,
+  SEAM_END,
+  LevelManager,
+  type LevelEntry,
+  type LevelManagerOptions,
+} from '../../src/core/LevelManager';
 import type { Level, LevelContext } from '../../src/core/types';
 
 function fakeLevel(name: string): Level {
@@ -33,10 +39,9 @@ function setup(count = 3, options: LevelManagerOptions = {}) {
     view: { freeCamera: false },
     journey: { trace: null, follow: false },
   } as unknown as LevelContext;
-  const flash = { style: { opacity: '' } } as unknown as HTMLElement;
   // Background work runs only when the test flushes it.
   const queue: (() => void)[] = [];
-  const manager = new LevelManager(ctx, entries, flash, { schedule: (fn) => queue.push(fn), ...options });
+  const manager = new LevelManager(ctx, entries, { schedule: (fn) => queue.push(fn), ...options });
   const flush = async () => {
     while (queue.length) await queue.shift()!(); // each job is async; it may queue the next
   };
@@ -147,6 +152,48 @@ describe('LevelManager', () => {
     expect(s.dive).toBeCloseTo(0.5);
     manager.setProgress(manager.progressForLevel(2, 0.95));
     expect(manager.tick(0.016, 0).dive).toBe(0);
+  });
+
+  it('reveals the next level during the dive and marks the swap inside the seam as continuous', () => {
+    const { manager, created } = setup(3, { keep: 0 });
+    const diveAt = (d: number) => manager.progressForLevel(0, CONTENT_SHARE + (1 - CONTENT_SHARE) * d);
+    manager.setProgress(diveAt(0.2));
+    expect(manager.tick(0.016, 0).seam).toBe(0);
+    expect(manager.seamLevel).toBeNull();
+
+    manager.setProgress(diveAt(0.8));
+    const s = manager.tick(0.016, 0);
+    expect(s.seam).toBeGreaterThan(0);
+    expect(manager.seamLevel).toBe(created[1][0]); // built on demand even without a cache
+    expect(created[1][0].update).toHaveBeenCalledWith(0, 0.016, 0);
+
+    manager.setProgress(diveAt((SEAM_END + 1) / 2));
+    manager.tick(0.016, 0);
+    manager.setProgress(manager.progressForLevel(1, 0.01));
+    manager.tick(0.016, 0);
+    expect(manager.currentIndex).toBe(1);
+    expect(manager.lastSwapContinuous).toBe(true);
+    expect(created[1].length).toBe(1); // the revealed instance is the one that becomes current
+  });
+
+  it('scrolling back up through the seam is continuous too', () => {
+    const { manager } = setup(3);
+    manager.setProgress(manager.progressForLevel(1, 0.01));
+    manager.tick(0.016, 0);
+    manager.setProgress(manager.progressForLevel(0, CONTENT_SHARE + (1 - CONTENT_SHARE) * 0.99));
+    const s = manager.tick(0.016, 0);
+    expect(manager.currentIndex).toBe(0);
+    expect(manager.lastSwapContinuous).toBe(true);
+    expect(s.seam).toBeCloseTo(1, 3);
+  });
+
+  it('a jump that skips the seam is not continuous', () => {
+    const { manager } = setup(3);
+    manager.setProgress(manager.progressForLevel(0, 0.5));
+    manager.tick(0.016, 0);
+    manager.setProgress(manager.progressForLevel(1, 0.5));
+    manager.tick(0.016, 0);
+    expect(manager.lastSwapContinuous).toBe(false);
   });
 
   it('records a profile entry per activation when a profiler is attached', () => {

@@ -16,7 +16,8 @@ import {
 } from 'postprocessing';
 import { QUALITY } from './quality';
 import { FxaaEffect } from './FxaaEffect';
-import { GRADE_BASE, hueRadians, resolveGrade, type Grade } from './Grade';
+import { SeamEffect } from './SeamEffect';
+import { GRADE_BASE, hueRadians, lerpGrade, resolveGrade, type Grade } from './Grade';
 
 /** Fully-resolved grade, as applied to the effect uniforms. */
 export type ResolvedGrade = Required<Grade>;
@@ -24,7 +25,7 @@ export type ResolvedGrade = Required<Grade>;
 /**
  * The whole post chain, isolated from the render loop:
  *
- *   render → [SMAA] → depth of field → grade pass (bloom → chromatic → contrast →
+ *   render → seam (next scale revealed during a dive) → [FXAA] → depth of field → grade pass (bloom → chromatic → contrast →
  *   hue/sat → vignette → ACES → film grain)
  *
  * Tone mapping is deliberately near the end so grain lands in display space, like film.
@@ -36,6 +37,9 @@ export class PostFX {
   readonly bloom: BloomEffect;
   readonly dof: DepthOfFieldEffect;
   readonly dofPass: EffectPass;
+  /** Reveals the next scale inside the current one during a dive (Phase C seamless descent). */
+  readonly seam: SeamEffect;
+  readonly seamPass: EffectPass;
   readonly chromatic: ChromaticAberrationEffect;
   readonly grain: NoiseEffect;
   readonly vignette: VignetteEffect;
@@ -44,6 +48,7 @@ export class PostFX {
 
   /** The look currently applied (read by the render loop for per-level multipliers). */
   grade: ResolvedGrade = resolveGrade(-1);
+  private gradeKey = '';
 
   /** Debug multipliers, wired to lil-gui. */
   bloomScale = 1;
@@ -87,6 +92,10 @@ export class PostFX {
     const toneMapping = new ToneMappingEffect({ mode: ToneMappingMode.ACES_FILMIC });
 
     this.composer.addPass(this.renderPass);
+    this.seam = new SeamEffect(QUALITY.msaaSamples);
+    this.seamPass = new EffectPass(camera, this.seam);
+    this.seamPass.enabled = false;
+    this.composer.addPass(this.seamPass);
     // FXAA is the MSAA replacement on devices where multisampling is too costly.
     if (QUALITY.fxaa) {
       this.composer.addPass(new EffectPass(camera, new FxaaEffect()));
@@ -112,9 +121,16 @@ export class PostFX {
     this.renderPass.mainScene = scene;
   }
 
-  /** Blend the new level's look in over ~0.35 s so scenes don't pop. */
   setGrade(index: number) {
-    this.grade = resolveGrade(index);
+    this.setGradeBlend(index, index, 0);
+  }
+
+  /** Look between two levels (t = 0: `from`, 1: `to`), so a seamless dive never pops. */
+  setGradeBlend(from: number, to: number, t: number) {
+    const key = `${from}>${to}@${t.toFixed(3)}`;
+    if (key === this.gradeKey) return;
+    this.gradeKey = key;
+    this.grade = t <= 0 ? resolveGrade(from) : lerpGrade(resolveGrade(from), resolveGrade(to), t);
     this.applyGrade();
   }
 

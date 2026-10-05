@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { BaseLevel, setControlValue } from '../core/BaseLevel';
-import type { CameraKey } from '../core/CameraRig';
+import { entry, type CameraKey } from '../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../core/types';
 import { mulberry32, pickByT, smoothstep } from '../core/math';
 import { content } from '../content';
@@ -90,7 +90,7 @@ export class AtomLevel extends BaseLevel {
 
   protected cameraKeys(): CameraKey[] {
     return [
-      { t: 0.0, pos: [0, 34, 130], look: [0, 0, 0] },
+      ...entry({ t: 0, pos: [0, 34, 130], look: [0, 0, 0] }, 0.68),
       { t: 0.3, pos: [70, 26, 78], look: [0, 0, 0] },
       { t: 0.6, pos: [30, 48, 30], look: [0, 0, 0] },
       { t: 0.85, pos: [9, 4, 14], look: [0, 0, 0] },

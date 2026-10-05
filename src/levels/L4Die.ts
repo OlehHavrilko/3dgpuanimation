@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { BaseLevel, setControlValue } from '../core/BaseLevel';
-import type { CameraKey } from '../core/CameraRig';
+import { entry, type CameraKey } from '../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../core/types';
 import { pickByT, smoothstep } from '../core/math';
 import { content } from '../content';
@@ -75,7 +75,7 @@ export class DieLevel extends BaseLevel {
   protected cameraKeys(): CameraKey[] {
     const p = this.target.position;
     return [
-      { t: 0.0, pos: [0, 34, 40], look: [0, 0, 0] },
+      ...entry({ t: 0, pos: [0, 34, 40], look: [0, 0, 0] }, 0.48),
       { t: 0.2, pos: [-34, 13, 26], look: [0, 0, 0] },
       { t: 0.45, pos: [-4, 44, 10], look: [0, 0, 0] },
       { t: 0.68, pos: [30, 12, -24], look: [0, 0, 0] },

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { BaseLevel, addGlowAttribute, makeInstanceGlow } from '../core/BaseLevel';
-import type { CameraKey } from '../core/CameraRig';
+import { entry, type CameraKey } from '../core/CameraRig';
 import type { LevelMeta, PickHit, TransitionTarget } from '../core/types';
 import { mulberry32, pickByT, range, smoothstep } from '../core/math';
 import { content } from '../content';
@@ -57,7 +57,7 @@ export class PcbLevel extends BaseLevel {
 
   protected cameraKeys(): CameraKey[] {
     return [
-      { t: 0.0, pos: [70, 170, 175], look: [0, 0, -8] },
+      ...entry({ t: 0, pos: [70, 170, 175], look: [0, 0, -8] }, 0.37),
       { t: 0.25, pos: [-120, 110, 120], look: [-8, 0, -8] },
       { t: 0.5, pos: [-15, 185, 60], look: [0, 0, -4] },
       { t: 0.75, pos: [70, 85, 95], look: [0, 0, 0] },

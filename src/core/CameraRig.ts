@@ -59,3 +59,18 @@ export class CameraRig {
     camera.lookAt(this.look);
   }
 }
+
+/**
+ * Seamless descent: a level's first frame is where the previous level's dive ends, so it has to
+ * be physically closer than the establishing shot. `entry(key, f)` is `key` pulled in towards its
+ * look-at point by f (at t = 0); the establishing shot itself follows at `revealAt`, so the level
+ * arrives inside its subject and then opens up.
+ */
+export function entry(key: CameraKey, f: number, revealAt = 0.12): CameraKey[] {
+  const [lx, ly, lz] = key.look;
+  const [px, py, pz] = key.pos;
+  return [
+    { t: 0, pos: [lx + (px - lx) * f, ly + (py - ly) * f, lz + (pz - lz) * f], look: key.look },
+    { ...key, t: revealAt },
+  ];
+}

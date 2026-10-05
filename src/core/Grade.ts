@@ -57,6 +57,13 @@ export function resolveGrade(index: number): Required<Grade> {
   return { ...NEUTRAL, ...(GRADES[index] ?? {}) };
 }
 
+/** Per-field linear blend of two resolved grades. */
+export function lerpGrade(a: Required<Grade>, b: Required<Grade>, t: number): Required<Grade> {
+  const out = { ...a };
+  for (const k of Object.keys(a) as (keyof Grade)[]) out[k] = a[k] + (b[k] - a[k]) * t;
+  return out;
+}
+
 /** The post-processing baseline the grade multiplies: from the device tier. */
 export const GRADE_BASE = {
   grain: QUALITY.grain,

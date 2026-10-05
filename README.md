@@ -1,6 +1,6 @@
 # GPU → Atom
 
-A scroll-driven 3D teardown of a **GeForce RTX 5090 Founders Edition**, from the whole card down to a single silicon atom. Eight scales in **three acts**, one continuous dive — every part modelled procedurally and rendered live, with a **guided tour**, match-dissolve transitions, X-Ray / section / thermal views and a command palette.
+A scroll-driven 3D teardown of a **GeForce RTX 5090 Founders Edition**, from the whole card down to a single silicon atom. Eight scales in **three acts**, one continuous dive — every part modelled procedurally and rendered live, with a **guided tour**, a seamless descent (each scale opens inside the previous one), X-Ray / section / thermal views and a command palette.
 
 The eight scales are a chronology; the **narrative layer** gives them a shape. The landing shows a live attract loop, the descent is framed as _I — The Machine_ (GPU → PCB → package), _II — The Computation_ (die → metal → transistor) and _III — The Matter_ (lattice → atom), three anchor numbers land where they mean something, one dive runs chrome-free for a breath, and the journey ends on a finale instead of simply stopping.
 
@@ -186,12 +186,14 @@ src/
                         debug GUI, static text
   content/              every user-facing string (en/); add a language = add a dictionary
   core/
-    LevelManager.ts     timeline → level segments, current/next/previous cache, dive, flash
+    LevelManager.ts     timeline → level segments, current/next/previous cache, dive + seam
+    seam.ts             SeamMap: the camera mapping between two scales; sphere → screen disc
+    SeamEffect.ts       draws the next scale and reveals it inside the dive target
     LevelProfiler.ts    build / warmup / first-frame / transition / memory per activation
     PostFX.ts           the effect chain + per-level colour grade
     Grade.ts            hand-tuned look per level (bloom, contrast, grain, chromatic)
     FxaaEffect.ts       a compact asset-free FXAA effect (MSAA fallback on low tier)
-    FrameDissolve.ts    freezes the last frame and fades it out across a scene swap
+    FrameDissolve.ts    covers a swap that skipped the seam (a scrub jump) with a frozen frame
     Tour.ts             the guided autoplay tour and its progress bar
     Story.ts            acts, anchor numbers, clean shot, finale, share-frame composer
     Attract.ts          the landing's slow drift so the scene is live before the first click
@@ -220,12 +222,19 @@ src/
 
 **Level cache + warmup.** The current level and its two neighbours stay built (`QUALITY.levelCache`; off on the low tier and with `?cache=0`). In idle time `LevelManager` builds the next level, then the previous one, and `app/warmup.ts` prepares each: `compileAsync` against a 32×32 clone of the composer's input buffer (same colour space, format and MSAA, so the compiled programs are the ones the composer will use), then one tiny render with frustum culling off to upload every buffer and texture. Crossing a boundary is then a scene swap with no build and no shader compile; levels that leave the window are disposed. `bench/comparison.md` has the before/after numbers.
 
-**Transition.** Each segment has two parts:
+**Seamless descent.** Each segment has two parts:
 
 1. **Content (first 84%).** The level animates its story via `update(t)`, with `t` running 0..1.
-2. **Dive (last 16%).** The manager dollies the camera logarithmically into `getTransitionTarget()` until the target is about 3× larger than the frame.
+2. **Dive (last 16%).** The camera dollies logarithmically into `getTransitionTarget()`.
 
-At the boundary the outgoing frame is copied into a 2D overlay (`FrameDissolve`) during the dive and faded + pushed in over ~0.56 s while the new level renders underneath; a much subtler green flash rides on top. Because the fade is a CSS transform/opacity transition, it keeps running even if the new level's first frame is busy. The flash is also scroll-driven at the start of each level, so it behaves the same when scrolling backwards.
+There is no cut and no flash between scales; the next level exists _inside_ the previous one:
+
+- **Where the dive ends.** The next level's first frame (its camera rig at `t = 0`) decides it: the dive stops when the frame is physically as wide as that first frame, so the scale readout shrinks monotonically and is continuous across the boundary. Levels after the card open on an _entry_ key inside their subject (`entry()` in `CameraRig.ts`) and open up to their establishing shot over the first ~12% of their content.
+- **Where the next level appears.** `SeamMap` is a similarity transform (rotation + uniform scale + translation) taking the end-of-dive camera onto the next level's first-frame camera, anchored on the dive target. Every camera of the dive maps to a camera in the next level, so the next level is drawn at its true size and place inside the target, approaching at the same rate.
+- **How it is revealed.** From 45% of the dive, `SeamEffect` renders the next level (built and warmed up by the level cache) into its own buffer and blends it in: first inside the target's on-screen disc, then everywhere. At the end of the dive the frame _is_ the next level's first frame, so the swap changes nothing on screen. Colour grade, bloom and the scale readout blend with it; depth of field fades out during the reveal and back in once the new level has settled.
+- **Both directions.** Everything is a function of scroll progress, so scrolling back up crosses the same seam in reverse. A scrub that jumps over the seam in one frame is the only case still covered by `FrameDissolve`.
+
+`tests/e2e/descent.spec.ts` walks the whole route GPU → Atom and checks every boundary: the reveal, the matching frame, the shrinking field of view and a cover-free swap.
 
 **Visual grade.** `PostFX` runs DOF → bloom → chromatic aberration → brightness/contrast → hue/saturation → vignette → ACES tone mapping → film grain, with a per-level look from `Grade.ts` (the SEM level goes near-monochrome and grainy, the die goes saturated, the atom goes dark and bloomy). Low-tier devices get asset-free FXAA instead of MSAA.
 

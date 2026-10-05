@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { BaseLevel, setControlValue } from '../core/BaseLevel';
-import type { CameraKey } from '../core/CameraRig';
+import { entry, type CameraKey } from '../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../core/types';
 import { mulberry32, pickByT, smootherstep, smoothstep } from '../core/math';
 import { content } from '../content';
@@ -60,7 +60,7 @@ export class PackageLevel extends BaseLevel {
   protected cameraKeys(): CameraKey[] {
     const top = this.topAtFullPeel();
     return [
-      { t: 0.0, pos: [55, 70, 85], look: [0, 0, 0] },
+      ...entry({ t: 0, pos: [55, 70, 85], look: [0, 0, 0] }, 0.41),
       { t: 0.3, pos: [95, 30, 70], look: [0, 12, 0] },
       { t: 0.55, pos: [70, 12, -80], look: [0, 16, 0] },
       { t: 0.78, pos: [-40, top + 50, 55], look: [0, top - 6, 0] },
