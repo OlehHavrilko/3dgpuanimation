@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "license": "MIT",
   "description": "Scroll-driven 3D teardown of an NVIDIA-style GPU, from graphics card down to a single silicon atom.",
   "scripts": {
     "dev": "vite",
