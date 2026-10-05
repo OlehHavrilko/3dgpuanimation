@@ -1,10 +1,31 @@
 # GPU → Atom
 
-A scroll-driven 3D teardown of a **GeForce RTX 5090 Founders Edition**, from the whole card down to a single silicon atom. Eight scales in **three acts**, one continuous dive — every part modelled procedurally and rendered live, with a **guided tour**, a seamless descent (each scale opens inside the previous one), X-Ray / section / thermal views and a command palette.
+**An interactive WebGL dive from a GeForce RTX 5090 down to a single silicon atom.** Eight scales, from 30 cm to 0.2 nm, in one continuous camera move. Every part is modelled procedurally and rendered live in the browser: no 3D models, textures or video.
 
-The eight scales are a chronology; the **narrative layer** gives them a shape. The landing shows a live attract loop, the descent is framed as _I — The Machine_ (GPU → PCB → package), _II — The Computation_ (die → metal → transistor) and _III — The Matter_ (lattice → atom), three anchor numbers land where they mean something, one dive runs chrome-free for a breath, and the journey ends on a finale instead of simply stopping.
+**[▶ Open the live demo](https://olehhavrilko.github.io/3dgpuanimation/)** · works in any modern desktop or mobile browser · [skip the intro](https://olehhavrilko.github.io/3dgpuanimation/?nointro)
 
-**Быстрый старт:** `npm install`, then `npm run dev`, then open the URL Vite prints. Click **Start the descent** or scroll. Add `?debug` for a timeline scrubber, `?nointro` to skip the landing card, or `?quality=low|high` to force a tier.
+[![GPU → Atom: the GB202 die, one of eight scales](public/og.jpg)](https://olehhavrilko.github.io/3dgpuanimation/)
+
+<!-- TODO: replace the still above with a short GIF of the descent (card → die → atom), ~10 s, ≤ 8 MB, saved as docs/descent.gif -->
+
+**Stack:** TypeScript · Three.js · hand-written GLSL · GSAP ScrollTrigger · postprocessing · Web Audio API · Vite · Vitest · Playwright · GitHub Actions / Pages
+
+## What I built
+
+- **Eight procedural scenes** (card, PCB, package, die, metal stack, FinFET, lattice, atom), about 13k lines of TypeScript, with physically grounded data: real RTX 5090 / GB202 specs, the silicon lattice built from its lattice constant, the electron cloud sampled from hydrogen-like orbitals.
+- **A seamless descent:** each scale opens inside the previous one through a camera mapping between scenes (`core/seam.ts`), with a level cache that keeps only the current scale and its neighbours in GPU memory.
+- **Custom shaders:** thin-film interference on the die, per-instance glow, an asset-free FXAA pass and a per-scale colour grade.
+- **Interaction design:** a guided tour, an Explore mode with hover/inspect on thousands of instanced parts, X-Ray / Section / Thermal views, a command palette, deep links and touch gestures.
+- **Storytelling layer:** three acts, three anchor numbers, a logarithmic scale ruler and a finale that renders a shareable 1200×630 frame.
+- **Performance and quality:** adaptive resolution and quality tiers, a per-level profiler and benchmark, unit tests, and Playwright end-to-end tests that run the whole descent in headless Chromium without a GPU on every push.
+
+## Run locally
+
+`npm install`, then `npm run dev`, then open the URL Vite prints. Click **Start the descent** or scroll. Add `?debug` for a timeline scrubber, `?nointro` to skip the landing card, or `?quality=low|high` to force a tier.
+
+## The eight scales
+
+A scroll-driven teardown of a **GeForce RTX 5090 Founders Edition** in **three acts**: _I — The Machine_ (GPU → PCB → package), _II — The Computation_ (die → metal → transistor) and _III — The Matter_ (lattice → atom). The landing shows a live attract loop, three anchor numbers land where they mean something, one dive runs chrome-free for a breath, and the journey ends on a finale instead of simply stopping.
 
 | #   | Level               | Scale  | What happens                                                                                                                                                                                      |
 | --- | ------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
