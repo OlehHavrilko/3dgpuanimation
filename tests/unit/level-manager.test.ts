@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
-import { CONTENT_SHARE, LevelManager, type LevelEntry } from '../../src/core/LevelManager';
+import { CONTENT_SHARE, LevelManager, type LevelEntry, type LevelManagerOptions } from '../../src/core/LevelManager';
 import type { Level, LevelContext } from '../../src/core/types';
 
 function fakeLevel(name: string): Level {
@@ -16,7 +16,7 @@ function fakeLevel(name: string): Level {
   };
 }
 
-function setup(count = 3) {
+function setup(count = 3, options: LevelManagerOptions = {}) {
   const created: Level[][] = Array.from({ length: count }, () => []);
   const entries: LevelEntry[] = Array.from({ length: count }, (_, i) => ({
     meta: { name: `L${i}`, scale: '1 m', description: '', unitMeters: 1, weight: 1 },
@@ -34,8 +34,13 @@ function setup(count = 3) {
     journey: { trace: null, follow: false },
   } as unknown as LevelContext;
   const flash = { style: { opacity: '' } } as unknown as HTMLElement;
-  const manager = new LevelManager(ctx, entries, flash);
-  return { manager, created };
+  // Background work runs only when the test flushes it.
+  const queue: (() => void)[] = [];
+  const manager = new LevelManager(ctx, entries, flash, { schedule: (fn) => queue.push(fn), ...options });
+  const flush = async () => {
+    while (queue.length) await queue.shift()!(); // each job is async; it may queue the next
+  };
+  return { manager, created, flush };
 }
 
 describe('LevelManager', () => {
@@ -55,18 +60,81 @@ describe('LevelManager', () => {
     expect(created[1][0].init).toHaveBeenCalledTimes(1);
   });
 
-  it('disposes the outgoing level when crossing a boundary (after onBeforeDispose)', () => {
+  it('keeps the previous level built and detaches it on deactivation', () => {
     const { manager, created } = setup();
-    const order: string[] = [];
-    manager.onBeforeDispose = (l) => order.push(`before:${l.meta.name}`);
+    const deactivated: string[] = [];
+    manager.onDeactivate = (l) => deactivated.push(l.meta.name);
     manager.setProgress(manager.progressForLevel(0, 0.5));
     manager.tick(0.016, 0);
-    const first = created[0][0];
-    (first.dispose as ReturnType<typeof vi.fn>).mockImplementation(() => order.push('dispose:L0'));
     manager.setProgress(manager.progressForLevel(1, 0.5));
     manager.tick(0.016, 0);
-    expect(order).toEqual(['before:L0', 'dispose:L0']);
-    expect(manager.currentIndex).toBe(1);
+    expect(deactivated).toEqual(['L0']);
+    expect(created[0][0].dispose).not.toHaveBeenCalled();
+    expect(manager.cachedIndices).toEqual([0, 1]);
+  });
+
+  it('keep: 0 disposes the outgoing level on swap (cache off)', async () => {
+    const { manager, created, flush } = setup(3, { keep: 0 });
+    manager.setProgress(manager.progressForLevel(0, 0.5));
+    manager.tick(0.016, 0);
+    await flush();
+    manager.setProgress(manager.progressForLevel(1, 0.5));
+    manager.tick(0.016, 0);
+    await flush();
+    expect(created[0][0].dispose).toHaveBeenCalledTimes(1);
+    expect(manager.cachedIndices).toEqual([1]);
+  });
+
+  it('prepares the neighbours in the background, next first', async () => {
+    const prepared: string[] = [];
+    const prepare = vi.fn(async (l: Level) => (prepared.push(l.meta.name), 5));
+    const { manager, created, flush } = setup(4, { prepare });
+    manager.setProgress(manager.progressForLevel(1, 0.5));
+    manager.tick(0.016, 0);
+    expect(manager.cachedIndices).toEqual([1]); // nothing extra on the critical path
+    await flush();
+    expect(prepared).toEqual(['L2', 'L0']);
+    expect(manager.cachedIndices).toEqual([0, 1, 2]);
+
+    // Crossing into a prepared neighbour re-uses it: no rebuild.
+    manager.setProgress(manager.progressForLevel(2, 0.5));
+    manager.tick(0.016, 0);
+    expect(created[2].length).toBe(1);
+  });
+
+  it('disposes levels that fall outside the current/next/previous window', async () => {
+    const { manager, created, flush } = setup(4);
+    manager.setProgress(manager.progressForLevel(0, 0.5));
+    manager.tick(0.016, 0);
+    await flush();
+    manager.setProgress(manager.progressForLevel(3, 0.5));
+    manager.tick(0.016, 0);
+    expect(created[0][0].dispose).toHaveBeenCalledTimes(1);
+    expect(created[1][0].dispose).toHaveBeenCalledTimes(1);
+    expect(manager.cachedIndices).toEqual([3]);
+    await flush();
+    expect(manager.cachedIndices).toEqual([2, 3]);
+  });
+
+  it('skips stale background work after the user moved on', async () => {
+    const { manager, created, flush } = setup(5);
+    manager.setProgress(manager.progressForLevel(0, 0.5));
+    manager.tick(0.016, 0); // queues L1
+    manager.setProgress(manager.progressForLevel(4, 0.5));
+    manager.tick(0.016, 0);
+    await flush();
+    expect(created[1].length).toBe(0);
+    expect(manager.cachedIndices).toEqual([3, 4]);
+  });
+
+  it('dispose() releases every cached level', async () => {
+    const { manager, created, flush } = setup();
+    manager.setProgress(manager.progressForLevel(1, 0.5));
+    manager.tick(0.016, 0);
+    await flush();
+    manager.dispose();
+    for (const list of created) for (const l of list) expect(l.dispose).toHaveBeenCalledTimes(1);
+    expect(manager.cachedIndices).toEqual([]);
   });
 
   it('splits each segment into content and a dive (except the last level)', () => {

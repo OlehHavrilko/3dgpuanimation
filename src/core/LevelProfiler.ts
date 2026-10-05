@@ -14,6 +14,8 @@ export interface LevelTiming {
   warmupMs: number;
   /** First composer.render() after the swap, GPU-synchronised: includes shader compiles. */
   firstFrameMs: number;
+  /** The frame after that, measured the same way: the level's steady-state cost, for reference. */
+  nextFrameMs: number;
   /** Swap decision -> first frame on screen. What the user actually waits for. */
   transitionMs: number;
   /** Programs compiled during the first frame. */
@@ -33,6 +35,8 @@ export interface LevelTiming {
 export class LevelProfiler {
   readonly records: LevelTiming[] = [];
   private pending: { rec: LevelTiming; t0: number; programs: number } | null = null;
+  /** Record whose steady-state (second) frame is still to be measured. */
+  private steady: LevelTiming | null = null;
   private pixel = new Uint8Array(4);
 
   constructor(private renderer: THREE.WebGLRenderer) {}
@@ -46,6 +50,7 @@ export class LevelProfiler {
       buildMs: 0,
       warmupMs: 0,
       firstFrameMs: 0,
+      nextFrameMs: 0,
       transitionMs: 0,
       programsCompiled: 0,
       geometries: 0,
@@ -54,6 +59,7 @@ export class LevelProfiler {
       heapMB: 0,
     };
     this.pending = { rec, t0: performance.now(), programs: 0 };
+    this.steady = null;
     return rec;
   }
 
@@ -62,17 +68,45 @@ export class LevelProfiler {
     return this.pending !== null;
   }
 
-  /** Wrap the first render after a swap. Forces a GPU sync so compile/upload cost is included. */
-  measureFirstFrame(render: () => void, scene: THREE.Scene) {
-    const p = this.pending!;
-    const programsBefore = this.renderer.info.programs?.length ?? 0;
+  /** True while the current frame should be rendered through measure(). */
+  get measuring() {
+    return this.pending !== null || this.steady !== null;
+  }
+
+  /**
+   * Wrap a render: the first one after a swap (returns the finished record) or the one after it
+   * (fills in nextFrameMs, returns null). Forces a GPU sync so compile/upload cost is included.
+   */
+  measure(render: () => void, scene: THREE.Scene): LevelTiming | null {
+    if (this.pending) return this.measureFirstFrame(render, scene);
+    const rec = this.steady!;
+    rec.nextFrameMs = round(this.timed(render));
+    this.steady = null;
+    return null;
+  }
+
+  /** Time one render on the GPU: drain earlier frames first, so a backlog isn't billed to this one. */
+  private timed(render: () => void) {
+    this.sync();
     const t = performance.now();
     render();
+    this.sync();
+    return performance.now() - t;
+  }
+
+  /** readPixels blocks until every queued command has executed. */
+  private sync() {
     const gl = this.renderer.getContext();
-    gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, this.pixel); // blocks until the GPU is done
+    gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, this.pixel);
+  }
+
+  private measureFirstFrame(render: () => void, scene: THREE.Scene) {
+    const p = this.pending!;
+    const programsBefore = this.renderer.info.programs?.length ?? 0;
+    const frameMs = this.timed(render);
     const now = performance.now();
     const rec = p.rec;
-    rec.firstFrameMs = now - t;
+    rec.firstFrameMs = frameMs;
     rec.transitionMs = now - p.t0;
     rec.programsCompiled = Math.max(0, (this.renderer.info.programs?.length ?? 0) - programsBefore);
     rec.geometries = this.renderer.info.memory.geometries;
@@ -84,6 +118,7 @@ export class LevelProfiler {
       rec[k] = round(rec[k]);
     this.records.push(rec);
     this.pending = null;
+    this.steady = rec;
     return rec;
   }
 }

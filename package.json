@@ -14,7 +14,8 @@
     "bench": "vite build && BENCH=${BENCH:-local} playwright test bench",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "bench:compare": "node scripts/compare-bench.mjs bench/baseline.json bench/after.json > bench/comparison.md"
   },
   "dependencies": {
     "gsap": "^3.15.0",

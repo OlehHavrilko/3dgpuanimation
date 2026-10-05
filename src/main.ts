@@ -16,6 +16,7 @@ import { createSettings, readQuality } from './app/settings';
 import { setupTour } from './app/tour';
 import { setupDebugPanel } from './app/debugPanel';
 import { applyStaticText } from './app/staticText';
+import { createWarmup } from './app/warmup';
 
 gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 applyStaticText();
@@ -64,7 +65,17 @@ const ctx: LevelContext = {
   },
 };
 
-const manager = new LevelManager(ctx, LEVELS, document.getElementById('flash')!);
+// ?cache=0 turns the level cache off (one level alive, built on arrival): the pre-cache
+// behaviour, kept for A/B benchmarks.
+const levelCache = new URLSearchParams(location.search).get('cache') !== '0';
+const manager = new LevelManager(
+  ctx,
+  LEVELS,
+  document.getElementById('flash')!,
+  levelCache
+    ? { keep: 1, prepare: createWarmup(renderer, camera, post.composer) } // current + previous + next
+    : { keep: 0 },
+);
 const profiler = new LevelProfiler(renderer);
 manager.profiler = profiler;
 const overlay = new Overlay(
@@ -72,7 +83,7 @@ const overlay = new Overlay(
   (i) => jumpToLevel(i),
 );
 const interaction = new InteractionManager(ctx, manager, canvas, (i) => jumpToLevel(i));
-manager.onBeforeDispose = (level) => interaction.detach(level.scene);
+manager.onDeactivate = (level) => interaction.detach(level.scene);
 manager.onSwap = (index, level) => {
   post.renderPass.mainScene = level.scene;
   overlay.showLevel(index);
@@ -122,6 +133,7 @@ if (debug) {
     ctx,
     interaction,
     profiler,
+    post,
   };
   setupDebugPanel({ settings, manager, metas: LEVELS.map((l) => l.meta), post, scrollToProgress });
 }
@@ -185,9 +197,9 @@ function frame(now: number) {
   dofPass.enabled = settings.dof && !interaction.exploring;
 
   renderer.info.reset();
-  if (profiler.awaitingFirstFrame) {
-    const rec = profiler.measureFirstFrame(() => composer.render(rawDt), level.scene);
-    if (debug) console.info('[level]', JSON.stringify(rec));
+  if (profiler.measuring) {
+    const rec = profiler.measure(() => composer.render(rawDt), level.scene);
+    if (rec && debug) console.info('[level]', JSON.stringify(rec));
   } else {
     composer.render(rawDt);
   }

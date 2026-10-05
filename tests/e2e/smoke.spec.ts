@@ -138,12 +138,21 @@ test('follow the electron: tour runs, tracer is visible, F stops it', async ({ p
 
 test('levels release GPU resources when swapped out', async ({ page }) => {
   const errors = await openApp(page);
+  const settle = () => page.evaluate(() => (window as any).__teardown.manager.whenIdle());
   const mem = () => page.evaluate(() => ({ ...(window as any).__teardown.renderer.info.memory }));
+  const cached = () => page.evaluate(() => (window as any).__teardown.manager.cachedIndices);
   await goToLevel(page, 0, 0.5);
+  await settle();
   const first = await mem();
-  for (const i of [1, 2, 3, 4, 5, 6, 7, 6, 5, 4, 3, 2, 1, 0]) await goToLevel(page, i, 0.5);
+  expect(await cached()).toEqual([0, 1]);
+  for (const i of [1, 2, 3, 4, 5, 6, 7, 6, 5, 4, 3, 2, 1, 0]) {
+    await goToLevel(page, i, 0.5);
+    await settle();
+    // Only the current level and its neighbours stay built.
+    expect(await cached()).toEqual([i - 1, i, i + 1].filter((k) => k >= 0 && k < 8));
+  }
   const again = await mem();
-  // Same level, same scene: the counts must come back to where they were.
+  // Same window, same scenes: the counts must come back to where they were.
   expect(again).toEqual(first);
   expectNoErrors(errors);
 });

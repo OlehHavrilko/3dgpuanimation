@@ -32,25 +32,55 @@ export interface FrameState {
   fovMeters: number;
 }
 
+/** A built level kept around for re-use. */
+interface Slot {
+  level: Level;
+  /** Background preparation (shader compile + GPU upload) finished. */
+  prepared: boolean;
+  warmupMs: number;
+}
+
+export interface LevelManagerOptions {
+  /** Neighbours kept alive on each side of the current level (current/next/previous = 1). */
+  keep?: number;
+  /** Compile + upload a built level off the critical path; resolves with the time it took (ms). */
+  prepare?: (level: Level) => Promise<number>;
+  /** Run background work when the main thread is idle. */
+  schedule?: (fn: () => void) => void;
+}
+
+const idle = (fn: () => void) => {
+  const ric = (globalThis as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void })
+    .requestIdleCallback;
+  if (ric) ric(fn, { timeout: 500 });
+  else setTimeout(fn, 30);
+};
+
 /**
  * Powers-of-Ten scene orchestrator.
  *
- * Every level lives in its own THREE.Scene with local units (cm, mm, nm, Å...).
- * Only one level exists at a time: crossing a segment boundary disposes the old
- * level and builds the new one, which keeps float precision sane at every scale.
- * The last slice of each segment is a camera dolly into the level's transition
- * target, finished off by a short green/white flash that hides the swap.
+ * Every level lives in its own THREE.Scene with local units (cm, mm, nm, Å...), which keeps
+ * float precision sane at every scale. The current level and its neighbours (previous / next)
+ * are kept built; neighbours are built and warmed up (shaders compiled, buffers uploaded) in
+ * idle time, so crossing a boundary is a swap, not a rebuild. Levels outside that window are
+ * disposed. The last slice of each segment is a camera dolly into the level's transition
+ * target, finished off by a short green/white flash.
  */
 export class LevelManager {
   readonly segments: Segment[];
   current: Level | null = null;
   currentIndex = -1;
   onSwap: ((index: number, level: Level) => void) | null = null;
-  /** Fired right before the outgoing level is disposed. */
-  onBeforeDispose: ((level: Level) => void) | null = null;
+  /** The outgoing level stops being current (it may stay cached): detach anything shared from it. */
+  onDeactivate: ((level: Level) => void) | null = null;
   /** Optional instrumentation of every activation. */
   profiler: LevelProfiler | null = null;
 
+  private cache = new Map<number, Slot>();
+  private preparing: Promise<void> | null = null;
+  private readonly keep: number;
+  private readonly prepare?: (level: Level) => Promise<number>;
+  private readonly schedule: (fn: () => void) => void;
   private progress = 0;
   private flashPulse = 0;
   private built = false;
@@ -64,7 +94,11 @@ export class LevelManager {
     private ctx: LevelContext,
     readonly entries: LevelEntry[],
     private flashEl: HTMLElement,
+    options: LevelManagerOptions = {},
   ) {
+    this.keep = options.keep ?? 1;
+    this.prepare = options.prepare;
+    this.schedule = options.schedule ?? idle;
     const total = entries.reduce((s, e) => s + e.meta.weight, 0);
     let acc = 0;
     this.segments = entries.map((e) => {
@@ -95,25 +129,81 @@ export class LevelManager {
     return this.segments.length - 1;
   }
 
-  private activate(index: number) {
-    const rec = this.profiler?.begin(index, this.entries[index].meta.name, false);
-    let t = performance.now();
-    if (this.current) {
-      this.onBeforeDispose?.(this.current);
-      this.current.dispose();
-      this.current = null;
-    }
-    if (rec) rec.disposeMs = performance.now() - t;
-    t = performance.now();
+  /** Levels currently built (for tests / diagnostics). */
+  get cachedIndices() {
+    return [...this.cache.keys()].sort((a, b) => a - b);
+  }
+
+  /** Resolves when no background preparation is running. */
+  async whenIdle() {
+    while (this.preparing) await this.preparing;
+  }
+
+  private build(index: number): Slot {
     const level = this.entries[index].create(this.ctx);
     level.init();
-    if (rec) rec.buildMs = performance.now() - t;
-    this.current = level;
+    const slot: Slot = { level, prepared: false, warmupMs: 0 };
+    this.cache.set(index, slot);
+    return slot;
+  }
+
+  private activate(index: number) {
+    const cached = this.cache.get(index);
+    const rec = this.profiler?.begin(index, this.entries[index].meta.name, !!cached);
+    let t = performance.now();
+    if (this.current) this.onDeactivate?.(this.current);
+    this.evict(index);
+    if (rec) rec.disposeMs = performance.now() - t;
+    t = performance.now();
+    const slot = cached ?? this.build(index);
+    if (rec) {
+      rec.buildMs = cached ? 0 : performance.now() - t;
+      rec.warmupMs = slot.warmupMs;
+    }
+    this.current = slot.level;
     this.currentIndex = index;
     // Skip the flash on the very first build.
     this.flashPulse = this.built ? 1 : 0;
     this.built = true;
-    this.onSwap?.(index, level);
+    this.onSwap?.(index, slot.level);
+    this.prepareNeighbours();
+  }
+
+  /** Dispose built levels outside [index - keep, index + keep]. */
+  private evict(index: number) {
+    for (const [i, slot] of this.cache) {
+      if (Math.abs(i - index) > this.keep) {
+        slot.level.dispose();
+        this.cache.delete(i);
+      }
+    }
+  }
+
+  /** Build + warm the neighbours in idle time, nearest first, next before previous. */
+  private prepareNeighbours() {
+    if (this.preparing) return; // the running loop re-checks the window when it finishes
+    const wanted: number[] = [];
+    for (let d = 1; d <= this.keep; d++) wanted.push(this.currentIndex + d, this.currentIndex - d);
+    const todo = wanted.find((i) => i >= 0 && i < this.entries.length && !this.cache.get(i)?.prepared);
+    if (todo === undefined) return;
+    this.preparing = new Promise<void>((resolve) => {
+      this.schedule(async () => {
+        try {
+          // The user may have moved on while we waited for idle time.
+          if (Math.abs(todo - this.currentIndex) <= this.keep && todo !== this.currentIndex) {
+            const slot = this.cache.get(todo) ?? this.build(todo);
+            if (!slot.prepared && this.prepare) slot.warmupMs = await this.prepare(slot.level);
+            slot.prepared = true;
+          }
+        } finally {
+          this.preparing = null;
+          resolve();
+          // A swap during preparation may have pushed this level out of the window.
+          this.evict(this.currentIndex);
+          this.prepareNeighbours();
+        }
+      });
+    });
   }
 
   tick(dt: number, time: number): FrameState {
@@ -195,7 +285,8 @@ export class LevelManager {
   }
 
   dispose() {
-    this.current?.dispose();
+    for (const slot of this.cache.values()) slot.level.dispose();
+    this.cache.clear();
     this.current = null;
   }
 }
