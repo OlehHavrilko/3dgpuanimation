@@ -92,7 +92,13 @@ export class ViewModes {
   /** Mode-specific controls for the inspector. */
   controls(onModeChange: (m: ViewMode) => void): LevelControl[] {
     const list: LevelControl[] = [
-      { kind: 'choice', label: 'View', options: this.available(), value: this.mode, onChange: (v) => onModeChange(v as ViewMode) },
+      {
+        kind: 'choice',
+        label: 'View',
+        options: this.available(),
+        value: this.mode,
+        onChange: (v) => onModeChange(v as ViewMode),
+      },
     ];
     if (this.mode === 'Section') {
       list.push({
@@ -131,7 +137,10 @@ export class ViewModes {
       const mesh = o as THREE.Mesh;
       if (!mesh.isMesh || !mesh.visible || this.isUnderFocus(mesh)) return;
       const m = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
-      if ((m as THREE.MeshStandardMaterial).isMeshStandardMaterial || (m as THREE.MeshBasicMaterial).isMeshBasicMaterial) {
+      if (
+        (m as THREE.MeshStandardMaterial).isMeshStandardMaterial ||
+        (m as THREE.MeshBasicMaterial).isMeshBasicMaterial
+      ) {
         this.swap(mesh, this.xrayMat);
       }
     });
@@ -152,7 +161,14 @@ export class ViewModes {
     const g = new THREE.Group();
     const quad = new THREE.Mesh(
       new THREE.PlaneGeometry(size, size),
-      new THREE.MeshBasicMaterial({ color: 0x76b900, transparent: true, opacity: 0.06, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }),
+      new THREE.MeshBasicMaterial({
+        color: 0x76b900,
+        transparent: true,
+        opacity: 0.06,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        toneMapped: false,
+      }),
     );
     const edge = new THREE.LineSegments(
       new THREE.EdgesGeometry(new THREE.PlaneGeometry(size, size)),
@@ -211,7 +227,8 @@ export class ThermalSim {
     }
     scene.traverse((o) => {
       const mesh = o as THREE.Mesh;
-      if (mesh.isMesh && mesh.visible && !owned.has(mesh) && !(mesh.material as THREE.Material).transparent) swap(mesh, neutral);
+      if (mesh.isMesh && mesh.visible && !owned.has(mesh) && !(mesh.material as THREE.Material).transparent)
+        swap(mesh, neutral);
     });
     this.paint();
   }
@@ -249,7 +266,8 @@ export class ThermalSim {
     const tn = this.spec.throttleNode;
     if (tn) {
       const t = this.T.get(tn)!;
-      this.throttle = t > THROTTLE_C ? Math.max(0.35, this.throttle - dt * 0.6) : Math.min(1, this.throttle + dt * 0.15);
+      this.throttle =
+        t > THROTTLE_C ? Math.max(0.35, this.throttle - dt * 0.6) : Math.min(1, this.throttle + dt * 0.15);
     }
     this.paint();
   }
@@ -299,7 +317,11 @@ export class ThermalSim {
         label: 'Hotspot (est.)',
         get: () => `${(this.temp(tn) + 0.025 * pTn * this.load * this.throttle).toFixed(0)} °C`,
       });
-      list.push({ kind: 'readout', label: 'Clocks', get: () => (this.throttle < 0.98 ? `THROTTLING ${Math.round(this.throttle * 100)}%` : 'full boost') });
+      list.push({
+        kind: 'readout',
+        label: 'Clocks',
+        get: () => (this.throttle < 0.98 ? `THROTTLING ${Math.round(this.throttle * 100)}%` : 'full boost'),
+      });
     }
     list.push({ kind: 'readout', label: 'Model', get: () => 'illustrative, not measured' });
     return list;

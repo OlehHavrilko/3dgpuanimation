@@ -133,7 +133,10 @@ export class TransistorLevel extends BaseLevel {
     const cx = this.gateX(CENTER_GATE);
 
     // ---- substrate + shallow-trench-isolation oxide (dark glass)
-    const sub = new THREE.Mesh(unit, new THREE.MeshStandardMaterial({ color: 0x0c0f13, roughness: 0.6, metalness: 0.2 }));
+    const sub = new THREE.Mesh(
+      unit,
+      new THREE.MeshStandardMaterial({ color: 0x0c0f13, roughness: 0.6, metalness: 0.2 }),
+    );
     sub.scale.set(lenX + 200, 60, lenZ + 200);
     sub.position.y = -50;
     s.add(sub);
@@ -195,10 +198,7 @@ export class TransistorLevel extends BaseLevel {
 
     // ---- high-k collars: where each fin passes through each gate. None under the focused gate:
     // it turns translucent and has its own shell, and a row of collars behind it would read as a slab.
-    const collarMat = makeInstanceGlow(
-      new THREE.MeshStandardMaterial({ color: 0x0f1a08, roughness: 0.4 }),
-      GREEN_HOT,
-    );
+    const collarMat = makeInstanceGlow(new THREE.MeshStandardMaterial({ color: 0x0f1a08, roughness: 0.4 }), GREEN_HOT);
     const collars = new THREE.InstancedMesh(unit, collarMat, (N_GATES - 1) * N_FINS);
     const collarGate: number[] = [];
     let k = 0;
@@ -207,7 +207,11 @@ export class TransistorLevel extends BaseLevel {
         if (g === CENTER_GATE) continue;
         collars.setMatrixAt(
           k++,
-          m.compose(pos.set(this.gateX(g), (FIN_H + 1.5) / 2, this.finZ(f)), q, scl.set(GATE_L + 2.4, FIN_H + 1.5, FIN_W + 2.4)),
+          m.compose(
+            pos.set(this.gateX(g), (FIN_H + 1.5) / 2, this.finZ(f)),
+            q,
+            scl.set(GATE_L + 2.4, FIN_H + 1.5, FIN_W + 2.4),
+          ),
         );
         collarGate.push(g);
       }
@@ -257,7 +261,14 @@ export class TransistorLevel extends BaseLevel {
       ] as [string, string][],
       note: 'A voltage on the gate pulls electrons to the fin surface (inversion layer) and the transistor turns on.',
     };
-    this.pickables.push(pickInstances(gates, () => gateInfo), pickInstances(caps, () => ({ title: 'Gate cap', kind: 'Insulator · SiN', specs: [['Role', 'protects the gate during contact etch']] })));
+    this.pickables.push(
+      pickInstances(gates, () => gateInfo),
+      pickInstances(caps, () => ({
+        title: 'Gate cap',
+        kind: 'Insulator · SiN',
+        specs: [['Role', 'protects the gate during contact etch']],
+      })),
+    );
 
     // The focused gate: its own translucent materials.
     this.focusGateMat = addRimLight(
@@ -310,7 +321,10 @@ export class TransistorLevel extends BaseLevel {
       pickInstances(epi, () => ({
         title: 'Source / drain',
         kind: 'Epitaxy · SiP',
-        specs: [['Shape', 'faceted crystal'], ['Doping', 'n-type (phosphorus)']],
+        specs: [
+          ['Shape', 'faceted crystal'],
+          ['Doping', 'n-type (phosphorus)'],
+        ],
         note: 'Grown on the fin between gates: the reservoir electrons come from (source) and drain into (drain).',
       })),
     );
@@ -329,7 +343,13 @@ export class TransistorLevel extends BaseLevel {
       contacts.setMatrixAt(g, m.compose(pos.set(this.gateX(g) + CPP / 2, FIN_H + 22, z0), q, scl.set(13, 34, w)));
     }
     s.add(contacts);
-    this.pickables.push(pickInstances(contacts, () => ({ title: 'Trench contact', kind: 'Middle of line · W', specs: [['Joins', 'source/drain ↔ M0']] })));
+    this.pickables.push(
+      pickInstances(contacts, () => ({
+        title: 'Trench contact',
+        kind: 'Middle of line · W',
+        specs: [['Joins', 'source/drain ↔ M0']],
+      })),
+    );
     const copper = addRimLight(
       new THREE.MeshStandardMaterial({ color: 0xd9844c, metalness: 1, roughness: 0.3 }),
       0xffb070,
@@ -343,7 +363,13 @@ export class TransistorLevel extends BaseLevel {
       m0.setMatrixAt(i, m.compose(pos.set(x, FIN_H + 52, z), q, scl.set(len, 14, 12)));
     }
     s.add(m0);
-    this.pickables.push(pickInstances(m0, () => ({ title: 'M0 wire', kind: 'Interconnect · copper', specs: [['Layer', 'lowest metal']] })));
+    this.pickables.push(
+      pickInstances(m0, () => ({
+        title: 'M0 wire',
+        kind: 'Interconnect · copper',
+        specs: [['Layer', 'lowest metal']],
+      })),
+    );
 
     this.controls = [
       {
@@ -376,13 +402,22 @@ export class TransistorLevel extends BaseLevel {
         format: (v) => `${v.toFixed(2)}×`,
         onInput: (v) => (this.clockSpeed = v),
       },
-      { kind: 'readout', label: 'Mode', get: () => (this.gateMode === 'MANUAL' ? `manual · Vg ${this.vg.toFixed(2)} V` : this.gateMode) },
+      {
+        kind: 'readout',
+        label: 'Mode',
+        get: () => (this.gateMode === 'MANUAL' ? `manual · Vg ${this.vg.toFixed(2)} V` : this.gateMode),
+      },
       {
         kind: 'readout',
         label: 'Channel',
-        get: () => (this.gateOn > 0.85 ? 'strong inversion (ON)' : this.gateOn > 0.08 ? 'near threshold' : 'depleted (OFF)'),
+        get: () =>
+          this.gateOn > 0.85 ? 'strong inversion (ON)' : this.gateOn > 0.08 ? 'near threshold' : 'depleted (OFF)',
       },
-      { kind: 'readout', label: 'Drain current (rel.)', get: () => `${'▮'.repeat(Math.round(this.gateOn * 10)).padEnd(10, '▯')} ${Math.round(this.gateOn * 100)}%` },
+      {
+        kind: 'readout',
+        label: 'Drain current (rel.)',
+        get: () => `${'▮'.repeat(Math.round(this.gateOn * 10)).padEnd(10, '▯')} ${Math.round(this.gateOn * 100)}%`,
+      },
       { kind: 'readout', label: 'Logic out', get: () => this.bits.split('').join(' ') || '—' },
     ];
 

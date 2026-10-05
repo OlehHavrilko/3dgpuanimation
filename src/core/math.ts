@@ -14,8 +14,7 @@ export const smootherstep = (a: number, b: number, v: number) => {
   return t * t * t * (t * (t * 6 - 15) + 10);
 };
 
-export const easeInOutCubic = (t: number) =>
-  t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+export const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
 export const easeInOutSine = (t: number) => -(Math.cos(Math.PI * t) - 1) / 2;
 
@@ -49,4 +48,34 @@ export function formatMeters(m: number): string {
     }
   }
   return `${(m / 1e-12).toFixed(2)} pm`;
+}
+
+const UNIT: Record<string, number> = { m: 1, cm: 1e-2, mm: 1e-3, µm: 1e-6, nm: 1e-9, Å: 1e-10, pm: 1e-12 };
+const SUP: Record<string, string> = {
+  '-': '⁻',
+  '0': '⁰',
+  '1': '¹',
+  '2': '²',
+  '3': '³',
+  '4': '⁴',
+  '5': '⁵',
+  '6': '⁶',
+  '7': '⁷',
+  '8': '⁸',
+  '9': '⁹',
+};
+
+/** "30 cm" -> "10⁻¹ m": order of magnitude of a scale label. */
+export function powerOfTen(label: string) {
+  const [num, unit] = label.split(' ');
+  const meters = parseFloat(num) * (UNIT[unit] ?? 1);
+  const e = Math.floor(Math.log10(meters) + 1e-9);
+  return `10${String(e).replace(/./g, (c) => SUP[c] ?? c)} m`;
+}
+
+/** texts[k] where k is the number of thresholds t has passed (texts.length = thresholds.length + 1). */
+export function pickByT<T>(t: number, thresholds: number[], texts: readonly T[]): T {
+  let k = 0;
+  while (k < thresholds.length && t >= thresholds[k]) k++;
+  return texts[k];
 }

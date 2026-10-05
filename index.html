@@ -5,13 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <title>GPU to Atom</title>
-    <meta name="description" content="Scroll-driven 3D teardown of a graphics card, from the shroud down to a single silicon atom." />
+    <meta
+      name="description"
+      content="Scroll-driven 3D teardown of a graphics card, from the shroud down to a single silicon atom."
+    />
   </head>
   <body>
     <canvas id="gl"></canvas>
     <div id="spot"></div>
     <div id="flash"></div>
-    <svg id="leader" aria-hidden="true"><polyline points="" /><circle r="3" /></svg>
+    <svg id="leader" aria-hidden="true">
+      <polyline points="" />
+      <circle r="3" />
+    </svg>
     <div id="tip" role="tooltip">
       <div class="tip-kind"></div>
       <div class="tip-title"></div>
@@ -45,14 +51,21 @@
         <div id="nav">
           <button id="nav-prev" type="button" title="Previous scale (&larr;)">&#9664;</button>
           <button id="nav-explore" type="button" title="Explore mode (E)">Explore</button>
-          <button id="nav-follow" type="button" title="Follow one electron through every scale (F)">Follow e&#8315;</button>
+          <button id="nav-follow" type="button" title="Follow one electron through every scale (F)">
+            Follow e&#8315;
+          </button>
           <button id="nav-next" type="button" title="Next scale (&rarr;)">&#9654;</button>
         </div>
         <div id="scroll-hint">scroll to descend <span>&darr;</span></div>
       </footer>
       <div id="explore-hint">
-        <span class="mouse">drag&nbsp;· orbit &nbsp; wheel&nbsp;· zoom &nbsp; right-drag&nbsp;· pan &nbsp; click&nbsp;· inspect &nbsp; esc&nbsp;· exit</span>
-        <span class="touch">1 finger&nbsp;· orbit &nbsp; pinch&nbsp;· zoom &nbsp; 2 fingers&nbsp;· pan &nbsp; tap&nbsp;· inspect</span>
+        <span class="mouse"
+          >drag&nbsp;· orbit &nbsp; wheel&nbsp;· zoom &nbsp; right-drag&nbsp;· pan &nbsp; click&nbsp;· inspect &nbsp;
+          esc&nbsp;· exit</span
+        >
+        <span class="touch"
+          >1 finger&nbsp;· orbit &nbsp; pinch&nbsp;· zoom &nbsp; 2 fingers&nbsp;· pan &nbsp; tap&nbsp;· inspect</span
+        >
       </div>
     </div>
 

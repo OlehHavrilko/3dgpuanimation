@@ -48,7 +48,16 @@ const SHELLS: Shell[] = [
   },
   { n: 3, l: 0, zeff: 4.903, electrons: 2, axes: [], color: 0x8fdc2a, points: 22000, alpha: 0.32 },
   // Hund's rule: the two 3p electrons sit in different orbitals (px, py) -> visible lobes.
-  { n: 3, l: 1, zeff: 4.285, electrons: 2, axes: [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0)], color: 0x5fd0a0, points: 40000, alpha: 0.55 },
+  {
+    n: 3,
+    l: 1,
+    zeff: 4.285,
+    electrons: 2,
+    axes: [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0)],
+    color: 0x5fd0a0,
+    points: 40000,
+    alpha: 0.55,
+  },
 ];
 
 const RADIAL_K = 12.4; // display units per a0^0.62
@@ -77,7 +86,7 @@ export class AtomLevel extends BaseLevel {
     this.bokeh = 0.8;
     this.sectionNormal = [0, 0, 1];
     this.followCaption =
-      'Finally it is one of silicon\'s four valence electrons, in a 3p orbital: not a dot, but a cloud of probability. End of the journey.';
+      "Finally it is one of silicon's four valence electrons, in a 3p orbital: not a dot, but a cloud of probability. End of the journey.";
   }
 
   protected cameraKeys(): CameraKey[] {
@@ -283,7 +292,10 @@ export class AtomLevel extends BaseLevel {
     this.pickables.push({
       object: proxy,
       resolve: (hit) => {
-        const ray = new THREE.Ray(this.ctx.camera.position.clone(), hit.point.clone().sub(this.ctx.camera.position).normalize());
+        const ray = new THREE.Ray(
+          this.ctx.camera.position.clone(),
+          hit.point.clone().sub(this.ctx.camera.position).normalize(),
+        );
         const d = Math.sqrt(ray.distanceSqToPoint(new THREE.Vector3()));
         const n = d < (this.shellR[0] + this.shellR[1]) / 2 ? 1 : d < (this.shellR[2] + this.shellR[3]) / 2 ? 2 : 3;
         const r = n === 1 ? this.shellR[0] : n === 2 ? this.shellR[2] : this.shellR[4];

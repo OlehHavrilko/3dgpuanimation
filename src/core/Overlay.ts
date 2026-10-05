@@ -1,5 +1,5 @@
 import type { LevelMeta } from './types';
-import { formatMeters } from './math';
+import { formatMeters, powerOfTen } from './math';
 
 /** Minimal HUD: level name + scale label, contextual caption, scale rail, live field of view. */
 export class Overlay {
@@ -87,15 +87,4 @@ export class Overlay {
   setProgress(p: number) {
     this.hintEl.style.opacity = p > 0.995 ? '0' : String(Math.max(0.25, 1 - p * 40));
   }
-}
-
-const UNIT: Record<string, number> = { m: 1, cm: 1e-2, mm: 1e-3, 'µm': 1e-6, nm: 1e-9, 'Å': 1e-10, pm: 1e-12 };
-const SUP: Record<string, string> = { '-': '⁻', '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹' };
-
-/** "30 cm" -> "10⁻¹ m": order of magnitude of a scale label. */
-function powerOfTen(label: string) {
-  const [num, unit] = label.split(' ');
-  const meters = parseFloat(num) * (UNIT[unit] ?? 1);
-  const e = Math.floor(Math.log10(meters) + 1e-9);
-  return `10${String(e).replace(/./g, (c) => SUP[c] ?? c)} m`;
 }

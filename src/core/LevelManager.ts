@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { Level, LevelContext, LevelMeta } from './types';
 import { clamp, easeInOutSine, smoothstep } from './math';
+import type { LevelProfiler } from './LevelProfiler';
 
 export interface LevelEntry {
   meta: LevelMeta;
@@ -47,6 +48,8 @@ export class LevelManager {
   onSwap: ((index: number, level: Level) => void) | null = null;
   /** Fired right before the outgoing level is disposed. */
   onBeforeDispose: ((level: Level) => void) | null = null;
+  /** Optional instrumentation of every activation. */
+  profiler: LevelProfiler | null = null;
 
   private progress = 0;
   private flashPulse = 0;
@@ -93,13 +96,18 @@ export class LevelManager {
   }
 
   private activate(index: number) {
+    const rec = this.profiler?.begin(index, this.entries[index].meta.name, false);
+    let t = performance.now();
     if (this.current) {
       this.onBeforeDispose?.(this.current);
       this.current.dispose();
       this.current = null;
     }
+    if (rec) rec.disposeMs = performance.now() - t;
+    t = performance.now();
     const level = this.entries[index].create(this.ctx);
     level.init();
+    if (rec) rec.buildMs = performance.now() - t;
     this.current = level;
     this.currentIndex = index;
     // Skip the flash on the very first build.

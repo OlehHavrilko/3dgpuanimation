@@ -2,7 +2,23 @@ import * as THREE from 'three';
 import { BaseLevel, setControlValue } from '../core/BaseLevel';
 import type { CameraKey } from '../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../core/types';
-import { mulberry32, smoothstep } from '../core/math';
+import { smoothstep } from '../core/math';
+import {
+  type Block,
+  DIE_W,
+  DIE_H,
+  EDGE,
+  GPC_COLS,
+  L2_HALF,
+  SMS,
+  SMS_ENABLED,
+  SM_COLS,
+  SM_ROWS,
+  classifyBlock,
+  fusedOffMask,
+  smCenterLocal,
+  traceWaypoints,
+} from './die/floorplan';
 import type { EntityInfo, PickHit } from '../core/types';
 import { boxFrom } from '../interaction/pick';
 import { splineAt } from '../interaction/FollowTracer';
@@ -21,16 +37,6 @@ export const meta: LevelMeta = {
   unitMeters: 0.001,
   weight: 1.1,
 };
-
-const DIE_W = 29;
-const DIE_H = 26;
-const EDGE = 2.0; // memory-PHY ring width
-const L2_HALF = 2.0; // half-height of the central L2 band
-const GPC_COLS = 6;
-const SM_COLS = 2;
-const SM_ROWS = 8;
-const SMS = GPC_COLS * 2 * SM_COLS * SM_ROWS; // 192
-const SMS_ENABLED = 170; // RTX 5090
 
 export class DieLevel extends BaseLevel {
   readonly meta = meta;
@@ -60,7 +66,11 @@ export class DieLevel extends BaseLevel {
     this.followCaption =
       'On the die: the power grid spreads current to all 170 active SMs; ours heads for one of them.';
     // Dive into SM #3 of the third GPC in the top row.
-    this.target = { position: smCenter(2, 1, 0, 3), radius: 0.9, approach: new THREE.Vector3(0.15, 0.9, 0.4).normalize() };
+    this.target = {
+      position: smCenter(2, 1, 0, 3),
+      radius: 0.9,
+      approach: new THREE.Vector3(0.15, 0.9, 0.4).normalize(),
+    };
   }
 
   protected cameraKeys(): CameraKey[] {
@@ -84,15 +94,7 @@ export class DieLevel extends BaseLevel {
 
     // Which SMs are fused off on an RTX 5090 (22 of 192), deterministic pick.
     const disabled = this.disabled;
-    const rng = mulberry32(5090);
-    let off = 0;
-    while (off < SMS - SMS_ENABLED) {
-      const i = Math.floor(rng() * SMS);
-      if (!disabled[i]) {
-        disabled[i] = 255;
-        off++;
-      }
-    }
+    disabled.set(fusedOffMask());
     const smTex = new THREE.DataTexture(disabled, SMS, 1, THREE.RedFormat, THREE.UnsignedByteType);
     smTex.needsUpdate = true;
 
@@ -211,42 +213,9 @@ export class DieLevel extends BaseLevel {
 
   /** Waypoints on the die for a trace that started at GDDR7 chip `chip` (plane-local coords). */
   private traceWaypoints(chip: number) {
-    const hx = DIE_W / 2;
-    const hy = DIE_H / 2;
-    // Controllers are numbered clockwise from the top edge, like the chips on the board.
-    const side = Math.floor(chip / 4);
-    const slotIdx = chip % 4;
-    const slot = side === 0 || side === 3 ? slotIdx : 3 - slotIdx;
-    const vertical = side === 1 || side === 3;
-    const span = vertical ? DIE_H - 2 * EDGE : DIE_W - 2 * EDGE;
-    const along = -span / 2 + (slot + 0.5) * (span / 4);
-    const mc = vertical
-      ? new THREE.Vector2(side === 1 ? hx - EDGE / 2 : -(hx - EDGE / 2), along)
-      : new THREE.Vector2(along, side === 0 ? hy - EDGE / 2 : -(hy - EDGE / 2));
-    const l2 = new THREE.Vector2(Math.sign(mc.x || 1) * (hx - EDGE) * 0.55, 0);
-    // Nearest GPC column to the controller, in the controller's half of the die.
-    const innerW = DIE_W - 2 * EDGE;
-    const gpcW = innerW / GPC_COLS;
-    const gpcH = hy - EDGE - L2_HALF;
-    const col = Math.min(GPC_COLS - 1, Math.max(0, Math.floor((mc.x + innerW / 2) / gpcW)));
-    const row = mc.y >= 0 ? 0 : 1;
-    const ySign = row === 0 ? 1 : -1;
-    const x0 = -innerW / 2 + col * gpcW;
-    const gpc = new THREE.Vector2(x0 + gpcW / 2, ySign * (L2_HALF + 0.17));
-    // First enabled SM in that GPC, nearest the L2.
-    const smW = gpcW / SM_COLS;
-    const smH = (gpcH - 0.35) / SM_ROWS;
-    let sm = new THREE.Vector2(x0 + smW / 2, ySign * (L2_HALF + 0.35 + smH / 2));
-    search: for (let sr = 0; sr < SM_ROWS; sr++) {
-      for (let sc = 0; sc < SM_COLS; sc++) {
-        const id = ((row * GPC_COLS + col) * SM_COLS + sc) * SM_ROWS + sr;
-        if (!this.disabled[id]) {
-          sm = new THREE.Vector2(x0 + (sc + 0.5) * smW, ySign * (L2_HALF + 0.35 + (sr + 0.5) * smH));
-          break search;
-        }
-      }
-    }
-    return { mc, l2, gpc, sm };
+    const w = traceWaypoints(chip, this.disabled);
+    const v = (p: [number, number]) => new THREE.Vector2(p[0], p[1]);
+    return { mc: v(w.mc), l2: v(w.l2), gpc: v(w.gpc), sm: v(w.sm) };
   }
 
   tracePlan(): PickHit[] | null {
@@ -257,14 +226,22 @@ export class DieLevel extends BaseLevel {
       const b = this.classify(p.x, p.y, smLevel);
       if (!b) return null;
       const [lx, ly, hx2, hy2] = b.rect;
-      return { key: `trace-${b.key}`, box: boxFrom(lx, 0, -hy2, hx2, 0.08, -ly), info: { ...b.info, ...extra } } as PickHit;
+      return {
+        key: `trace-${b.key}`,
+        box: boxFrom(lx, 0, -hy2, hx2, 0.08, -ly),
+        info: { ...b.info, ...extra },
+      } as PickHit;
     };
     const stages = [
-      hit(w.mc, false, { note: 'The PHY recovers the PAM3 symbols and the controller queues the burst for the cache.' }),
-      hit(w.l2, false, { note: 'Every memory access passes through L2 first; a hit here would never have reached the DRAM at all.' }),
+      hit(w.mc, false, {
+        note: 'The PHY recovers the PAM3 symbols and the controller queues the burst for the cache.',
+      }),
+      hit(w.l2, false, {
+        note: 'Every memory access passes through L2 first; a hit here would never have reached the DRAM at all.',
+      }),
       hit(w.gpc, false, { note: 'The crossbar hands the cache line to the GPC that asked for it.' }),
       hit(w.sm, true, {
-        note: 'Destination: the SM\'s L1 / shared memory, where 128 CUDA cores and 4 tensor cores consume it.',
+        note: "Destination: the SM's L1 / shared memory, where 128 CUDA cores and 4 tensor cores consume it.",
         actions: [
           { label: 'Dive into the SM ▸', run: () => this.ctx.go(4) },
           { label: 'End trace', run: () => (this.ctx.journey.trace = null) },
@@ -307,138 +284,10 @@ export class DieLevel extends BaseLevel {
     }
   }
 
-  /**
-   * Which floorplan block is at plane-local (x, y)? Mirrors the shader's layout.
-   * Far away the GPC is reported, close up the individual SM.
-   */
-  private classify(x: number, y: number, smLevel: boolean): { key: string; info: EntityInfo; rect: [number, number, number, number] } | null {
-    const hx = DIE_W / 2;
-    const hy = DIE_H / 2;
-    const ax = Math.abs(x);
-    const ay = Math.abs(y);
-    if (ax > hx || ay > hy) return null;
-
-    if (ax > hx - EDGE || ay > hy - EDGE) {
-      const vertical = ax > hx - EDGE && ax - (hx - EDGE) > ay - (hy - EDGE);
-      const along = vertical ? y : x;
-      const span = vertical ? DIE_H - 2 * EDGE : DIE_W - 2 * EDGE;
-      const slot = Math.min(3, Math.max(0, Math.floor((along + span / 2) / (span / 4))));
-      const lo = -span / 2 + (slot * span) / 4 + 0.25;
-      const hi = lo + span / 4 - 0.5;
-      const sx = Math.sign(x) || 1;
-      const sy = Math.sign(y) || 1;
-      const rect: [number, number, number, number] = vertical
-        ? [Math.min(sx * (hx - EDGE), sx * (hx - 0.25)), lo, Math.max(sx * (hx - EDGE), sx * (hx - 0.25)), hi]
-        : [lo, Math.min(sy * (hy - EDGE), sy * (hy - 0.25)), hi, Math.max(sy * (hy - EDGE), sy * (hy - 0.25))];
-      if (x < rect[0] || x > rect[2] || y < rect[1] || y > rect[3]) return null;
-      // Number controllers clockwise from the top edge.
-      const side = vertical ? (sx > 0 ? 1 : 3) : sy > 0 ? 0 : 2;
-      const idx = side * 4 + (side === 0 || side === 3 ? slot : 3 - slot) + 1;
-      return {
-        key: `mc${idx}`,
-        rect,
-        info: {
-          title: `Memory controller ${idx}`,
-          kind: 'Memory subsystem · GDDR7',
-          specs: [
-            ['Width', '32-bit'],
-            ['Feeds', `one 2 GB GDDR7 chip`],
-            ['All 16', '512-bit · 1.79 TB/s'],
-          ],
-          note: 'Controller logic plus the PHY that drives signals off the die, through the package and across the PCB.',
-        },
-      };
-    }
-
-    if (ay < L2_HALF) {
-      if (ax < 2.6) {
-        return {
-          key: 'hub',
-          rect: [-2.6, -L2_HALF, 2.6, L2_HALF],
-          info: {
-            title: 'Hub',
-            kind: 'Front end · I/O',
-            specs: [
-              ['GigaThread', 'work scheduler'],
-              ['Host', 'PCIe 5.0 × 16'],
-              ['Media', 'NVENC / NVDEC'],
-              ['Display', 'DP 2.1b / HDMI 2.1b'],
-            ],
-            note: 'Placement is schematic: NVIDIA publishes the block diagram, not the physical floorplan.',
-          },
-        };
-      }
-      const right = x > 0;
-      return {
-        key: right ? 'l2r' : 'l2l',
-        rect: right ? [2.8, -L2_HALF + 0.2, hx - EDGE - 0.2, L2_HALF - 0.2] : [-(hx - EDGE - 0.2), -L2_HALF + 0.2, -2.8, L2_HALF - 0.2],
-        info: {
-          title: `L2 cache · ${right ? 'east' : 'west'} partition`,
-          kind: 'Cache',
-          specs: [
-            ['Total on die', '128 MB'],
-            ['Enabled on 5090', '96 MB'],
-          ],
-          note: 'Shared by every SM: the last stop before data has to cross the memory bus.',
-        },
-      };
-    }
-
-    const innerW = DIE_W - 2 * EDGE;
-    const gpcW = innerW / GPC_COLS;
-    const gpcH = hy - EDGE - L2_HALF;
-    const col = Math.min(GPC_COLS - 1, Math.max(0, Math.floor((x + innerW / 2) / gpcW)));
-    const row = y > 0 ? 0 : 1;
-    const x0 = -innerW / 2 + col * gpcW;
-    const yIn = ay - L2_HALF;
-    const gpcIndex = row * GPC_COLS + col;
-    const yRect = (a: number, b: number): [number, number] => (row === 0 ? [L2_HALF + a, L2_HALF + b] : [-(L2_HALF + b), -(L2_HALF + a)]);
-
-    if (!smLevel || yIn < 0.35) {
-      let enabled = 0;
-      for (let i = 0; i < SM_COLS * SM_ROWS; i++) if (!this.disabled[gpcIndex * SM_COLS * SM_ROWS + i]) enabled++;
-      const [y0, y1] = yRect(0.12, gpcH - 0.12);
-      return {
-        key: `gpc${gpcIndex}`,
-        rect: [x0 + 0.12, y0, x0 + gpcW - 0.12, y1],
-        info: {
-          title: `GPC ${gpcIndex + 1}`,
-          kind: 'Graphics Processing Cluster',
-          specs: [
-            ['SMs', `${enabled} of 16 enabled`],
-            ['TPCs', '8'],
-            ['Raster engine', '1'],
-          ],
-          note: 'Zoom in closer to pick individual SMs.',
-        },
-      };
-    }
-
-    const smW = gpcW / SM_COLS;
-    const smH = (gpcH - 0.35) / SM_ROWS;
-    const sc = Math.min(SM_COLS - 1, Math.floor((x - x0) / smW));
-    const sr = Math.min(SM_ROWS - 1, Math.floor((yIn - 0.35) / smH));
-    const id = (gpcIndex * SM_COLS + sc) * SM_ROWS + sr;
-    const off = this.disabled[id] > 0;
-    const [y0, y1] = yRect(0.35 + sr * smH + 0.05, 0.35 + (sr + 1) * smH - 0.05);
-    return {
-      key: `sm${id}`,
-      rect: [x0 + sc * smW + 0.06, y0, x0 + (sc + 1) * smW - 0.06, y1],
-      info: {
-        title: `SM ${id + 1}${off ? ' (fused off)' : ''}`,
-        kind: `Streaming Multiprocessor · GPC ${gpcIndex + 1}`,
-        specs: [
-          ['CUDA cores', '128'],
-          ['Tensor cores', '4 · 5th gen'],
-          ['RT core', '1 · 4th gen'],
-          ['L1 / shared', '128 KB'],
-          ['Status', off ? 'disabled on RTX 5090' : 'enabled'],
-        ],
-        note: off
-          ? 'GB202 has 192 SMs; the RTX 5090 ships with 170, so 22 are fused off to improve yield.'
-          : 'Dive in: below the die surface sit ~15 copper wiring layers and the transistors themselves.',
-      },
-    };
+  /** Which floorplan block is at plane-local (x, y)? Far away the GPC, close up the individual SM. */
+  private classify(x: number, y: number, smLevel: boolean) {
+    const b = classifyBlock(x, y, smLevel, this.disabled);
+    return b ? { key: b.key, rect: b.rect, info: blockInfo(b) } : null;
   }
 
   /** Across the on-die power grid to the SM we are about to dive into. */
@@ -462,14 +311,73 @@ export class DieLevel extends BaseLevel {
 
 /** World-space centre of an SM (gpcCol 0..5, row 0 = top (-z) / 1 = bottom, smCol 0..1, smRow 0..7). */
 function smCenter(gpcCol: number, row: number, smCol: number, smRow: number) {
-  const innerW = DIE_W - 2 * EDGE;
-  const gpcW = innerW / GPC_COLS;
-  const gpcH = DIE_H / 2 - EDGE - L2_HALF;
-  const x = -innerW / 2 + gpcW * (gpcCol + (smCol + 0.5) / SM_COLS);
-  // Plane-local y: row 0 is the +y half (world -z after rotation).
-  const yLocal0 = L2_HALF + 0.35 + (gpcH - 0.35) * ((smRow + 0.5) / SM_ROWS);
-  const yLocal = row === 0 ? yLocal0 : -yLocal0;
-  return new THREE.Vector3(x, 0, -yLocal);
+  const [x, y] = smCenterLocal(gpcCol, row, smCol, smRow);
+  return new THREE.Vector3(x, 0, -y);
+}
+
+/** Inspector text for a floorplan block. */
+function blockInfo(b: Block): EntityInfo {
+  switch (b.kind) {
+    case 'mc':
+      return {
+        title: `Memory controller ${b.index}`,
+        kind: 'Memory subsystem · GDDR7',
+        specs: [
+          ['Width', '32-bit'],
+          ['Feeds', 'one 2 GB GDDR7 chip'],
+          ['All 16', '512-bit · 1.79 TB/s'],
+        ],
+        note: 'Controller logic plus the PHY that drives signals off the die, through the package and across the PCB.',
+      };
+    case 'hub':
+      return {
+        title: 'Hub',
+        kind: 'Front end · I/O',
+        specs: [
+          ['GigaThread', 'work scheduler'],
+          ['Host', 'PCIe 5.0 × 16'],
+          ['Media', 'NVENC / NVDEC'],
+          ['Display', 'DP 2.1b / HDMI 2.1b'],
+        ],
+        note: 'Placement is schematic: NVIDIA publishes the block diagram, not the physical floorplan.',
+      };
+    case 'l2':
+      return {
+        title: `L2 cache · ${b.east ? 'east' : 'west'} partition`,
+        kind: 'Cache',
+        specs: [
+          ['Total on die', '128 MB'],
+          ['Enabled on 5090', '96 MB'],
+        ],
+        note: 'Shared by every SM: the last stop before data has to cross the memory bus.',
+      };
+    case 'gpc':
+      return {
+        title: `GPC ${b.gpc + 1}`,
+        kind: 'Graphics Processing Cluster',
+        specs: [
+          ['SMs', `${b.enabled} of 16 enabled`],
+          ['TPCs', '8'],
+          ['Raster engine', '1'],
+        ],
+        note: 'Zoom in closer to pick individual SMs.',
+      };
+    case 'sm':
+      return {
+        title: `SM ${b.sm + 1}${b.off ? ' (fused off)' : ''}`,
+        kind: `Streaming Multiprocessor · GPC ${b.gpc + 1}`,
+        specs: [
+          ['CUDA cores', '128'],
+          ['Tensor cores', '4 · 5th gen'],
+          ['RT core', '1 · 4th gen'],
+          ['L1 / shared', '128 KB'],
+          ['Status', b.off ? 'disabled on RTX 5090' : 'enabled'],
+        ],
+        note: b.off
+          ? 'GB202 has 192 SMs; the RTX 5090 ships with 170, so 22 are fused off to improve yield.'
+          : 'Dive in: below the die surface sit ~15 copper wiring layers and the transistors themselves.',
+      };
+  }
 }
 
 const FRAG = /* glsl */ `

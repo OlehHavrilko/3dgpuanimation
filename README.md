@@ -4,16 +4,16 @@ A scroll-driven 3D teardown of a **GeForce RTX 5090 Founders Edition**, from the
 
 **Быстрый старт:** `npm install`, then `npm run dev`, then open the URL Vite prints and scroll. Add `?debug` to get a timeline scrubber.
 
-| # | Level | Scale | What happens |
-|---|-------|-------|--------------|
-| 1 | GeForce RTX 5090 FE | 30 cm | 304 × 137 mm dual-slot card. Both fans spin, then stop. Exploded view: shroud, fans, two flow-through fin stacks, 3D vapor chamber, heat pipes, main PCB, PCIe and display boards. |
-| 2 | Main PCB | 10 cm | GB202 ringed by 16 GDDR7 chips (32 GB, 512-bit). Chips light up in sequence while data pulses run along the memory bus traces. Power stages, MLCC field, 12V-2x6 connector, PCIe 5.0 x16 fingers. |
-| 3 | GB202 package | 5 cm | Flip-chip BGA. The substrate peels apart layer by layer (solder mask, copper, ABF, glass-fibre core). About 5,000 BGA balls and 3,000 C4 bumps, all instanced. |
-| 4 | GB202 die | 1 cm | Thin-film interference shader. The floorplan highlights 12 GPCs, then 192 SMs (170 enabled, 22 fused off), then the L2 and the 16 × 32-bit memory controllers. |
-| 5 | Metal stack | 10 µm | SEM-style cross-section of about 15 interconnect layers, from the aluminium pad down to 28 nm pitch. The camera descends and zooms with the pitch. |
-| 6 | FinFET transistors | 50 nm | A FinFET array. One gate fades out so you can see the high-k dielectric and the electrons, which drift source → drain when the gate pulses. |
-| 7 | Silicon lattice | 2 nm | Diamond cubic built from the lattice maths (a = 5.431 Å, bonds found at a·√3/4). Shows a unit cell, glowing bond pairs, and P and B dopants. |
-| 8 | Silicon atom | 0.2 nm | A nucleus of 14 p⁺ + 14 n⁰ packed by relaxation. The electron cloud (~86k points) is sampled from hydrogen-like 1s/2s/2p/3s/3p orbitals with Clementi–Raimondi Z_eff, and pulses slowly. |
+| #   | Level               | Scale  | What happens                                                                                                                                                                                      |
+| --- | ------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | GeForce RTX 5090 FE | 30 cm  | 304 × 137 mm dual-slot card. Both fans spin, then stop. Exploded view: shroud, fans, two flow-through fin stacks, 3D vapor chamber, heat pipes, main PCB, PCIe and display boards.                |
+| 2   | Main PCB            | 10 cm  | GB202 ringed by 16 GDDR7 chips (32 GB, 512-bit). Chips light up in sequence while data pulses run along the memory bus traces. Power stages, MLCC field, 12V-2x6 connector, PCIe 5.0 x16 fingers. |
+| 3   | GB202 package       | 5 cm   | Flip-chip BGA. The substrate peels apart layer by layer (solder mask, copper, ABF, glass-fibre core). About 5,000 BGA balls and 3,000 C4 bumps, all instanced.                                    |
+| 4   | GB202 die           | 1 cm   | Thin-film interference shader. The floorplan highlights 12 GPCs, then 192 SMs (170 enabled, 22 fused off), then the L2 and the 16 × 32-bit memory controllers.                                    |
+| 5   | Metal stack         | 10 µm  | SEM-style cross-section of about 15 interconnect layers, from the aluminium pad down to 28 nm pitch. The camera descends and zooms with the pitch.                                                |
+| 6   | FinFET transistors  | 50 nm  | A FinFET array. One gate fades out so you can see the high-k dielectric and the electrons, which drift source → drain when the gate pulses.                                                       |
+| 7   | Silicon lattice     | 2 nm   | Diamond cubic built from the lattice maths (a = 5.431 Å, bonds found at a·√3/4). Shows a unit cell, glowing bond pairs, and P and B dopants.                                                      |
+| 8   | Silicon atom        | 0.2 nm | A nucleus of 14 p⁺ + 14 n⁰ packed by relaxation. The electron cloud (~86k points) is sampled from hydrogen-like 1s/2s/2p/3s/3p orbitals with Clementi–Raimondi Z_eff, and pulses slowly.          |
 
 ## Interaction
 
@@ -22,27 +22,27 @@ The page has two modes:
 - **Cinematic** (default): scroll and the camera directs. A faint mouse parallax makes it feel like a space, not a video.
 - **Explore**: press `E`, the **Explore** button, or click any object. The scroll timeline freezes and the camera is yours.
 
-| Input | What it does |
-|-------|--------------|
-| Hover | Identifies a part: corner bracket, tooltip with a leader line, key specs |
-| Click | Inspects it: spotlight, inspector panel, the camera glides to it |
-| Drag / wheel / right-drag | Orbit / zoom / pan (Explore) |
-| `←` `→` | Previous / next scale, flying through the dive |
-| `Esc` | Deselect, then leave Explore |
-| Breadcrumb, scale rail, ◀ ▶ | Jump to any scale |
+| Input                       | What it does                                                             |
+| --------------------------- | ------------------------------------------------------------------------ |
+| Hover                       | Identifies a part: corner bracket, tooltip with a leader line, key specs |
+| Click                       | Inspects it: spotlight, inspector panel, the camera glides to it         |
+| Drag / wheel / right-drag   | Orbit / zoom / pan (Explore)                                             |
+| `←` `→`                     | Previous / next scale, flying through the dive                           |
+| `Esc`                       | Deselect, then leave Explore                                             |
+| Breadcrumb, scale rail, ◀ ▶ | Jump to any scale                                                        |
 
 Per-level controls appear in the inspector in Explore mode:
 
-| Level | Controls |
-|-------|----------|
-| 1 · Card | Disassembly slider (0–100 %); fans Stop / Idle / Load |
-| 2 · PCB | Data flow Off / Slow / Realtime / Burst |
-| 3 · Package | Peel-apart slider |
-| 4 · Die | Highlight GPC / SM / L2 / Memory. Hovering far away gives GPCs; close up gives individual SMs, including the 22 fused off on the 5090 |
-| 5 · Metal | Hover any wire for its layer, pitch and role |
-| 6 · FinFET | Gate voltage OFF / ON / CLOCK; clock speed |
-| 7 · Lattice | Doping Mixed / Intrinsic / N-type (free electrons) / P-type (holes) |
-| 8 · Atom | Orbitals All / 1s / 2s / 2p / 3s / 3p; hover a shell |
+| Level       | Controls                                                                                                                              |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 · Card    | Disassembly slider (0–100 %); fans Stop / Idle / Load                                                                                 |
+| 2 · PCB     | Data flow Off / Slow / Realtime / Burst                                                                                               |
+| 3 · Package | Peel-apart slider                                                                                                                     |
+| 4 · Die     | Highlight GPC / SM / L2 / Memory. Hovering far away gives GPCs; close up gives individual SMs, including the 22 fused off on the 5090 |
+| 5 · Metal   | Hover any wire for its layer, pitch and role                                                                                          |
+| 6 · FinFET  | Gate voltage OFF / ON / CLOCK; clock speed                                                                                            |
+| 7 · Lattice | Doping Mixed / Intrinsic / N-type (free electrons) / P-type (holes)                                                                   |
+| 8 · Atom    | Orbitals All / 1s / 2s / 2p / 3s / 3p; hover a shell                                                                                  |
 
 On touch screens, a first tap identifies a part (tooltip) and a second tap on it inspects, so swiping through the story never drops you into Explore by accident. In Explore, one finger orbits, a pinch zooms and two fingers pan. The inspector becomes a bottom sheet that collapses to its title (tap the grip). While it is open, the view slides so the subject stays clear of the panel.
 
@@ -85,7 +85,7 @@ The interaction layer lives in `src/interaction/` and is shared by every level:
 - `ViewModes.ts` implements X-Ray, Section and Thermal, plus the heat model.
 - `FollowTracer.ts` draws the followed electron.
 
-Levels only describe *what* can be picked (`pickables`, with `EntityInfo` metadata) and *which* controls they offer (`controls`). They never handle input themselves.
+Levels only describe _what_ can be picked (`pickables`, with `EntityInfo` metadata) and _which_ controls they offer (`controls`). They never handle input themselves.
 
 ## Run
 
@@ -141,7 +141,7 @@ Level interface:
 
 ```ts
 interface Level {
-  meta: LevelMeta;                 // name, scale label, unitMeters, timeline weight
+  meta: LevelMeta; // name, scale label, unitMeters, timeline weight
   scene: THREE.Scene;
   init(): void;
   update(t: number, dt: number, time: number): void;

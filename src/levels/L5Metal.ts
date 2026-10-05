@@ -32,7 +32,24 @@ interface MetalLayer {
 }
 
 const PITCHES = [10, 4, 4, 1.6, 1.6, 0.72, 0.72, 0.32, 0.16, 0.08, 0.064, 0.048, 0.04, 0.036, 0.028, 0.028];
-const NAMES = ['AP (Al pad)', 'M15', 'M14', 'M13', 'M12', 'M11', 'M10', 'M9', 'M8', 'M7', 'M6', 'M5', 'M4', 'M3', 'M2', 'M1'];
+const NAMES = [
+  'AP (Al pad)',
+  'M15',
+  'M14',
+  'M13',
+  'M12',
+  'M11',
+  'M10',
+  'M9',
+  'M8',
+  'M7',
+  'M6',
+  'M5',
+  'M4',
+  'M3',
+  'M2',
+  'M1',
+];
 const CPP = 0.051; // contacted gate pitch (µm)
 const FIN_PITCH = 0.028;
 
@@ -195,7 +212,10 @@ export class MetalLevel extends BaseLevel {
       pickInstances(viaMesh, () => ({
         title: 'Via',
         kind: 'Interconnect · vertical',
-        specs: [['Joins', 'adjacent metal layers'], ['Material', 'copper']],
+        specs: [
+          ['Joins', 'adjacent metal layers'],
+          ['Material', 'copper'],
+        ],
         note: 'Wires on alternate layers run at right angles; vias are the only way a signal changes layer.',
       })),
     );
@@ -277,7 +297,10 @@ export class MetalLevel extends BaseLevel {
       pickInstances(contacts, () => ({
         title: 'Contact',
         kind: 'Middle of line',
-        specs: [['Material', 'tungsten / cobalt'], ['Joins', 'transistor ↔ M1']],
+        specs: [
+          ['Material', 'tungsten / cobalt'],
+          ['Joins', 'transistor ↔ M1'],
+        ],
       })),
     );
 

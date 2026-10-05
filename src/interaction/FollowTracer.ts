@@ -96,6 +96,11 @@ export class FollowTracer {
 /** Point on a polyline/spline at u in [0, 1], cached per level instance. */
 export function splineAt(points: [number, number, number][], u: number, out: THREE.Vector3) {
   const key = points as unknown as { __curve?: THREE.CatmullRomCurve3 };
-  key.__curve ??= new THREE.CatmullRomCurve3(points.map((p) => new THREE.Vector3(...p)), false, 'centripetal', 0.5);
+  key.__curve ??= new THREE.CatmullRomCurve3(
+    points.map((p) => new THREE.Vector3(...p)),
+    false,
+    'centripetal',
+    0.5,
+  );
   return key.__curve.getPointAt(THREE.MathUtils.clamp(u, 0, 1), out);
 }

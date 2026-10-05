@@ -22,10 +22,23 @@ export const meta: LevelMeta = {
 
 /** Inspector text per substrate layer type. */
 const LAYER_NOTES: Record<string, [string, string][]> = {
-  'Solder mask': [['Material', 'epoxy resist'], ['Role', 'protects bottom copper']],
-  'Top solder mask': [['Material', 'epoxy resist'], ['Role', 'protects top copper']],
-  ABF: [['Material', 'Ajinomoto build-up film'], ['Role', 'dielectric between copper layers']],
-  'Glass-fibre core + PTH': [['Material', 'glass-weave epoxy'], ['Vias', 'plated through-holes'], ['Role', 'stiffness']],
+  'Solder mask': [
+    ['Material', 'epoxy resist'],
+    ['Role', 'protects bottom copper'],
+  ],
+  'Top solder mask': [
+    ['Material', 'epoxy resist'],
+    ['Role', 'protects top copper'],
+  ],
+  ABF: [
+    ['Material', 'Ajinomoto build-up film'],
+    ['Role', 'dielectric between copper layers'],
+  ],
+  'Glass-fibre core + PTH': [
+    ['Material', 'glass-weave epoxy'],
+    ['Vias', 'plated through-holes'],
+    ['Role', 'stiffness'],
+  ],
 };
 
 const SIZE = 50;
@@ -346,7 +359,8 @@ export class PackageLevel extends BaseLevel {
 
   protected animate(t: number, dt: number) {
     const scripted = smootherstep(0.12, 0.55, t);
-    const e = this.peelOverride === null ? scripted : this.lastPeel + (this.peelOverride - this.lastPeel) * Math.min(1, dt * 8);
+    const e =
+      this.peelOverride === null ? scripted : this.lastPeel + (this.peelOverride - this.lastPeel) * Math.min(1, dt * 8);
     this.lastPeel = e;
     // Peel: every layer rises by its index; die and bumps ride on top.
     this.layers.forEach((l, i) => (l.mesh.position.y = l.baseY + e * GAP * (i + 1)));

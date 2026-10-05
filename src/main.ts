@@ -4,25 +4,26 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
-import {
-  BloomEffect,
-  DepthOfFieldEffect,
-  EffectComposer,
-  EffectPass,
-  RenderPass,
-  ToneMappingEffect,
-  ToneMappingMode,
-  VignetteEffect,
-} from 'postprocessing';
 import { LevelManager } from './core/LevelManager';
+import { LevelProfiler } from './core/LevelProfiler';
 import { Overlay } from './core/Overlay';
 import type { LevelContext } from './core/types';
 import { LEVELS } from './levels';
 import { InteractionManager } from './interaction/InteractionManager';
+import { AdaptiveResolution } from './app/AdaptiveResolution';
+import { createPostFx } from './app/postfx';
+import { createSettings, readQuality } from './app/settings';
+import { setupTour } from './app/tour';
+import { setupDebugPanel } from './app/debugPanel';
 
 gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 
-// ---------------------------------------------------------------- renderer
+// ---------------------------------------------------------------- renderer + post
+const quality = readQuality(location.search);
+const debug = new URLSearchParams(location.search).has('debug');
+const settings = createSettings(quality);
+const maxPixelRatio = quality === 'low' ? 1 : quality === 'high' ? 2 : 1.75;
+
 const canvas = document.getElementById('gl') as HTMLCanvasElement;
 const renderer = new THREE.WebGLRenderer({
   canvas,
@@ -30,23 +31,23 @@ const renderer = new THREE.WebGLRenderer({
   stencil: false,
   powerPreference: 'high-performance',
 });
-// Quality: ?quality=low|high, otherwise auto (adaptive resolution keeps ~60 fps).
-const quality = new URLSearchParams(location.search).get('quality');
-const maxPixelRatio = quality === 'low' ? 1 : quality === 'high' ? 2 : 1.75;
-const adaptive = quality !== 'high';
-let pixelRatio = Math.min(window.devicePixelRatio, maxPixelRatio);
-renderer.setPixelRatio(pixelRatio);
+const resolution = new AdaptiveResolution(
+  Math.min(window.devicePixelRatio, maxPixelRatio),
+  () => Math.min(window.devicePixelRatio, maxPixelRatio),
+  quality !== 'high',
+);
+renderer.setPixelRatio(resolution.pixelRatio);
 renderer.info.autoReset = false; // the composer renders several passes per frame
-renderer.setSize(window.innerWidth, window.innerHeight, false);
 renderer.toneMapping = THREE.NoToneMapping; // tone mapping happens in the effect chain
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 
 const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 1000);
-
 const pmrem = new THREE.PMREMGenerator(renderer);
 const envMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 pmrem.dispose();
+const post = createPostFx(renderer, camera, quality);
 
+// ---------------------------------------------------------------- levels + interaction
 const ctx: LevelContext = {
   renderer,
   camera,
@@ -61,31 +62,9 @@ const ctx: LevelContext = {
   },
 };
 
-// ---------------------------------------------------------------- post
-const composer = new EffectComposer(renderer, {
-  frameBufferType: THREE.HalfFloatType,
-  multisampling: quality === 'low' ? 0 : Math.min(4, renderer.capabilities.maxSamples),
-});
-const placeholder = new THREE.Scene();
-const renderPass = new RenderPass(placeholder, camera);
-const dof = new DepthOfFieldEffect(camera, { focusDistance: 10, focusRange: 5, bokehScale: 1.5, resolutionScale: 0.5 });
-const bloom = new BloomEffect({
-  mipmapBlur: true,
-  luminanceThreshold: 0.62,
-  luminanceSmoothing: 0.25,
-  intensity: 1.1,
-  radius: 0.7,
-});
-const vignette = new VignetteEffect({ offset: 0.3, darkness: 0.62 });
-const toneMapping = new ToneMappingEffect({ mode: ToneMappingMode.ACES_FILMIC });
-const dofPass = new EffectPass(camera, dof);
-composer.addPass(renderPass);
-composer.addPass(dofPass);
-composer.addPass(new EffectPass(camera, bloom, vignette, toneMapping));
-
-// ---------------------------------------------------------------- levels + UI
-const flashEl = document.getElementById('flash')!;
-const manager = new LevelManager(ctx, LEVELS, flashEl);
+const manager = new LevelManager(ctx, LEVELS, document.getElementById('flash')!);
+const profiler = new LevelProfiler(renderer);
+manager.profiler = profiler;
 const overlay = new Overlay(
   LEVELS.map((l) => l.meta),
   (i) => jumpToLevel(i),
@@ -93,26 +72,21 @@ const overlay = new Overlay(
 const interaction = new InteractionManager(ctx, manager, canvas, (i) => jumpToLevel(i));
 manager.onBeforeDispose = (level) => interaction.detach(level.scene);
 manager.onSwap = (index, level) => {
-  renderPass.mainScene = level.scene;
+  post.renderPass.mainScene = level.scene;
   overlay.showLevel(index);
   interaction.attach(level, index);
 };
 
+// ---------------------------------------------------------------- scroll
+const totalWeight = LEVELS.reduce((s, l) => s + l.meta.weight, 0);
 const scrollSpace = document.getElementById('scroll-space')!;
-scrollSpace.style.height = `${LEVELS.reduce((s, l) => s + l.meta.weight, 0) * 150}vh`;
-
+scrollSpace.style.height = `${totalWeight * 150}vh`;
 const scrollState = { p: 0 };
 gsap.to(scrollState, {
   p: 1,
   ease: 'none',
-  scrollTrigger: {
-    trigger: scrollSpace,
-    start: 'top top',
-    end: 'bottom bottom',
-    scrub: 0.9,
-  },
+  scrollTrigger: { trigger: scrollSpace, start: 'top top', end: 'bottom bottom', scrub: 0.9 },
 });
-
 const maxScroll = () => document.documentElement.scrollHeight - window.innerHeight;
 const scrollToProgress = (p: number) => window.scrollTo({ top: p * maxScroll(), behavior: 'instant' });
 
@@ -135,114 +109,30 @@ function jumpToLevel(index: number) {
   });
 }
 
-// ---------------------------------------------------------------- follow-the-electron tour
-/**
- * Guided tour: scroll from the very top to the very bottom at a steady pace while each level
- * shows where "our" electron is. Pauses in Explore, stops on a second press (or F / Esc).
- */
-let tour: gsap.core.Tween | null = null;
-const followBtn = document.getElementById('nav-follow')!;
-function startFollow() {
-  ctx.journey.follow = true;
-  document.body.classList.add('following');
-  followBtn.textContent = 'Stop';
-  interaction.exitExplore();
-  tour?.kill();
-  const total = LEVELS.reduce((s, l) => s + l.meta.weight, 0);
-  if (settings.override) {
-    settings.progress = 0;
-    tour = gsap.to(settings, { progress: 1, duration: total * 11, ease: 'none' });
-    return;
-  }
-  window.scrollTo({ top: 0, behavior: 'instant' });
-  tour = gsap.to(window, {
-    scrollTo: { y: maxScroll(), autoKill: true },
-    duration: total * 11,
-    ease: 'none',
-    delay: 0.6,
-  });
-}
-function stopFollow() {
-  ctx.journey.follow = false;
-  document.body.classList.remove('following');
-  followBtn.textContent = 'Follow e⁻';
-  tour?.kill();
-  tour = null;
-}
-followBtn.addEventListener('click', () => (ctx.journey.follow ? stopFollow() : startFollow()));
-window.addEventListener('keydown', (e) => {
-  const t = e.target as HTMLElement | null;
-  if (t && t.tagName === 'INPUT') return;
-  if (e.key === 'f' || e.key === 'F' || e.key === 'а' || e.key === 'А') ctx.journey.follow ? stopFollow() : startFollow();
-  else if (e.key === 'Escape' && ctx.journey.follow && !interaction.exploring) stopFollow();
-});
-interaction.onExploreToggle = (active) => {
-  if (active) tour?.pause();
-  else tour?.resume();
-};
+setupTour({ ctx, interaction, settings, maxScroll, duration: totalWeight * 11 });
 
-// ---------------------------------------------------------------- debug (?debug)
-const settings = {
-  progress: 0,
-  override: false,
-  bloom: 1.1,
-  threshold: 0.62,
-  dof: quality !== 'low',
-  bokeh: 1,
-  timeScale: 1,
-  fps: 0,
-  frameMs: 0,
-  drawCalls: 0,
-  triangles: 0,
-  pixelRatio: 0,
-};
-
-if (new URLSearchParams(location.search).has('debug')) {
-  // Handle for automated screenshots / console scrubbing: __teardown.settings.override = true; ...progress = 0.5
-  (window as unknown as Record<string, unknown>).__teardown = { settings, manager, renderer, ctx, interaction };
-  import('lil-gui').then(({ default: GUI }) => {
-    const gui = new GUI({ title: 'GPU → Atom debug' });
-    const perfFolder = gui.addFolder('Performance');
-    perfFolder.add(settings, 'fps').listen().disable();
-    perfFolder.add(settings, 'frameMs').name('frame ms').listen().disable();
-    perfFolder.add(settings, 'drawCalls').name('draw calls').listen().disable();
-    perfFolder.add(settings, 'triangles').listen().disable();
-    perfFolder.add(settings, 'pixelRatio').name('pixel ratio').listen().disable();
-    const tl = gui.addFolder('Timeline');
-    tl.add(settings, 'override').name('scrub with slider');
-    tl.add(settings, 'progress', 0, 1, 0.0005)
-      .listen()
-      .onChange((v: number) => {
-        if (!settings.override) scrollToProgress(v);
-      });
-    tl.add(settings, 'timeScale', 0, 3, 0.01).name('time scale');
-    const jumps: Record<string, () => void> = {};
-    LEVELS.forEach((l, i) => {
-      const key = `${i + 1}. ${l.meta.name}`;
-      jumps[key] = () => {
-        const p = manager.progressForLevel(i);
-        settings.progress = p;
-        if (!settings.override) scrollToProgress(p);
-      };
-      tl.add(jumps, key);
-    });
-    const fx = gui.addFolder('Post');
-    fx.add(settings, 'bloom', 0, 4, 0.01);
-    fx.add(settings, 'threshold', 0, 1, 0.01).onChange((v: number) => (bloom.luminanceMaterial.threshold = v));
-    fx.add(settings, 'dof').name('depth of field').onChange((v: boolean) => (dofPass.enabled = v));
-    fx.add(settings, 'bokeh', 0, 4, 0.01).name('bokeh ×');
-  });
+if (debug) {
+  // Handle for tests / console scrubbing: __teardown.settings.override = true; ...progress = 0.5
+  (window as unknown as Record<string, unknown>).__teardown = {
+    settings,
+    manager,
+    renderer,
+    ctx,
+    interaction,
+    profiler,
+  };
+  setupDebugPanel({ settings, manager, metas: LEVELS.map((l) => l.meta), post, scrollToProgress });
 }
 
 // ---------------------------------------------------------------- loop
 function resize() {
   const w = window.innerWidth;
   const h = window.innerHeight;
-  renderer.setPixelRatio(pixelRatio);
+  renderer.setPixelRatio(resolution.pixelRatio);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   renderer.setSize(w, h, false);
-  composer.setSize(w, h, false);
+  post.composer.setSize(w, h, false);
 }
 window.addEventListener('resize', resize);
 resize();
@@ -280,6 +170,7 @@ function frame(now: number) {
   overlay.setProgress(p);
 
   // Per-level post settings (DOF works in the level's local units).
+  const { dof, dofPass, bloom, composer } = post;
   bloom.intensity = settings.bloom * (level.bloom ?? 1);
   const focus = exploreFocus ?? manager.getFocusPoint(state);
   dof.cocMaterial.adoptCameraSettings(camera); // near/far change per level
@@ -288,16 +179,21 @@ function frame(now: number) {
     dof.cocMaterial.focusRange = camera.position.distanceTo(focus) * 0.55;
   }
   dof.bokehScale = (level.bokeh ?? 1.5) * settings.bokeh;
-
   // Depth of field is for the cinematic story; in Explore it only gets in the way (and costs).
   dofPass.enabled = settings.dof && !interaction.exploring;
 
   renderer.info.reset();
-  composer.render(rawDt);
+  if (profiler.awaitingFirstFrame) {
+    const rec = profiler.measureFirstFrame(() => composer.render(rawDt), level.scene);
+    if (debug) console.info('[level]', JSON.stringify(rec));
+  } else {
+    composer.render(rawDt);
+  }
   settings.drawCalls = renderer.info.render.calls;
   settings.triangles = renderer.info.render.triangles;
-  settings.pixelRatio = Math.round(pixelRatio * 100) / 100;
-  adaptResolution(rawDt);
+  settings.pixelRatio = Math.round(resolution.pixelRatio * 100) / 100;
+  if (resolution.step(rawDt, document.hidden) !== null) resize();
+  settings.frameMs = Math.round(resolution.ema * 10000) / 10;
 
   fpsAcc += rawDt;
   fpsFrames++;
@@ -307,35 +203,6 @@ function frame(now: number) {
     fpsFrames = 0;
   }
   requestAnimationFrame(frame);
-}
-
-/**
- * Adaptive resolution: if the frame rate sits below ~52 fps for 1.5 s, render at fewer
- * pixels; once it has been smooth for 8 s, carefully step back up. Hysteresis + cooldowns
- * keep it from oscillating, and single slow frames (level swaps) never trigger it.
- */
-const perf = { ema: 1 / 60, low: 0, good: 0, cooldown: 2 };
-function adaptResolution(rawDt: number) {
-  perf.ema += (rawDt - perf.ema) * 0.05;
-  settings.frameMs = Math.round(perf.ema * 10000) / 10;
-  if (!adaptive || document.hidden) return;
-  perf.cooldown -= rawDt;
-  const fps = 1 / perf.ema;
-  perf.low = fps < 52 ? perf.low + rawDt : 0;
-  perf.good = fps > 57 ? perf.good + rawDt : 0;
-  const ceiling = Math.min(window.devicePixelRatio, maxPixelRatio);
-  if (perf.cooldown > 0) return;
-  if (perf.low > 1.5 && pixelRatio > 0.6) {
-    pixelRatio = Math.max(0.6, pixelRatio * 0.85);
-    perf.low = 0;
-    perf.cooldown = 2;
-    resize();
-  } else if (perf.good > 8 && pixelRatio < ceiling) {
-    pixelRatio = Math.min(ceiling, pixelRatio * 1.1);
-    perf.good = 0;
-    perf.cooldown = 4;
-    resize();
-  }
 }
 
 requestAnimationFrame(frame);
