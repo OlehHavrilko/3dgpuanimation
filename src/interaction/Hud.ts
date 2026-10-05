@@ -31,6 +31,15 @@ export class Hud {
 
   constructor() {
     this.insp.querySelector('.insp-close')!.addEventListener('click', () => this.onClose?.());
+    // Phones: the bottom sheet collapses to its title bar so the 3D view gets the screen back.
+    const toggle = () => window.innerWidth <= 640 && this.insp.classList.toggle('collapsed');
+    this.insp.querySelector('.insp-grip')!.addEventListener('click', toggle);
+    this.inspTitle.addEventListener('click', toggle);
+  }
+
+  /** Inspector bounds while it is open (for keeping the subject clear of it). */
+  inspectorRect(): DOMRect | null {
+    return this.insp.classList.contains('on') ? this.insp.getBoundingClientRect() : null;
   }
 
   // ---------------------------------------------------------------- tooltip
@@ -53,8 +62,9 @@ export class Hud {
     const h = this.tip.offsetHeight || 80;
     const flipX = x + 70 + w > window.innerWidth - 12;
     const flipY = y - 60 - h < 12;
-    const cx = flipX ? x - 70 - w : x + 70;
-    const cy = flipY ? y + 50 : y - 60 - h;
+    // Clamp to the viewport (narrow phones: neither side may have room).
+    const cx = Math.min(Math.max(8, flipX ? x - 70 - w : x + 70), window.innerWidth - w - 8);
+    const cy = Math.min(Math.max(8, flipY ? y + 50 : y - 60 - h), window.innerHeight - h - 8);
     this.tip.style.transform = `translate(${cx}px, ${cy}px)`;
     this.tip.classList.add('on');
     // Leader: target dot -> elbow -> card corner.
@@ -76,7 +86,8 @@ export class Hud {
   // ---------------------------------------------------------------- spotlight
   setSpot(x: number, y: number, r: number) {
     const inner = Math.max(40, r);
-    this.spot.style.background = `radial-gradient(circle at ${x}px ${y}px, rgba(0,0,0,0) ${inner}px, rgba(1,3,2,0.62) ${inner * 1.9 + 40}px)`;
+    // Soft and wide: the rest of the scene recedes, it does not go black.
+    this.spot.style.background = `radial-gradient(circle at ${x}px ${y}px, rgba(0,0,0,0) ${inner * 1.1}px, rgba(1,3,2,0.22) ${inner * 1.8 + 30}px, rgba(1,3,2,0.42) ${inner * 3 + 120}px)`;
     this.spot.classList.add('on');
   }
 

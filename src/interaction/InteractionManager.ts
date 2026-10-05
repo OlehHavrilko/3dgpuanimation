@@ -31,6 +31,8 @@ export class InteractionManager {
   private hoverBracket: THREE.LineSegments;
   private selectBracket: THREE.LineSegments;
   private controls: OrbitControls | null = null;
+  /** Current projection shift (px) that keeps the subject clear of the inspector. */
+  private viewShift = new THREE.Vector2();
   private fly: { t: number; dur: number; fromPos: THREE.Vector3; toPos: THREE.Vector3; fromTarget: THREE.Vector3; toTarget: THREE.Vector3 } | null = null;
   private returnBlend: { t: number; pos: THREE.Vector3; quat: THREE.Quaternion } | null = null;
   private parallax = new THREE.Vector2();
@@ -49,7 +51,8 @@ export class InteractionManager {
     this.selectBracket = makeBracket(0xe9ffd0, 1);
 
     canvas.addEventListener('pointermove', (e) => this.onPointerMove(e));
-    canvas.addEventListener('pointerleave', () => {
+    canvas.addEventListener('pointerleave', (e) => {
+      if (e.pointerType === 'touch') return; // touch "leaves" after every tap; keep the tooltip
       this.pointerInside = false;
       this.setHover(null);
     });
@@ -113,6 +116,17 @@ export class InteractionManager {
     if (moved > 6 || performance.now() - d.t > 600) return; // that was a drag, not a click
     this.onPointerMove(e);
     const hit = this.raycast();
+    // Touch while scrolling the story: first tap identifies (tooltip), a second tap on the
+    // same thing inspects. A stray tap during a swipe never yanks the user into Explore.
+    if (e.pointerType === 'touch' && !this.exploring) {
+      if (hit && hit.key === this.hover?.key) {
+        this.enterExplore();
+        this.select(hit);
+      } else {
+        this.setHover(hit);
+      }
+      return;
+    }
     if (hit) {
       if (!this.exploring) this.enterExplore();
       this.select(hit);
@@ -331,6 +345,8 @@ export class InteractionManager {
       else if (hit && this.hover) this.hover.box.copy(hit.box);
     }
 
+    this.updateViewShift(dt);
+
     // Screen-space UI follows its 3D anchors.
     if (this.hover && this.hover.key !== this.selected?.key) {
       const p = this.project(this.hover.box);
@@ -340,6 +356,29 @@ export class InteractionManager {
     if (this.selected) {
       const p = this.project(this.selected.box);
       if (p) this.hud.setSpot(p.x, p.y, p.r);
+    }
+  }
+
+  /**
+   * When the inspector is open, slide the projection so the scene's centre sits in the free
+   * area: left of the panel on desktop, above the bottom sheet on phones. Smoothly eased.
+   */
+  private updateViewShift(dt: number) {
+    const cam = this.ctx.camera;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const open = document.body.classList.contains('inspecting');
+    const phone = w <= 640;
+    const panel = this.hud.inspectorRect();
+    const tx = open && !phone && panel ? (w - panel.left) / 2 : 0;
+    const ty = open && phone && panel ? (h - panel.top) / 2 : 0;
+    const k = 1 - Math.exp(-dt * 6);
+    this.viewShift.x += (tx - this.viewShift.x) * k;
+    this.viewShift.y += (ty - this.viewShift.y) * k;
+    if (Math.abs(this.viewShift.x) + Math.abs(this.viewShift.y) > 0.5) {
+      cam.setViewOffset(w, h, this.viewShift.x, this.viewShift.y, w, h);
+    } else if (cam.view?.enabled) {
+      cam.clearViewOffset();
     }
   }
 

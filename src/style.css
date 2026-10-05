@@ -313,15 +313,34 @@ body.idle:not(.exploring) #crumbs { opacity: 0.12; transition: opacity 1.2s; }
   overflow-y: auto;
   padding: 18px 18px 16px;
   color: var(--white);
-  background: rgba(4, 9, 6, 0.82);
-  border: 1px solid rgba(118, 185, 0, 0.35);
-  backdrop-filter: blur(10px);
+  background: linear-gradient(180deg, rgba(4, 10, 6, 0.74), rgba(4, 10, 6, 0.6));
+  border: 1px solid rgba(118, 185, 0, 0.22);
+  border-left: 2px solid var(--green);
+  backdrop-filter: blur(8px);
   transform: translate(24px, -50%);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.3s, transform 0.3s;
 }
 #inspector.on { opacity: 1; transform: translate(0, -50%); pointer-events: auto; }
+/* Instrument-panel corner ticks */
+#inspector::before, #inspector::after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-color: var(--green-soft);
+  border-style: solid;
+  pointer-events: none;
+}
+#inspector::before { right: -1px; top: -1px; border-width: 1px 1px 0 0; }
+#inspector::after { right: -1px; bottom: -1px; border-width: 0 1px 1px 0; }
+.insp-grip { display: none; }
+#explore-hint .touch { display: none; }
+@media (hover: none) {
+  #explore-hint .mouse { display: none; }
+  #explore-hint .touch { display: inline; }
+}
 .insp-close {
   position: absolute;
   right: 8px;
@@ -362,7 +381,22 @@ body.idle:not(.exploring) #crumbs { opacity: 0.12; transition: opacity 1.2s; }
     transform: translateY(24px);
   }
   #inspector.on { transform: none; }
-  #explore-hint { display: none; }
+  #inspector { padding-top: 22px; transition: opacity 0.3s, transform 0.3s, max-height 0.35s ease; }
+  #inspector.collapsed { max-height: 64px; overflow: hidden; }
+  .insp-grip {
+    display: block;
+    position: absolute;
+    left: 50%;
+    top: 8px;
+    width: 40px;
+    height: 4px;
+    margin-left: -20px;
+    border-radius: 2px;
+    background: rgba(225, 240, 215, 0.3);
+    cursor: pointer;
+  }
+  #explore-hint { bottom: 70px; white-space: normal; text-align: center; width: 90vw; }
+  body.inspecting #explore-hint { display: none; }
   #crumbs .far { display: none; }
   #tip { max-width: 200px; }
 }

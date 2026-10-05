@@ -49,10 +49,14 @@
         </div>
         <div id="scroll-hint">scroll to descend <span>&darr;</span></div>
       </footer>
-      <div id="explore-hint">drag&nbsp;· orbit &nbsp; wheel&nbsp;· zoom &nbsp; right-drag&nbsp;· pan &nbsp; click&nbsp;· inspect &nbsp; esc&nbsp;· exit</div>
+      <div id="explore-hint">
+        <span class="mouse">drag&nbsp;· orbit &nbsp; wheel&nbsp;· zoom &nbsp; right-drag&nbsp;· pan &nbsp; click&nbsp;· inspect &nbsp; esc&nbsp;· exit</span>
+        <span class="touch">1 finger&nbsp;· orbit &nbsp; pinch&nbsp;· zoom &nbsp; 2 fingers&nbsp;· pan &nbsp; tap&nbsp;· inspect</span>
+      </div>
     </div>
 
     <aside id="inspector" aria-live="polite">
+      <div class="insp-grip" title="Collapse"></div>
       <button class="insp-close" type="button" title="Close (Esc)">&times;</button>
       <div class="insp-kind"></div>
       <h2 class="insp-title"></h2>

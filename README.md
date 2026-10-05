@@ -44,6 +44,8 @@ Per-level controls appear in the inspector in Explore mode:
 | 7 · Lattice | Doping Mixed / Intrinsic / N-type (free electrons) / P-type (holes) |
 | 8 · Atom | Orbitals All / 1s / 2s / 2p / 3s / 3p; hover a shell |
 
+On touch screens, a first tap identifies a part (tooltip) and a second tap on it inspects, so swiping through the story never drops you into Explore by accident. In Explore, one finger orbits, a pinch zooms and two fingers pan. The inspector becomes a bottom sheet that collapses to its title (tap the grip). While it is open, the view slides so the subject stays clear of the panel.
+
 The interaction layer lives in `src/interaction/` and is shared by every level:
 
 - `InteractionManager.ts` handles raycasting, hover and selection, Explore mode (OrbitControls), camera fly-to, keyboard input and parallax.
@@ -124,7 +126,10 @@ To add a level, extend `BaseLevel`, implement `build()`, `cameraKeys()`, `animat
 - Every repeated object uses `InstancedMesh`: fins, blades, chips, MLCCs, BGA balls, bumps, wires, vias, fins and gates, atoms, bonds.
 - Per-instance glow comes from an `aGlow` attribute patched into `MeshStandardMaterial`, so there are no material clones.
 - Levels dispose all their geometries, materials and textures on swap. Renderer memory counters stay flat while cycling through all levels.
-- Pixel ratio is capped at 1.75, and DOF runs at half resolution.
+- Pixel ratio is capped at 1.75, and DOF runs at half resolution. DOF is switched off entirely in Explore mode.
+- **Adaptive resolution.** If the frame rate stays below ~52 fps for 1.5 s, the render resolution steps down. After 8 s of smooth frames it steps back up. Hysteresis and cooldowns keep it from oscillating.
+- `?quality=low` forces pixel ratio 1, no MSAA and no DOF. `?quality=high` sets pixel ratio up to 2 with adaptation off.
+- `?debug` shows FPS, frame time, draw calls, triangles and the current pixel ratio.
 
 ## Accuracy notes
 

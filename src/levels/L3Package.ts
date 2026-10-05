@@ -221,7 +221,7 @@ export class PackageLevel extends BaseLevel {
     // BGA solder balls under the substrate (~5000)
     const n = 72;
     const pitch = 0.66;
-    const ballGeo = new THREE.SphereGeometry(0.27, 10, 8);
+    const ballGeo = new THREE.SphereGeometry(0.27, 8, 6); // ~5000 instances: keep it light
     const ballMat = new THREE.MeshStandardMaterial({ color: 0xc9cdd3, metalness: 1, roughness: 0.28 });
     const pos: [number, number][] = [];
     for (let i = 0; i < n; i++) {

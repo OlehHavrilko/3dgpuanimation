@@ -30,8 +30,13 @@ const renderer = new THREE.WebGLRenderer({
   stencil: false,
   powerPreference: 'high-performance',
 });
-const maxPixelRatio = 1.75;
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, maxPixelRatio));
+// Quality: ?quality=low|high, otherwise auto (adaptive resolution keeps ~60 fps).
+const quality = new URLSearchParams(location.search).get('quality');
+const maxPixelRatio = quality === 'low' ? 1 : quality === 'high' ? 2 : 1.75;
+const adaptive = quality !== 'high';
+let pixelRatio = Math.min(window.devicePixelRatio, maxPixelRatio);
+renderer.setPixelRatio(pixelRatio);
+renderer.info.autoReset = false; // the composer renders several passes per frame
 renderer.setSize(window.innerWidth, window.innerHeight, false);
 renderer.toneMapping = THREE.NoToneMapping; // tone mapping happens in the effect chain
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -47,7 +52,7 @@ const ctx: LevelContext = { renderer, camera, envMap, view: { freeCamera: false 
 // ---------------------------------------------------------------- post
 const composer = new EffectComposer(renderer, {
   frameBufferType: THREE.HalfFloatType,
-  multisampling: Math.min(4, renderer.capabilities.maxSamples),
+  multisampling: quality === 'low' ? 0 : Math.min(4, renderer.capabilities.maxSamples),
 });
 const placeholder = new THREE.Scene();
 const renderPass = new RenderPass(placeholder, camera);
@@ -124,10 +129,14 @@ const settings = {
   override: false,
   bloom: 1.1,
   threshold: 0.62,
-  dof: true,
+  dof: quality !== 'low',
   bokeh: 1,
   timeScale: 1,
   fps: 0,
+  frameMs: 0,
+  drawCalls: 0,
+  triangles: 0,
+  pixelRatio: 0,
 };
 
 if (new URLSearchParams(location.search).has('debug')) {
@@ -135,7 +144,12 @@ if (new URLSearchParams(location.search).has('debug')) {
   (window as unknown as Record<string, unknown>).__teardown = { settings, manager, renderer };
   import('lil-gui').then(({ default: GUI }) => {
     const gui = new GUI({ title: 'GPU → Atom debug' });
-    gui.add(settings, 'fps').listen().disable();
+    const perfFolder = gui.addFolder('Performance');
+    perfFolder.add(settings, 'fps').listen().disable();
+    perfFolder.add(settings, 'frameMs').name('frame ms').listen().disable();
+    perfFolder.add(settings, 'drawCalls').name('draw calls').listen().disable();
+    perfFolder.add(settings, 'triangles').listen().disable();
+    perfFolder.add(settings, 'pixelRatio').name('pixel ratio').listen().disable();
     const tl = gui.addFolder('Timeline');
     tl.add(settings, 'override').name('scrub with slider');
     tl.add(settings, 'progress', 0, 1, 0.0005)
@@ -166,7 +180,7 @@ if (new URLSearchParams(location.search).has('debug')) {
 function resize() {
   const w = window.innerWidth;
   const h = window.innerHeight;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, maxPixelRatio));
+  renderer.setPixelRatio(pixelRatio);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   renderer.setSize(w, h, false);
@@ -217,7 +231,15 @@ function frame(now: number) {
   }
   dof.bokehScale = (level.bokeh ?? 1.5) * settings.bokeh;
 
+  // Depth of field is for the cinematic story; in Explore it only gets in the way (and costs).
+  dofPass.enabled = settings.dof && !interaction.exploring;
+
+  renderer.info.reset();
   composer.render(rawDt);
+  settings.drawCalls = renderer.info.render.calls;
+  settings.triangles = renderer.info.render.triangles;
+  settings.pixelRatio = Math.round(pixelRatio * 100) / 100;
+  adaptResolution(rawDt);
 
   fpsAcc += rawDt;
   fpsFrames++;
@@ -227,6 +249,35 @@ function frame(now: number) {
     fpsFrames = 0;
   }
   requestAnimationFrame(frame);
+}
+
+/**
+ * Adaptive resolution: if the frame rate sits below ~52 fps for 1.5 s, render at fewer
+ * pixels; once it has been smooth for 8 s, carefully step back up. Hysteresis + cooldowns
+ * keep it from oscillating, and single slow frames (level swaps) never trigger it.
+ */
+const perf = { ema: 1 / 60, low: 0, good: 0, cooldown: 2 };
+function adaptResolution(rawDt: number) {
+  perf.ema += (rawDt - perf.ema) * 0.05;
+  settings.frameMs = Math.round(perf.ema * 10000) / 10;
+  if (!adaptive || document.hidden) return;
+  perf.cooldown -= rawDt;
+  const fps = 1 / perf.ema;
+  perf.low = fps < 52 ? perf.low + rawDt : 0;
+  perf.good = fps > 57 ? perf.good + rawDt : 0;
+  const ceiling = Math.min(window.devicePixelRatio, maxPixelRatio);
+  if (perf.cooldown > 0) return;
+  if (perf.low > 1.5 && pixelRatio > 0.6) {
+    pixelRatio = Math.max(0.6, pixelRatio * 0.85);
+    perf.low = 0;
+    perf.cooldown = 2;
+    resize();
+  } else if (perf.good > 8 && pixelRatio < ceiling) {
+    pixelRatio = Math.min(ceiling, pixelRatio * 1.1);
+    perf.good = 0;
+    perf.cooldown = 4;
+    resize();
+  }
 }
 
 requestAnimationFrame(frame);
