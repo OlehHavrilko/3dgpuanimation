@@ -43,8 +43,9 @@ const renderer = new THREE.WebGLRenderer({
   stencil: false,
   powerPreference: 'high-performance',
 });
-const maxPixelRatio = () => Math.min(window.devicePixelRatio, QUALITY.maxPixelRatio);
-const resolution = new AdaptiveResolution(maxPixelRatio(), maxPixelRatio, QUALITY.adaptive);
+const maxPixelRatio = () => Math.min(Math.max(window.devicePixelRatio, QUALITY.supersample), QUALITY.maxPixelRatio);
+// Never drop far below native: a 0.6x frame reads as soap, so the floor stays near 1 CSS pixel.
+const resolution = new AdaptiveResolution(maxPixelRatio(), maxPixelRatio, QUALITY.adaptive, 0.85);
 renderer.setPixelRatio(resolution.pixelRatio);
 renderer.info.autoReset = false; // the composer renders several passes per frame
 renderer.toneMapping = THREE.NoToneMapping; // tone mapping happens in the effect chain
