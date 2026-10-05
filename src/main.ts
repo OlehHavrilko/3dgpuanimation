@@ -105,7 +105,7 @@ const settings = {
 
 if (new URLSearchParams(location.search).has('debug')) {
   // Handle for automated screenshots / console scrubbing: __teardown.settings.override = true; ...progress = 0.5
-  (window as unknown as Record<string, unknown>).__teardown = { settings, manager };
+  (window as unknown as Record<string, unknown>).__teardown = { settings, manager, renderer };
   import('lil-gui').then(({ default: GUI }) => {
     const gui = new GUI({ title: 'GPU → Atom debug' });
     gui.add(settings, 'fps').listen().disable();

@@ -37,10 +37,11 @@ export abstract class BaseLevel implements Level {
 
   update(t: number, dt: number, time: number) {
     const cam = this.ctx.camera;
-    if (cam.near !== this.near || cam.far !== this.far || cam.fov !== this.fov) {
+    const fov = fovForAspect(this.fov, cam.aspect);
+    if (cam.near !== this.near || cam.far !== this.far || cam.fov !== fov) {
       cam.near = this.near;
       cam.far = this.far;
-      cam.fov = this.fov;
+      cam.fov = fov;
       cam.updateProjectionMatrix();
     }
     this.rig.apply(cam, t);
@@ -60,6 +61,18 @@ export abstract class BaseLevel implements Level {
     disposeObject(this.scene, new Set([this.ctx.envMap]));
     this.scene.clear();
   }
+}
+
+/**
+ * Camera paths are framed for landscape screens. On narrower (portrait) screens widen the
+ * vertical FOV so the horizontal FOV stays what it would be at a 1.3 aspect ratio.
+ */
+export function fovForAspect(fov: number, aspect: number) {
+  const ref = 1.3;
+  if (aspect >= ref) return fov;
+  const h = 2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(fov) / 2) * ref);
+  const v = 2 * Math.atan(Math.tan(h / 2) / aspect);
+  return Math.min(THREE.MathUtils.radToDeg(v), 80);
 }
 
 /**
