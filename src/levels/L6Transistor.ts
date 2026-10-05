@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BaseLevel } from '../core/BaseLevel';
+import { BaseLevel, addGlowAttribute, addRimLight, makeInstanceGlow } from '../core/BaseLevel';
 import type { CameraKey } from '../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../core/types';
 import { mulberry32, smoothstep } from '../core/math';
@@ -9,6 +9,11 @@ import { pointScale } from '../core/points';
  * Level 6 — FinFETs. Units: nanometres.
  * Dimensions are representative of a 5/4 nm-class process (TSMC does not publish exact
  * 4N figures): fin pitch ~28 nm, contacted gate pitch ~51 nm, fin width ~7 nm.
+ *
+ * Every gate switches on its own clock phase, so a wave of activity ripples across the
+ * array: the high-k collars around each fin and the gate tops glow while a gate is on.
+ * Only the transistor we zoom into turns translucent, revealing electrons that flow in a
+ * thin inversion layer just under the fin surface.
  */
 export const meta: LevelMeta = {
   name: 'FinFET transistors',
@@ -23,21 +28,32 @@ const FIN_W = 7;
 const FIN_H = 46;
 const CPP = 51;
 const GATE_L = 16;
+const GATE_H = FIN_H + 30;
 const N_FINS = 12;
 const N_GATES = 14;
-const ELECTRONS = 1600;
 const CENTER_FIN = N_FINS / 2;
+const CENTER_GATE = N_GATES / 2;
 /** The transistor we zoom into sits on the front-most fin so nothing blocks the view. */
 const FOCUS_FIN = N_FINS - 1;
-const CENTER_GATE = N_GATES / 2;
+const ELECTRONS = 900;
+const TRAIL = 3; // head + 2 trail sprites per electron
+
+const GREEN = 0x76b900;
+const GREEN_HOT = 0x9cff3a;
 
 export class TransistorLevel extends BaseLevel {
   readonly meta = meta;
-  private gateMat!: THREE.MeshStandardMaterial;
+  private focusGateMat!: THREE.MeshStandardMaterial;
+  private focusCapMat!: THREE.MeshStandardMaterial;
   private focusFinMat!: THREE.MeshStandardMaterial;
   private dielectricMat!: THREE.MeshStandardMaterial;
+  private collarGlow!: THREE.InstancedBufferAttribute;
+  private capGlow!: THREE.InstancedBufferAttribute;
+  private collarGate: Uint8Array = new Uint8Array(0);
+  private capGate: Uint8Array = new Uint8Array(0);
   private electronMat!: THREE.ShaderMaterial;
-  private electrons!: THREE.BufferAttribute;
+  private ePos!: THREE.BufferAttribute;
+  private head = new Float32Array(ELECTRONS * 3);
   private eVel = new Float32Array(ELECTRONS);
   private gateOn = 0;
   private finZ = (i: number) => (i - CENTER_FIN) * FIN_PITCH;
@@ -48,8 +64,8 @@ export class TransistorLevel extends BaseLevel {
     super(ctx);
     this.near = 0.5;
     this.far = 6000;
-    this.bloom = 1.2;
-    this.bokeh = 0.6;
+    this.bloom = 1.25;
+    this.bokeh = 0.5;
     this.target = {
       position: new THREE.Vector3(this.gateX(CENTER_GATE), FIN_H * 0.6, this.finZ(FOCUS_FIN)),
       radius: 4,
@@ -61,25 +77,35 @@ export class TransistorLevel extends BaseLevel {
     const cx = this.gateX(CENTER_GATE);
     const cz = this.finZ(FOCUS_FIN);
     return [
-      { t: 0.0, pos: [420, 380, 520], look: [0, 0, 0] },
-      { t: 0.3, pos: [cx + 170, 160, cz + 230], look: [cx, 20, cz - 40] },
-      { t: 0.55, pos: [cx + 70, 80, cz + 120], look: [cx, 25, cz] },
-      // Straight-on to the gate: source epi on the left, drain on the right.
-      { t: 0.8, pos: [cx + 2, 36, cz + 80], look: [cx, 24, cz] },
+      { t: 0.0, pos: [460, 330, 560], look: [0, 0, 0] },
+      { t: 0.3, pos: [cx + 190, 150, cz + 230], look: [cx, 20, cz - 50] },
+      { t: 0.55, pos: [cx + 85, 78, cz + 120], look: [cx, 25, cz] },
+      // Straight-on to the focused gate: source epi on the left, drain on the right.
+      { t: 0.8, pos: [cx + 4, 38, cz + 82], look: [cx, 24, cz] },
       { t: 1.0, pos: [cx + 3, 30, cz + 34], look: [cx, FIN_H * 0.6, cz] },
     ];
   }
 
+  /** On-state (0..1) of gate i at time t. Gates run the same clock with a phase shift. */
+  private gateState(i: number, time: number) {
+    const phase = i === CENTER_GATE ? 0 : i * 0.9 + 1.3;
+    return smoothstep(-0.25, 0.25, Math.sin(time * 1.9 + phase));
+  }
+
   protected build() {
     const s = this.scene;
-    s.background = new THREE.Color(0x030506);
-    s.environmentIntensity = 0.45;
-    s.add(new THREE.HemisphereLight(0xe6f3e0, 0x060806, 0.3));
-    const key = new THREE.DirectionalLight(0xffffff, 1.6);
-    key.position.set(200, 400, 300);
+    s.background = new THREE.Color(0x020405);
+    s.fog = new THREE.FogExp2(0x020405, 0.0011);
+    s.environmentIntensity = 0.35;
+    s.add(new THREE.HemisphereLight(0xdfe9ff, 0x050806, 0.18));
+    const key = new THREE.DirectionalLight(0xffffff, 2.1);
+    key.position.set(260, 420, 380);
     s.add(key);
-    const rim = new THREE.DirectionalLight(0x76b900, 1.4);
-    rim.position.set(-300, 100, -200);
+    const fill = new THREE.DirectionalLight(0x4a78ff, 0.9);
+    fill.position.set(-400, 60, 120);
+    s.add(fill);
+    const rim = new THREE.DirectionalLight(GREEN, 0.8);
+    rim.position.set(-250, 160, -380);
     s.add(rim);
 
     const m = new THREE.Matrix4();
@@ -89,105 +115,190 @@ export class TransistorLevel extends BaseLevel {
     const unit = new THREE.BoxGeometry(1, 1, 1);
     const lenX = N_GATES * CPP + CPP;
     const lenZ = N_FINS * FIN_PITCH + FIN_PITCH;
+    const fz = this.finZ(FOCUS_FIN);
+    const cx = this.gateX(CENTER_GATE);
 
-    // Substrate + shallow-trench-isolation oxide
-    const sub = new THREE.Mesh(unit, new THREE.MeshStandardMaterial({ color: 0x1f242b, roughness: 0.5, metalness: 0.3 }));
-    sub.scale.set(lenX, 60, lenZ);
+    // ---- substrate + shallow-trench-isolation oxide (dark glass)
+    const sub = new THREE.Mesh(unit, new THREE.MeshStandardMaterial({ color: 0x0c0f13, roughness: 0.6, metalness: 0.2 }));
+    sub.scale.set(lenX + 200, 60, lenZ + 200);
     sub.position.y = -50;
     s.add(sub);
     const sti = new THREE.Mesh(
       unit,
-      new THREE.MeshStandardMaterial({ color: 0x1b3445, roughness: 0.15, transparent: true, opacity: 0.6, depthWrite: false }),
+      new THREE.MeshPhysicalMaterial({
+        color: 0x0d2130,
+        roughness: 0.08,
+        metalness: 0,
+        clearcoat: 1,
+        transparent: true,
+        opacity: 0.8,
+        depthWrite: false,
+      }),
     );
-    sti.scale.set(lenX, 20, lenZ);
+    sti.scale.set(lenX + 200, 20, lenZ + 200);
     sti.position.y = -10;
     s.add(sti);
 
-    // Fins. The focused one is a separate translucent mesh so we can see electrons inside it.
-    const finMat = new THREE.MeshStandardMaterial({ color: 0x55606e, roughness: 0.35, metalness: 0.4 });
+    // ---- fins (silicon). The focused one is separate so it can turn translucent.
+    const finMat = addRimLight(
+      new THREE.MeshStandardMaterial({ color: 0x566170, roughness: 0.3, metalness: 0.5 }),
+      GREEN,
+      0.18,
+    );
     const fins = new THREE.InstancedMesh(unit, finMat, N_FINS - 1);
     for (let i = 0; i < N_FINS - 1; i++) {
       fins.setMatrixAt(i, m.compose(pos.set(0, (FIN_H - 20) / 2, this.finZ(i)), q, scl.set(lenX, FIN_H + 20, FIN_W)));
     }
     s.add(fins);
-    this.focusFinMat = finMat.clone();
-    this.focusFinMat.transparent = true;
+    this.focusFinMat = addRimLight(
+      new THREE.MeshStandardMaterial({ color: 0x566170, roughness: 0.3, metalness: 0.5, transparent: true }),
+      GREEN,
+      0.18,
+    );
     const focusFin = new THREE.Mesh(unit, this.focusFinMat);
     focusFin.scale.set(lenX, FIN_H + 20, FIN_W);
-    focusFin.position.set(0, (FIN_H - 20) / 2, this.finZ(FOCUS_FIN));
+    focusFin.position.set(0, (FIN_H - 20) / 2, fz);
     s.add(focusFin);
 
-    // Gates (metal gate stacks wrapping every fin)
-    this.gateMat = new THREE.MeshStandardMaterial({
-      color: 0x8e98a6,
-      metalness: 0.9,
-      roughness: 0.3,
+    // ---- high-k collars: where each fin passes through each gate. None under the focused gate:
+    // it turns translucent and has its own shell, and a row of collars behind it would read as a slab.
+    const collarMat = makeInstanceGlow(
+      new THREE.MeshStandardMaterial({ color: 0x0f1a08, roughness: 0.4 }),
+      GREEN_HOT,
+    );
+    const collars = new THREE.InstancedMesh(unit, collarMat, (N_GATES - 1) * N_FINS);
+    const collarGate: number[] = [];
+    let k = 0;
+    for (let g = 0; g < N_GATES; g++) {
+      for (let f = 0; f < N_FINS; f++) {
+        if (g === CENTER_GATE) continue;
+        collars.setMatrixAt(
+          k++,
+          m.compose(pos.set(this.gateX(g), (FIN_H + 1.5) / 2, this.finZ(f)), q, scl.set(GATE_L + 2.4, FIN_H + 1.5, FIN_W + 2.4)),
+        );
+        collarGate.push(g);
+      }
+    }
+    this.collarGate = Uint8Array.from(collarGate);
+    this.collarGlow = addGlowAttribute(collars);
+    s.add(collars);
+
+    // ---- gates (metal stacks wrapping every fin) + SiN caps with a glowing contact line
+    const gateMat = addRimLight(
+      new THREE.MeshStandardMaterial({ color: 0x9ba3ae, metalness: 1, roughness: 0.26 }),
+      0xd8ffe0,
+      0.1,
+      4,
+    );
+    const gates = new THREE.InstancedMesh(unit, gateMat, N_GATES - 1);
+    const capMat = makeInstanceGlow(new THREE.MeshStandardMaterial({ color: 0x161c23, roughness: 0.45 }), GREEN_HOT);
+    const caps = new THREE.InstancedMesh(unit, capMat, N_GATES - 1);
+    const capGate: number[] = [];
+    k = 0;
+    for (let i = 0; i < N_GATES; i++) {
+      if (i === CENTER_GATE) continue;
+      gates.setMatrixAt(k, m.compose(pos.set(this.gateX(i), GATE_H / 2, 0), q, scl.set(GATE_L, GATE_H, lenZ - 8)));
+      caps.setMatrixAt(k, m.compose(pos.set(this.gateX(i), GATE_H + 4, 0), q, scl.set(GATE_L + 6, 8, lenZ - 8)));
+      capGate.push(i);
+      k++;
+    }
+    this.capGate = Uint8Array.from(capGate);
+    this.capGlow = addGlowAttribute(caps);
+    s.add(gates, caps);
+
+    // The focused gate: its own translucent materials.
+    this.focusGateMat = addRimLight(
+      new THREE.MeshStandardMaterial({
+        color: 0x9ba3ae,
+        metalness: 1,
+        roughness: 0.26,
+        transparent: true,
+        emissive: GREEN,
+        emissiveIntensity: 0,
+      }),
+      0xd8ffe0,
+      0.4,
+    );
+    const focusGate = new THREE.Mesh(unit, this.focusGateMat);
+    focusGate.scale.set(GATE_L, GATE_H, lenZ - 8);
+    focusGate.position.set(cx, GATE_H / 2, 0);
+    s.add(focusGate);
+    this.focusCapMat = new THREE.MeshStandardMaterial({
+      color: 0x161c23,
+      roughness: 0.45,
       transparent: true,
-      opacity: 1,
-      emissive: 0x76b900,
+      emissive: GREEN_HOT,
       emissiveIntensity: 0,
     });
-    const gates = new THREE.InstancedMesh(unit, this.gateMat, N_GATES);
-    const gateH = FIN_H + 34;
-    for (let i = 0; i < N_GATES; i++) {
-      gates.setMatrixAt(i, m.compose(pos.set(this.gateX(i), gateH / 2, 0), q, scl.set(GATE_L, gateH, lenZ - 8)));
-    }
-    s.add(gates);
+    const focusCap = new THREE.Mesh(unit, this.focusCapMat);
+    focusCap.scale.set(GATE_L + 6, 8, lenZ - 8);
+    focusCap.position.set(cx, GATE_H + 4, 0);
+    s.add(focusCap);
 
-    // Gate caps + spacers
-    const caps = new THREE.InstancedMesh(
-      unit,
-      new THREE.MeshStandardMaterial({ color: 0x2b3440, roughness: 0.4 }),
-      N_GATES,
+    // ---- raised source/drain epitaxy: faceted SiP crystals between gates
+    const epiMat = addRimLight(
+      new THREE.MeshStandardMaterial({ color: 0x777d86, roughness: 0.32, metalness: 0.45, flatShading: true }),
+      GREEN,
+      0.5,
     );
-    for (let i = 0; i < N_GATES; i++) {
-      caps.setMatrixAt(i, m.compose(pos.set(this.gateX(i), gateH + 6, 0), q, scl.set(GATE_L + 8, 12, lenZ - 8)));
-    }
-    s.add(caps);
-
-    // Raised source/drain epitaxy: diamond-shaped SiP / SiGe crystals between gates
-    const epiGeo = new THREE.OctahedronGeometry(1, 0);
-    const epi = new THREE.InstancedMesh(
-      epiGeo,
-      new THREE.MeshStandardMaterial({ color: 0x5d6570, roughness: 0.45, metalness: 0.3, flatShading: true }),
-      (N_GATES - 1) * N_FINS,
-    );
-    let k = 0;
+    const epi = new THREE.InstancedMesh(new THREE.OctahedronGeometry(1, 0), epiMat, (N_GATES - 1) * N_FINS);
+    k = 0;
     for (let g = 0; g < N_GATES - 1; g++) {
       for (let f = 0; f < N_FINS; f++) {
         epi.setMatrixAt(
           k++,
-          m.compose(pos.set(this.gateX(g) + CPP / 2, FIN_H * 0.72, this.finZ(f)), q, scl.set(CPP / 2 - 9, 22, 12)),
+          m.compose(pos.set(this.gateX(g) + CPP / 2, FIN_H * 0.74, this.finZ(f)), q, scl.set(CPP / 2 - 11, 17, 11.5)),
         );
       }
     }
     s.add(epi);
 
-    // Trench contacts on top of the S/D
+    // ---- trench contacts (tungsten) + a few M0 copper lines, kept off the focused fin
     const rng = mulberry32(6);
-    const contacts = new THREE.InstancedMesh(
-      unit,
-      new THREE.MeshStandardMaterial({ color: 0xc7cdd6, metalness: 1, roughness: 0.25 }),
-      N_GATES - 1,
+    const tungsten = addRimLight(
+      new THREE.MeshStandardMaterial({ color: 0xc4cad3, metalness: 1, roughness: 0.22 }),
+      0xffffff,
+      0.15,
     );
+    const contacts = new THREE.InstancedMesh(unit, tungsten, N_GATES - 1);
     for (let g = 0; g < N_GATES - 1; g++) {
-      const w = lenZ * (0.3 + rng() * 0.5);
-      contacts.setMatrixAt(g, m.compose(pos.set(this.gateX(g) + CPP / 2, FIN_H + 18, -w / 2 + (rng() - 0.5) * 40), q, scl.set(14, 24, w)));
+      const w = 60 + rng() * 140;
+      const z0 = fz - 26 - w / 2 - rng() * 60;
+      contacts.setMatrixAt(g, m.compose(pos.set(this.gateX(g) + CPP / 2, FIN_H + 22, z0), q, scl.set(13, 34, w)));
     }
     s.add(contacts);
+    const copper = addRimLight(
+      new THREE.MeshStandardMaterial({ color: 0xd9844c, metalness: 1, roughness: 0.3 }),
+      0xffb070,
+      0.25,
+    );
+    const m0 = new THREE.InstancedMesh(unit, copper, 6);
+    for (let i = 0; i < 6; i++) {
+      const z = fz - 60 - i * 2 * FIN_PITCH;
+      const len = lenX * (0.35 + rng() * 0.45);
+      const x = (rng() - 0.5) * (lenX - len);
+      m0.setMatrixAt(i, m.compose(pos.set(x, FIN_H + 52, z), q, scl.set(len, 14, 12)));
+    }
+    s.add(m0);
 
-    // High-k dielectric shell around the focused fin, under the focused gate
-    this.dielectricMat = new THREE.MeshStandardMaterial({
-      color: 0x76b900,
-      emissive: 0x9cff3a,
-      emissiveIntensity: 0.5,
-      transparent: true,
-      opacity: 0.2,
-      depthWrite: false,
-    });
+    // ---- glowing high-k shell around the focused channel
+    // Mostly clear, with glowing edges (Fresnel) so it reads as a thin shell, not a slab.
+    this.dielectricMat = addRimLight(
+      new THREE.MeshStandardMaterial({
+        color: GREEN,
+        emissive: GREEN_HOT,
+        emissiveIntensity: 0.2,
+        transparent: true,
+        opacity: 0.1,
+        depthWrite: false,
+      }),
+      GREEN_HOT,
+      2.0,
+      2,
+    );
     const shell = new THREE.Mesh(unit, this.dielectricMat);
-    shell.scale.set(GATE_L + 0.5, FIN_H + 2, FIN_W + 3);
-    shell.position.set(this.gateX(CENTER_GATE), FIN_H / 2 + 1, this.finZ(FOCUS_FIN));
+    shell.scale.set(GATE_L + 0.6, FIN_H + 2, FIN_W + 2.4);
+    shell.position.set(cx, FIN_H / 2 + 1, fz);
     s.add(shell);
 
     this.buildElectrons();
@@ -195,41 +306,78 @@ export class TransistorLevel extends BaseLevel {
 
   private buildElectrons() {
     const rng = mulberry32(13);
-    const pos = new Float32Array(ELECTRONS * 3);
     const cx = this.gateX(CENTER_GATE);
-    const cz = this.finZ(FOCUS_FIN);
+    const fz = this.finZ(FOCUS_FIN);
+    // Inversion layer: electrons hug the two sidewalls and the top of the fin.
     for (let i = 0; i < ELECTRONS; i++) {
-      pos[i * 3] = cx - CPP + rng() * CPP * 2;
-      pos[i * 3 + 1] = 4 + rng() * (FIN_H - 6);
-      pos[i * 3 + 2] = cz + (rng() - 0.5) * (FIN_W - 1.5);
+      const surf = rng();
+      const depth = 0.5 + rng() * 1.3;
+      let y: number;
+      let z: number;
+      if (surf < 0.4) {
+        y = 4 + rng() * (FIN_H - 6);
+        z = fz - FIN_W / 2 + depth;
+      } else if (surf < 0.8) {
+        y = 4 + rng() * (FIN_H - 6);
+        z = fz + FIN_W / 2 - depth;
+      } else {
+        y = FIN_H - depth;
+        z = fz + (rng() - 0.5) * (FIN_W - 2);
+      }
+      this.head[i * 3] = cx - CPP + rng() * CPP * 2;
+      this.head[i * 3 + 1] = y;
+      this.head[i * 3 + 2] = z;
       this.eVel[i] = 0.6 + rng() * 0.8;
     }
+    const n = ELECTRONS * TRAIL;
+    const positions = new Float32Array(n * 3);
+    const alpha = new Float32Array(n);
+    for (let i = 0; i < ELECTRONS; i++) {
+      for (let j = 0; j < TRAIL; j++) alpha[i * TRAIL + j] = j === 0 ? 1 : j === 1 ? 0.42 : 0.16;
+    }
     const geo = new THREE.BufferGeometry();
-    this.electrons = new THREE.BufferAttribute(pos, 3);
-    this.electrons.setUsage(THREE.DynamicDrawUsage);
-    geo.setAttribute('position', this.electrons);
+    this.ePos = new THREE.BufferAttribute(positions, 3);
+    this.ePos.setUsage(THREE.DynamicDrawUsage);
+    geo.setAttribute('position', this.ePos);
+    geo.setAttribute('aAlpha', new THREE.BufferAttribute(alpha, 1));
     this.electronMat = new THREE.ShaderMaterial({
       transparent: true,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
-      uniforms: { uScale: { value: 1 }, uSize: { value: 1.3 }, uOn: { value: 0 } },
+      uniforms: {
+        uScale: { value: 1 },
+        uSize: { value: 1.25 },
+        uOn: { value: 0 },
+        uCx: { value: cx },
+        uHalfGate: { value: GATE_L / 2 },
+      },
       vertexShader: /* glsl */ `
+        attribute float aAlpha;
         uniform float uScale;
         uniform float uSize;
+        uniform float uOn;
+        uniform float uCx;
+        uniform float uHalfGate;
+        varying float vA;
         void main() {
           vec4 mv = modelViewMatrix * vec4(position, 1.0);
           gl_Position = projectionMatrix * mv;
-          gl_PointSize = clamp(uSize * uScale / -mv.z, 1.0, 40.0);
+          gl_PointSize = clamp(uSize * uScale * (0.55 + 0.45 * aAlpha) / -mv.z, 1.0, 36.0);
+          // The channel under the gate empties when the gate is off.
+          float inChannel = 1.0 - smoothstep(uHalfGate - 1.0, uHalfGate + 1.0, abs(position.x - uCx));
+          vA = aAlpha * mix(1.0, uOn, inChannel);
         }
       `,
       fragmentShader: /* glsl */ `
-        uniform float uOn;
+        varying float vA;
         void main() {
           vec2 uv = gl_PointCoord * 2.0 - 1.0;
           float r2 = dot(uv, uv);
           if (r2 > 1.0) discard;
-          float a = exp(-r2 * 4.0) * (0.25 + 0.75 * uOn);
-          gl_FragColor = vec4(vec3(0.75, 1.0, 0.55) * a * 1.8, a);
+          float core = exp(-r2 * 9.0);
+          float halo = exp(-r2 * 2.5) * 0.35;
+          float a = (core + halo) * vA;
+          gl_FragColor = vec4(mix(vec3(0.55, 1.0, 0.3), vec3(1.0), core) * a * 1.6, a);
         }
       `,
     });
@@ -240,49 +388,67 @@ export class TransistorLevel extends BaseLevel {
   }
 
   protected animate(t: number, dt: number, time: number) {
-    // Gate voltage: square-ish clock, ~0.6 Hz in "slow motion".
-    const v = smoothstep(-0.25, 0.25, Math.sin(time * 1.9));
-    this.gateOn = v;
-    this.gateMat.emissiveIntensity = 0.6 * v * (1 - smoothstep(0.45, 0.7, t) * 0.7);
-    this.dielectricMat.emissiveIntensity = 0.2 + 1.1 * v;
-    this.dielectricMat.opacity = 0.12 + 0.14 * smoothstep(0.35, 0.6, t);
-    // Fade gates out as we approach so the channel is visible
-    this.gateMat.opacity = 1 - 0.88 * smoothstep(0.45, 0.75, t);
-    this.gateMat.depthWrite = this.gateMat.opacity > 0.95;
-    this.focusFinMat.opacity = 1 - 0.7 * smoothstep(0.5, 0.78, t);
-    this.focusFinMat.depthWrite = this.focusFinMat.opacity > 0.95;
+    // ---- array activity: every gate on its own phase
+    const cArr = this.collarGlow.array as Float32Array;
+    for (let i = 0; i < cArr.length; i++) cArr[i] = 0.12 + 1.1 * this.gateState(this.collarGate[i], time);
+    this.collarGlow.needsUpdate = true;
+    const gArr = this.capGlow.array as Float32Array;
+    for (let i = 0; i < gArr.length; i++) gArr[i] = 0.04 + 0.45 * this.gateState(this.capGate[i], time);
+    this.capGlow.needsUpdate = true;
 
-    // Electrons drift source -> drain while the gate is on
-    const arr = this.electrons.array as Float32Array;
+    // ---- the focused transistor
+    const v = this.gateState(CENTER_GATE, time);
+    this.gateOn = v;
+    const reveal = smoothstep(0.45, 0.75, t);
+    this.focusGateMat.opacity = 1 - 0.9 * reveal;
+    this.focusGateMat.depthWrite = this.focusGateMat.opacity > 0.95;
+    this.focusGateMat.emissiveIntensity = 0.35 * v * (1 - reveal);
+    this.focusCapMat.opacity = 1 - 0.85 * reveal;
+    this.focusCapMat.depthWrite = this.focusCapMat.opacity > 0.95;
+    this.focusCapMat.emissiveIntensity = 0.04 + 0.45 * v;
+    this.focusFinMat.opacity = 1 - 0.72 * smoothstep(0.5, 0.78, t);
+    this.focusFinMat.depthWrite = this.focusFinMat.opacity > 0.95;
+    this.dielectricMat.emissiveIntensity = (0.1 + 0.5 * v) * (1 - 0.6 * reveal);
+    this.dielectricMat.opacity = 0.08 + 0.06 * reveal;
+    (this.dielectricMat.userData.rim as { value: number }).value = 0.8 + 2.2 * v;
+
+    // ---- electrons: drift source -> drain; pile up at the barrier while the gate is off
     const cx = this.gateX(CENTER_GATE);
     const x0 = cx - CPP;
     const x1 = cx + CPP;
+    const barrier = cx - GATE_L / 2 - 1;
+    const h = this.head;
+    const out = this.ePos.array as Float32Array;
     for (let i = 0; i < ELECTRONS; i++) {
       const j = i * 3;
-      // Under the gate (the channel) electrons only move when the gate is on;
-      // in source/drain they jitter thermally regardless.
-      const inChannel = Math.abs(arr[j] - cx) < GATE_L * 0.6;
-      const speed = 60 * this.eVel[i] * (inChannel ? v : 0.25 + 0.75 * v);
-      arr[j] += speed * dt;
-      if (!inChannel || v > 0.2) {
-        arr[j + 1] += Math.sin(time * 9 + i) * dt * 4;
+      const speed = 55 * this.eVel[i] * (0.3 + 0.7 * v);
+      let nx = h[j] + speed * dt;
+      if (v < 0.5 && h[j] <= barrier && nx > barrier) nx = barrier - Math.random() * 3;
+      if (nx > x1) nx = x0 + Math.random() * 4;
+      h[j] = nx;
+      const jitter = Math.sin(time * 11 + i * 1.7) * 0.25;
+      const trail = speed * 0.035;
+      for (let s = 0; s < TRAIL; s++) {
+        const o = (i * TRAIL + s) * 3;
+        out[o] = Math.max(x0, nx - trail * s);
+        out[o + 1] = h[j + 1] + jitter;
+        out[o + 2] = h[j + 2];
       }
-      if (arr[j] > x1) arr[j] = x0;
     }
-    this.electrons.needsUpdate = true;
+    this.ePos.needsUpdate = true;
     this.electronMat.uniforms.uScale.value = pointScale(this.ctx.renderer, this.ctx.camera);
-    this.electronMat.uniforms.uOn.value = 0.4 + 0.6 * v;
+    this.electronMat.uniforms.uOn.value = v;
 
     this.caption =
       t < 0.25
         ? 'FinFET array · fin pitch ~28 nm · gate pitch ~51 nm'
         : t < 0.5
-          ? 'Gate wraps the silicon fin on three sides'
+          ? 'Each gate switches on its own clock: watch the high-k collars light up'
           : t < 0.75
             ? 'High-k dielectric (HfO₂, ~1–2 nm) insulates gate from channel'
             : this.gateOn > 0.5
-              ? 'Gate ON → electrons flow source → drain'
-              : 'Gate OFF → channel pinched off';
+              ? 'Gate ON → inversion layer forms, electrons flow source → drain'
+              : 'Gate OFF → barrier up, electrons pile up at the source';
   }
 
   getTransitionTarget() {

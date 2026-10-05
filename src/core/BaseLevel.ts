@@ -100,6 +100,36 @@ export function makeInstanceGlow<T extends THREE.MeshStandardMaterial>(
   return material;
 }
 
+/**
+ * Add a Fresnel rim light (emissive, view-dependent) to a standard material. Chains with any
+ * onBeforeCompile already set (e.g. makeInstanceGlow), so the two can be combined.
+ */
+export function addRimLight<T extends THREE.MeshStandardMaterial>(
+  material: T,
+  rimColor: THREE.ColorRepresentation,
+  strength = 0.5,
+  power = 3,
+): T {
+  const prev = material.onBeforeCompile.bind(material);
+  const prevKey = material.customProgramCacheKey.bind(material);
+  const uniforms = { uRimColor: { value: new THREE.Color(rimColor) }, uRim: { value: strength } };
+  material.onBeforeCompile = (shader, renderer) => {
+    prev(shader, renderer);
+    Object.assign(shader.uniforms, uniforms);
+    shader.fragmentShader =
+      'uniform vec3 uRimColor;\nuniform float uRim;\n' +
+      shader.fragmentShader.replace(
+        '#include <emissivemap_fragment>',
+        `#include <emissivemap_fragment>
+  float rimF = 1.0 - abs(dot(normal, normalize(vViewPosition)));
+  totalEmissiveRadiance += uRimColor * uRim * pow(rimF, ${power.toFixed(1)});`,
+      );
+  };
+  material.customProgramCacheKey = () => `${prevKey()}|rim${power}`;
+  material.userData.rim = uniforms.uRim;
+  return material;
+}
+
 /** Attach a zeroed per-instance glow attribute to an InstancedMesh's geometry. */
 export function addGlowAttribute(mesh: THREE.InstancedMesh) {
   const attr = new THREE.InstancedBufferAttribute(new Float32Array(mesh.count), 1);
