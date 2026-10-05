@@ -26,7 +26,7 @@ test.use({
 
 test('level activation benchmark', async ({ page }) => {
   test.setTimeout(900_000);
-  await openApp(page, process.env.BENCH_QUERY ?? '');
+  await openApp(page, '&nointro&quality=medium' + (process.env.BENCH_QUERY ?? ''));
   const order = [1, 2, 3, 4, 5, 6, 7, 6, 5, 4, 3, 2, 1, 0];
   for (const i of order) {
     await goToLevel(page, i, 0.5);

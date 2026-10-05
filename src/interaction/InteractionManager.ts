@@ -8,6 +8,7 @@ import { CameraController } from './CameraController';
 import { TraceRunner } from './TraceRunner';
 import { fitBracket, makeBracket } from './brackets';
 import { content } from '../content';
+import { QUALITY, type Quality } from '../core/quality';
 
 /**
  * Shared interaction layer, independent of any particular level. It orchestrates:
@@ -25,6 +26,14 @@ export class InteractionManager {
   exploring = false;
   /** Explore toggled (the guided tour pauses while the user explores). */
   onExploreToggle: ((active: boolean) => void) | null = null;
+  /** Space bar hook, wired to the guided tour by the app. */
+  onSpace: (() => void) | null = null;
+  /** `L` hook, wired to the 3D label layer by the app. */
+  onLabels: (() => void) | null = null;
+  /** `M` hook, wired to the ambience by the app. */
+  onSound: (() => void) | null = null;
+  /** Selection change, used for audio feedback. */
+  onSelect: ((hit: PickHit | null) => void) | null = null;
 
   private raycaster = new THREE.Raycaster();
   private ndc = new THREE.Vector2(9, 9);
@@ -46,9 +55,10 @@ export class InteractionManager {
     private manager: LevelManager,
     private canvas: HTMLCanvasElement,
     private jumpToLevel: (index: number) => void,
+    quality: Quality = QUALITY,
   ) {
     this.views = new ViewModes(ctx.renderer);
-    this.cam = new CameraController(ctx.camera, canvas);
+    this.cam = new CameraController(ctx.camera, canvas, quality.reducedMotion);
     this.trace = new TraceRunner((hit) => {
       if (!this.exploring) this.enterExplore();
       this.select(hit);
@@ -65,6 +75,7 @@ export class InteractionManager {
     window.addEventListener('wheel', () => this.onScrollish(), { passive: true });
     window.addEventListener('scroll', () => this.onScrollish(), { passive: true });
     window.addEventListener('keydown', (e) => this.onKey(e));
+    window.addEventListener('resize', () => this.hud.invalidateRect());
     window.addEventListener('pointermove', (e) => {
       this.cam.mouse.set((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1);
       this.wake();
@@ -159,18 +170,51 @@ export class InteractionManager {
   private onKey(e: KeyboardEvent) {
     const t = e.target as HTMLElement | null;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
-    if (e.key === 'ArrowRight' || e.key === 'PageDown') {
-      e.preventDefault();
-      this.go(1);
-    } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
-      e.preventDefault();
-      this.go(-1);
-    } else if (e.key === 'e' || e.key === 'E' || e.key === 'у' || e.key === 'У') {
-      this.toggleExplore();
-    } else if (e.key === 'Escape') {
-      this.stopTrace();
-      if (this.selected) this.select(null);
-      else if (this.exploring) this.exitExplore();
+    if (document.body.classList.contains('palette')) return;
+    // `e.code` is layout-independent, so the shortcuts work on Russian/Cyrillic keyboards too.
+    switch (e.code) {
+      case 'ArrowRight':
+      case 'PageDown':
+        e.preventDefault();
+        this.go(1);
+        break;
+      case 'ArrowLeft':
+      case 'PageUp':
+        e.preventDefault();
+        this.go(-1);
+        break;
+      case 'KeyE':
+        this.toggleExplore();
+        break;
+      case 'KeyL':
+        this.onLabels?.();
+        break;
+      case 'KeyM':
+        this.onSound?.();
+        break;
+      case 'Space':
+        e.preventDefault();
+        this.onSpace?.();
+        break;
+      case 'KeyF':
+        // Plain F is Follow e⁻ (handled by the app); Shift+F is fullscreen.
+        if (e.shiftKey) toggleFullscreen();
+        break;
+      case 'Escape':
+        this.stopTrace();
+        if (this.selected) this.select(null);
+        else if (this.exploring) this.exitExplore();
+        break;
+      default:
+        if (/^Digit[1-8]$/.test(e.code)) {
+          const i = Number(e.code.slice(5)) - 1;
+          if (i < this.manager.entries.length) this.jumpToLevel(i);
+        } else if (this.exploring) {
+          if (e.code === 'KeyX') this.setViewMode('X-Ray');
+          else if (e.code === 'KeyC') this.setViewMode('Section');
+          else if (e.code === 'KeyT' && this.views.available().includes('Thermal')) this.setViewMode('Thermal');
+          else if (e.code === 'KeyN') this.setViewMode('Normal');
+        }
     }
   }
 
@@ -228,6 +272,7 @@ export class InteractionManager {
       this.selectBracket.visible = false;
       this.hud.hideSpot();
     }
+    this.onSelect?.(hit);
     this.refreshPanel();
     this.updateCrumbs(this.manager.currentIndex);
   }
@@ -263,6 +308,7 @@ export class InteractionManager {
     this.hud.hideSpot();
     this.views.setFocus(null);
     this.views.setMode('Normal');
+    this.hud.setThermalLegend(false);
     this.manager.current?.onExploreChange?.(false);
     this.onExploreToggle?.(false);
     this.refreshPanel();
@@ -282,6 +328,17 @@ export class InteractionManager {
   /** Explore mode: the orbit target is what the user is looking at (DOF focus, FOV readout). */
   getFocusOverride(): THREE.Vector3 | null {
     return this.exploring ? this.cam.target : null;
+  }
+
+  /** Key of the entity currently under the pointer (for label highlighting). */
+  get hoverKey(): string | null {
+    return this.hover?.key ?? null;
+  }
+
+  /** Programmatic selection, used by the label layer and the command palette. */
+  selectEntity(hit: PickHit) {
+    if (!this.exploring) this.enterExplore();
+    this.select(hit);
   }
 
   // ---------------------------------------------------------------- per frame
@@ -360,6 +417,7 @@ export class InteractionManager {
     if (!this.exploring) this.enterExplore();
     this.views.setMode(mode);
     if (mode === 'X-Ray') this.views.setFocus(this.selected?.object ?? null);
+    this.hud.setThermalLegend(mode === 'Thermal');
     this.refreshPanel();
   }
 
@@ -371,4 +429,9 @@ export class InteractionManager {
       (i) => this.jumpToLevel(i),
     );
   }
+}
+
+function toggleFullscreen() {
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  else document.documentElement.requestFullscreen?.().catch(() => {});
 }

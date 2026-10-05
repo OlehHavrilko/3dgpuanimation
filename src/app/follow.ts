@@ -8,15 +8,17 @@ import { content } from '../content';
  * "Follow the electron": scroll from the very top to the very bottom at a steady pace while each
  * level shows where "our" electron is. Pauses in Explore, stops on a second press (or F / Esc).
  */
-export function setupTour(opts: {
+export function setupFollow(opts: {
   ctx: LevelContext;
   interaction: InteractionManager;
   settings: Settings;
   maxScroll: () => number;
   /** Seconds for the whole journey. */
   duration: number;
+  /** Called when following starts (the guided tour must let go of the timeline). */
+  onStart?: () => void;
 }) {
-  const { ctx, interaction, settings, maxScroll, duration } = opts;
+  const { ctx, interaction, settings, maxScroll, duration, onStart } = opts;
   const button = document.getElementById('nav-follow')!;
   let tour: gsap.core.Tween | null = null;
 
@@ -25,6 +27,7 @@ export function setupTour(opts: {
     document.body.classList.add('following');
     button.textContent = content.ui.stop;
     interaction.exitExplore();
+    onStart?.(); // the two auto-scroll systems must not both drive the timeline
     tour?.kill();
     if (settings.override) {
       settings.progress = 0;
@@ -52,12 +55,21 @@ export function setupTour(opts: {
   window.addEventListener('keydown', (e) => {
     const t = e.target as HTMLElement | null;
     if (t && t.tagName === 'INPUT') return;
-    if (e.key === 'f' || e.key === 'F' || e.key === 'а' || e.key === 'А') toggle();
+    if (document.body.classList.contains('palette')) return;
+    // e.code is layout-independent (works on Cyrillic keyboards); Shift+F is fullscreen.
+    if (e.code === 'KeyF' && !e.shiftKey && !e.metaKey && !e.ctrlKey) toggle();
     else if (e.key === 'Escape' && ctx.journey.follow && !interaction.exploring) stop();
   });
   interaction.onExploreToggle = (active) => {
     if (active) tour?.pause();
     else tour?.resume();
   };
-  return { start, stop, toggle };
+  return {
+    start,
+    stop,
+    toggle,
+    get active() {
+      return ctx.journey.follow;
+    },
+  };
 }

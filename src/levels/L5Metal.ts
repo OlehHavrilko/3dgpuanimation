@@ -280,11 +280,7 @@ export class MetalLevel extends BaseLevel {
 
     const idx = Math.min(this.layers.length - 1, Math.floor((t / 0.92) * 8) * 2);
     const l = this.layers[idx];
-    this.caption = pickByT(
-      t,
-      [0.12, 0.92],
-      [C.captions.top, C.captions.layer(l.name, l.pitch), C.captions.feol(Math.round(CPP * 1000))],
-    );
+    this.caption = pickByT(t, [0.12, 0.92], [C.captions.top, C.captions.layer(l.name, l.pitch), C.captions.feol]);
   }
 
   private layerInfo(li: number): EntityInfo {

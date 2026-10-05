@@ -6,14 +6,23 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
 import { LevelManager } from './core/LevelManager';
 import { LevelProfiler } from './core/LevelProfiler';
+import { Attract } from './core/Attract';
+import { FrameDissolve } from './core/FrameDissolve';
 import { Overlay } from './core/Overlay';
+import { PostFX } from './core/PostFX';
+import { Story } from './core/Story';
+import { Tour, type TourSegment } from './core/Tour';
+import { QUALITY } from './core/quality';
 import type { LevelContext } from './core/types';
 import { LEVELS } from './levels';
 import { InteractionManager } from './interaction/InteractionManager';
+import { Labels } from './interaction/Labels';
+import type { ViewMode } from './interaction/ViewModes';
 import { AdaptiveResolution } from './app/AdaptiveResolution';
-import { createPostFx } from './app/postfx';
-import { createSettings, readQuality } from './app/settings';
-import { setupTour } from './app/tour';
+import { createSettings } from './app/settings';
+import { setupFollow } from './app/follow';
+import { setupSound } from './app/sound';
+import { setupPalette } from './app/palette';
 import { setupDebugPanel } from './app/debugPanel';
 import { applyStaticText } from './app/staticText';
 import { createWarmup } from './app/warmup';
@@ -22,10 +31,9 @@ gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 applyStaticText();
 
 // ---------------------------------------------------------------- renderer + post
-const quality = readQuality(location.search);
+// Device-tiered quality: ?quality=low|high forces a preset, otherwise it is probed.
 const debug = new URLSearchParams(location.search).has('debug');
-const settings = createSettings(quality);
-const maxPixelRatio = quality === 'low' ? 1 : quality === 'high' ? 2 : 1.75;
+const settings = createSettings(QUALITY);
 
 const canvas = document.getElementById('gl') as HTMLCanvasElement;
 const renderer = new THREE.WebGLRenderer({
@@ -34,27 +42,29 @@ const renderer = new THREE.WebGLRenderer({
   stencil: false,
   powerPreference: 'high-performance',
 });
-const resolution = new AdaptiveResolution(
-  Math.min(window.devicePixelRatio, maxPixelRatio),
-  () => Math.min(window.devicePixelRatio, maxPixelRatio),
-  quality !== 'high',
-);
+const maxPixelRatio = () => Math.min(window.devicePixelRatio, QUALITY.maxPixelRatio);
+const resolution = new AdaptiveResolution(maxPixelRatio(), maxPixelRatio, QUALITY.adaptive);
 renderer.setPixelRatio(resolution.pixelRatio);
 renderer.info.autoReset = false; // the composer renders several passes per frame
 renderer.toneMapping = THREE.NoToneMapping; // tone mapping happens in the effect chain
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 
 const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 1000);
-const pmrem = new THREE.PMREMGenerator(renderer);
-const envMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-pmrem.dispose();
-const post = createPostFx(renderer, camera, quality);
+
+/** (Re)build the neutral studio environment. Also runs after a WebGL context restore. */
+function buildEnvTexture() {
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const texture = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  pmrem.dispose();
+  return texture;
+}
+const post = new PostFX(renderer, camera);
 
 // ---------------------------------------------------------------- levels + interaction
 const ctx: LevelContext = {
   renderer,
   camera,
-  envMap,
+  envMap: buildEnvTexture(),
   view: { freeCamera: false },
   journey: { trace: null, follow: false },
   go: (i) => jumpToLevel(i),
@@ -65,30 +75,51 @@ const ctx: LevelContext = {
   },
 };
 
-// ?cache=0 turns the level cache off (one level alive, built on arrival): the pre-cache
-// behaviour, kept for A/B benchmarks.
-const levelCache = new URLSearchParams(location.search).get('cache') !== '0';
-const manager = new LevelManager(
-  ctx,
-  LEVELS,
-  document.getElementById('flash')!,
-  levelCache
-    ? { keep: 1, prepare: createWarmup(renderer, camera, post.composer) } // current + previous + next
-    : { keep: 0 },
-);
+// Current + previous + next stay built and warmed up (QUALITY.levelCache; ?cache=0 turns it off).
+const manager = new LevelManager(ctx, LEVELS, document.getElementById('flash')!, {
+  keep: QUALITY.levelCache,
+  prepare: QUALITY.levelCache > 0 ? createWarmup(renderer, camera, post.composer) : undefined,
+});
 const profiler = new LevelProfiler(renderer);
 manager.profiler = profiler;
 const overlay = new Overlay(
   LEVELS.map((l) => l.meta),
   (i) => jumpToLevel(i),
 );
-const interaction = new InteractionManager(ctx, manager, canvas, (i) => jumpToLevel(i));
-manager.onDeactivate = (level) => interaction.detach(level.scene);
+const interaction = new InteractionManager(ctx, manager, canvas, (i) => jumpToLevel(i), QUALITY);
+const dissolve = new FrameDissolve(document.getElementById('dissolve') as HTMLCanvasElement);
+const labels = new Labels();
+labels.onPick = (hit) => interaction.selectEntity(hit);
+const sound = setupSound();
+/** Level index whose outgoing frame is already frozen for the next dissolve. */
+let dissolveCapturedFor = -1;
+
+manager.onDeactivate = (level) => {
+  interaction.detach(level.scene);
+  // Freeze the outgoing frame; play() is called on the other side of the swap.
+  if (!interaction.exploring) dissolve.reveal();
+};
 manager.onSwap = (index, level) => {
-  post.renderPass.mainScene = level.scene;
+  post.setScene(level.scene);
+  post.setGrade(index);
   overlay.showLevel(index);
   interaction.attach(level, index);
+  labels.setLevel(level);
+  sound.ambience.setScene(index);
+  sound.ambience.whoosh();
+  dissolve.play();
+  dissolveCapturedFor = -1;
+  applyDeepLink(index);
 };
+
+interaction.onSound = () => sound.toggleFromKey();
+interaction.onSelect = (hit) => {
+  sound.ambience.blip(!!hit);
+  // Inspecting a part is deliberate input: take the tour out of autopilot.
+  if (hit) tour.interrupt();
+};
+const labelsBtn = document.getElementById('nav-labels') as HTMLButtonElement;
+interaction.onLabels = () => labelsBtn.classList.toggle('on', labels.toggle());
 
 // ---------------------------------------------------------------- scroll
 const totalWeight = LEVELS.reduce((s, l) => s + l.meta.weight, 0);
@@ -108,6 +139,7 @@ const scrollToProgress = (p: number) => window.scrollTo({ top: p * maxScroll(), 
  * transition stays cinematic. Leaves Explore mode first (it locks the scroll).
  */
 function jumpToLevel(index: number) {
+  tour.stop(); // a manual jump always takes the wheel back from the tour
   interaction.exitExplore();
   const p = manager.progressForLevel(index);
   if (settings.override) {
@@ -122,7 +154,161 @@ function jumpToLevel(index: number) {
   });
 }
 
-setupTour({ ctx, interaction, settings, maxScroll, duration: totalWeight * 11 });
+// ---------------------------------------------------------------- guided tour + follow
+const tourSegments: TourSegment[] = LEVELS.map((l, i) => ({
+  index: i,
+  start: manager.segments[i].start,
+  end: manager.segments[i].end,
+  name: l.meta.name,
+  scale: l.meta.scale,
+}));
+const tour = new Tour(
+  {
+    getProgress: () => settings.progress,
+    // The tour drives the timeline directly; the scrollbar is restored by `end`.
+    setProgress: (p) => {
+      settings.override = true;
+      settings.progress = p;
+    },
+    begin: () => {
+      follow.stop(); // hand the timeline over from follow mode
+      interaction.exitExplore();
+      interaction.stopTrace();
+      settings.override = true;
+    },
+    end: (p) => {
+      // Sync the scroll state first so the manager doesn't read a stale value for one frame.
+      scrollState.p = p;
+      settings.progress = p;
+      settings.override = false;
+      scrollToProgress(p);
+    },
+  },
+  tourSegments,
+);
+const follow = setupFollow({
+  ctx,
+  interaction,
+  settings,
+  maxScroll,
+  duration: totalWeight * 11,
+  onStart: () => tour.stop(),
+});
+interaction.onSpace = () => {
+  // At the finale, Space is the natural "again" — everything else is a no-op from p = 1.
+  if (story.finaleVisible) {
+    story.replay();
+    return;
+  }
+  tour.toggle();
+  if (tour.playing) sound.offer();
+};
+// Any deliberate input hands control back from the tour to the user.
+window.addEventListener('wheel', () => tour.interrupt(), { passive: true });
+window.addEventListener('touchmove', () => tour.interrupt(), { passive: true });
+
+// ---------------------------------------------------------------- intro + attract mode
+// While the landing card is up the scene keeps moving: a slow drift through the first
+// scale so the first thing a visitor sees is a live render rather than a still frame.
+const attract = new Attract();
+const intro = document.getElementById('intro')!;
+let introDone = false;
+let firstFrameRendered = false;
+function dismissIntro() {
+  if (introDone) return;
+  introDone = true;
+  intro.classList.add('hide');
+  // Hand the attract drift over to the scrollbar so the landing settles where it was.
+  if (attract.active) {
+    attract.stop();
+    scrollState.p = settings.progress;
+    settings.override = false;
+    scrollToProgress(settings.progress);
+  }
+}
+function startTourFromIntro() {
+  dismissIntro();
+  tour.start();
+  sound.offer();
+}
+document.getElementById('intro-tour')!.addEventListener('click', startTourFromIntro);
+document.getElementById('intro-explore')!.addEventListener('click', dismissIntro);
+window.addEventListener(
+  'keydown',
+  (e) => {
+    if (introDone) return;
+    if (e.code === 'Enter' || e.code === 'Space') {
+      e.preventDefault();
+      // Stop the interaction layer from also handling Space (would toggle the tour back off).
+      e.stopPropagation();
+      startTourFromIntro();
+    } else if (e.code === 'Escape') {
+      dismissIntro();
+    }
+  },
+  { capture: true },
+);
+if (new URLSearchParams(location.search).has('nointro')) {
+  introDone = true;
+  intro.classList.add('hide');
+}
+// Reduced-motion visitors get a still frame: correct, and the render is composed for it.
+if (!introDone && !QUALITY.reducedMotion) {
+  const s = manager.segments[0];
+  attract.start(0, s.start + (s.end - s.start) * 0.42);
+}
+
+// ---------------------------------------------------------------- narrative layer
+// Acts, anchor numbers, the clean shot and the finale. Reads the frame state each tick
+// and drives its own DOM; it never touches the renderer or the camera (the loop does the
+// finale pull-back from `story.pullback`, and hands it the frame for Share).
+const story = new Story({
+  getLevelCount: () => LEVELS.length,
+  introVisible: () => !introDone,
+  levelName: (i) => LEVELS[i].meta.name,
+  levelScale: (i) => LEVELS[i].meta.scale,
+  levelCaption: () => manager.current?.caption ?? '',
+  stopTour: () => tour.stop(),
+  replay: () => tour.restart(),
+  enterExplore: () => interaction.enterExplore(),
+  getCanvas: () => canvas,
+});
+
+setupPalette({
+  metas: LEVELS.map((l) => l.meta),
+  manager,
+  interaction,
+  labels,
+  jumpToLevel,
+  enabled: () => introDone,
+});
+
+// ---------------------------------------------------------------- deep links
+// `#l=5&v=Section` opens straight at a scale (and view mode); handy for sharing a frame.
+const deepParams = new URLSearchParams(location.hash.replace(/^#/, ''));
+const deepLevel = Number(deepParams.get('l'));
+const deepMode = deepParams.get('v') as ViewMode | null;
+let deepApplied = false;
+
+function applyDeepLink(index: number) {
+  if (deepApplied || !deepMode) return;
+  if (!Number.isInteger(deepLevel) || index !== deepLevel - 1) return;
+  deepApplied = true;
+  if (deepMode === 'X-Ray' || deepMode === 'Section' || deepMode === 'Thermal') interaction.setViewMode(deepMode);
+}
+if (Number.isInteger(deepLevel) && deepLevel >= 1 && deepLevel <= LEVELS.length) {
+  dismissIntro();
+  requestAnimationFrame(() => jumpToLevel(deepLevel - 1));
+}
+
+let lastHashKey = '';
+/** Keep the URL in step with the current scale + view mode (shareable deep links). */
+function syncHash() {
+  const mode = interaction.views.mode;
+  const l = manager.currentIndex + 1;
+  const h = mode && mode !== 'Normal' ? `#l=${l}&v=${mode}` : `#l=${l}`;
+  if (location.hash !== h) history.replaceState(null, '', h);
+}
 
 if (debug) {
   // Handle for tests / console scrubbing: __teardown.settings.override = true; ...progress = 0.5
@@ -134,9 +320,32 @@ if (debug) {
     interaction,
     profiler,
     post,
+    tour,
+    story,
+    labels,
   };
   setupDebugPanel({ settings, manager, metas: LEVELS.map((l) => l.meta), post, scrollToProgress });
 }
+
+// ---------------------------------------------------------------- WebGL context loss
+// A lost context (GPU reset, tab eviction, driver crash) must not leave a frozen black
+// canvas. We stop rendering, then rebuild the environment and resume on restore.
+let contextLost = false;
+canvas.addEventListener('webglcontextlost', (e) => {
+  e.preventDefault();
+  contextLost = true;
+  dissolve.reset();
+  document.body.classList.add('context-lost');
+});
+canvas.addEventListener('webglcontextrestored', () => {
+  contextLost = false;
+  document.body.classList.remove('context-lost');
+  ctx.envMap = buildEnvTexture();
+  if (manager.current) manager.current.scene.environment = ctx.envMap;
+  // Cached scenes point at the lost environment and GPU state; let them rebuild.
+  manager.dropCache();
+  resize();
+});
 
 // ---------------------------------------------------------------- loop
 function resize() {
@@ -146,7 +355,7 @@ function resize() {
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   renderer.setSize(w, h, false);
-  post.composer.setSize(w, h, false);
+  post.setSize(w, h);
 }
 window.addEventListener('resize', resize);
 resize();
@@ -156,19 +365,51 @@ timer.connect(document);
 let simTime = 0;
 let fpsAcc = 0;
 let fpsFrames = 0;
+let labelTimer = 0;
 
 function frame(now: number) {
   timer.update(now);
+  if (contextLost) {
+    requestAnimationFrame(frame);
+    return;
+  }
   const rawDt = Math.min(timer.getDelta(), 0.1);
   const dt = rawDt * settings.timeScale;
   simTime += dt;
+
+  // The landing runs its own slow drift and writes to the timeline until it hands off.
+  if (attract.active) {
+    settings.override = true;
+    settings.progress = attract.update(rawDt);
+  }
+  tour.update(rawDt);
 
   const p = settings.override ? settings.progress : scrollState.p;
   if (!settings.override) settings.progress = p;
   manager.setProgress(p);
   const state = manager.tick(dt, simTime);
   const level = manager.current!;
+  // Finale: ease the camera back off the atom for the closing composition.
+  if (story.pullback > 0) {
+    const look = level.getLookAt();
+    camera.position
+      .sub(look)
+      .multiplyScalar(1 + story.pullback * 0.45)
+      .add(look);
+  }
+  story.update(state, rawDt);
   interaction.update(rawDt, state.content);
+  labels.update(camera, interaction.hoverKey);
+  labelTimer -= rawDt;
+  if (labelTimer <= 0) {
+    labelTimer = 0.4;
+    labels.refreshBoxes(level);
+  }
+  const hashKey = `${manager.currentIndex}:${interaction.views.mode}`;
+  if (hashKey !== lastHashKey) {
+    lastHashKey = hashKey;
+    syncHash();
+  }
   const exploreFocus = interaction.getFocusOverride();
 
   overlay.setCaption(ctx.journey.follow && level.followCaption ? level.followCaption : level.caption);
@@ -184,8 +425,8 @@ function frame(now: number) {
   overlay.setProgress(p);
 
   // Per-level post settings (DOF works in the level's local units).
-  const { dof, dofPass, bloom, composer } = post;
-  bloom.intensity = settings.bloom * (level.bloom ?? 1);
+  const { dof, dofPass, bloom } = post;
+  bloom.intensity = settings.bloom * (level.bloom ?? 1) * post.grade.bloom;
   const focus = exploreFocus ?? manager.getFocusPoint(state);
   dof.cocMaterial.adoptCameraSettings(camera); // near/far change per level
   if (focus) {
@@ -198,10 +439,22 @@ function frame(now: number) {
 
   renderer.info.reset();
   if (profiler.measuring) {
-    const rec = profiler.measure(() => composer.render(rawDt), level.scene);
+    const rec = profiler.measure(() => post.render(rawDt), level.scene);
     if (rec && debug) console.info('[level]', JSON.stringify(rec));
   } else {
-    composer.render(rawDt);
+    post.render(rawDt);
+  }
+  // Share frame grabs the just-drawn buffer: readable synchronously, blank if deferred.
+  story.captureFrame(state);
+  if (!firstFrameRendered) {
+    firstFrameRendered = true;
+    intro.classList.add('loaded');
+  }
+  // Freeze one frame per dive for the boundary dissolve. Copying the drawing buffer is not
+  // free (it can flush the GPU), so this is done once, late in the dolly — not every frame.
+  if (!interaction.exploring && state.dive > 0.9 && dissolveCapturedFor !== state.index) {
+    dissolveCapturedFor = state.index;
+    dissolve.capture(canvas);
   }
   settings.drawCalls = renderer.info.render.calls;
   settings.triangles = renderer.info.render.triangles;

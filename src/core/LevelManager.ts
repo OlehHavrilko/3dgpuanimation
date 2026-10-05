@@ -284,6 +284,16 @@ export class LevelManager {
     return level.getFocus?.() ?? level.getLookAt();
   }
 
+  /** Dispose every cached level except the current one (e.g. after a WebGL context restore), then re-prepare. */
+  dropCache() {
+    for (const [i, slot] of this.cache) {
+      if (i === this.currentIndex) continue;
+      slot.level.dispose();
+      this.cache.delete(i);
+    }
+    this.prepareNeighbours();
+  }
+
   dispose() {
     for (const slot of this.cache.values()) slot.level.dispose();
     this.cache.clear();

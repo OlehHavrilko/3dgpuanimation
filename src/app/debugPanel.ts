@@ -1,6 +1,6 @@
 import type { LevelManager } from '../core/LevelManager';
 import type { LevelMeta } from '../core/types';
-import type { PostFx } from './postfx';
+import type { PostFX } from '../core/PostFX';
 import type { Settings } from './settings';
 
 /** ?debug: lil-gui with live stats, timeline scrubbing, level jumps and post-FX tweaks. */
@@ -8,7 +8,7 @@ export async function setupDebugPanel(opts: {
   settings: Settings;
   manager: LevelManager;
   metas: LevelMeta[];
-  post: PostFx;
+  post: PostFX;
   scrollToProgress: (p: number) => void;
 }) {
   const { settings, manager, metas, post, scrollToProgress } = opts;
@@ -20,6 +20,7 @@ export async function setupDebugPanel(opts: {
   perf.add(settings, 'drawCalls').name('draw calls').listen().disable();
   perf.add(settings, 'triangles').listen().disable();
   perf.add(settings, 'pixelRatio').name('pixel ratio').listen().disable();
+  perf.add(settings, 'tier').name('quality tier').listen().disable();
   const tl = gui.addFolder('Timeline');
   tl.add(settings, 'override').name('scrub with slider');
   tl.add(settings, 'progress', 0, 1, 0.0005)
@@ -43,5 +44,14 @@ export async function setupDebugPanel(opts: {
   fx.add(settings, 'threshold', 0, 1, 0.01).onChange((v: number) => (post.bloom.luminanceMaterial.threshold = v));
   fx.add(settings, 'dof').name('depth of field');
   fx.add(settings, 'bokeh', 0, 4, 0.01).name('bokeh ×');
+  const look = gui.addFolder('Look');
+  look
+    .add(post, 'grainScale', 0, 3, 0.01)
+    .name('grain ×')
+    .onChange(() => post.refresh());
+  look
+    .add(post, 'chromaticScale', 0, 3, 0.01)
+    .name('chromatic ×')
+    .onChange(() => post.refresh());
   return gui;
 }

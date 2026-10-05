@@ -33,6 +33,8 @@ export class CameraController {
   constructor(
     private camera: THREE.PerspectiveCamera,
     private dom: HTMLElement,
+    /** OS "reduce motion": no mouse parallax. */
+    private reducedMotion = false,
   ) {}
 
   get exploring() {
@@ -127,6 +129,7 @@ export class CameraController {
       if (b.t >= 1) this.returnBlend = null;
       return false;
     }
+    if (this.reducedMotion) return false;
     // Cinematic parallax: a fraction of a degree, eased.
     this.parallax.lerp(this.mouse, 1 - Math.exp(-dt * 2.5));
     if (lookAt) {

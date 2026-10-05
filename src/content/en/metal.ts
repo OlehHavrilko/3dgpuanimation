@@ -32,9 +32,9 @@ export const metal = {
     'M1',
   ],
   captions: {
-    top: 'Aluminium pad layer + ultra-thick global copper (power, clock)',
+    top: 'Fifteen layers of copper, stacked like city highways',
     layer: (name: string, pitchUm: number) => `${name} · pitch ${pitchText(pitchUm)}`,
-    feol: (cppNm: number) => `Contacts → FinFETs · gate pitch ${cppNm} nm`,
+    feol: 'The wires end here — next stop, the transistors',
   },
   entities: {
     layer: (name: string, pitchUm: number, alongZ: boolean, li: number): EntityInfo => ({

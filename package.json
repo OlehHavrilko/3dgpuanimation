@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:e2e": "vite build && playwright test smoke",
+    "test:e2e": "vite build && playwright test smoke guided",
     "bench": "vite build && BENCH=${BENCH:-local} playwright test bench",
     "lint": "eslint .",
     "format": "prettier --write .",

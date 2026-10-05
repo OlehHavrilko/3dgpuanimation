@@ -1,5 +1,6 @@
 import type { LevelMeta } from './types';
 import { formatMeters, powerOfTen } from './math';
+import { content } from '../content';
 
 /** Minimal HUD: level name + scale label, contextual caption, scale rail, live field of view. */
 export class Overlay {
@@ -10,10 +11,14 @@ export class Overlay {
   private indexEl = document.getElementById('lvl-index')!;
   private fovEl = document.getElementById('fov-value')!;
   private hintEl = document.getElementById('scroll-hint')!;
+  private barFill = document.getElementById('scalebar-fill')!;
+  private barLabel = document.getElementById('scalebar-label')!;
+  private barAnchor = document.getElementById('scalebar-anchor')!;
   private ticks: HTMLElement[] = [];
   private caption = '';
   private shownIndex = -1;
   private lastFovText = '';
+  private lastBarKey = '';
 
   constructor(
     private metas: LevelMeta[],
@@ -82,9 +87,39 @@ export class Overlay {
       this.lastFovText = text;
       this.fovEl.textContent = text;
     }
+    this.setScaleBar(meters);
+  }
+
+  /**
+   * A physical scale bar for the current framing: pick a 1-2-5 length that lands near
+   * 120 px on screen and label it, plus a familiar object for a gut-level size check.
+   * This is what makes "0.2 nm" mean something.
+   */
+  private setScaleBar(meters: number) {
+    const width = Math.max(320, window.innerWidth);
+    const metersPerPixel = meters / width;
+    const raw = metersPerPixel * 120;
+    const pow = Math.pow(10, Math.floor(Math.log10(Math.max(raw, 1e-15))));
+    const norm = raw / pow;
+    const nice = (norm < 1.5 ? 1 : norm < 3.5 ? 2 : norm < 7.5 ? 5 : 10) * pow;
+    const px = Math.min(220, Math.max(40, nice / metersPerPixel));
+    const label = formatMeters(nice);
+    const anchor = anchorFor(nice);
+    const key = `${label}|${anchor}|${Math.round(px)}`;
+    if (key === this.lastBarKey) return;
+    this.lastBarKey = key;
+    this.barFill.style.width = `${px.toFixed(1)}px`;
+    this.barLabel.textContent = label;
+    this.barAnchor.textContent = anchor;
   }
 
   setProgress(p: number) {
     this.hintEl.style.opacity = p > 0.995 ? '0' : String(Math.max(0.25, 1 - p * 40));
   }
+}
+
+/** A familiar object of roughly the given length, for a gut-level sense of scale. */
+function anchorFor(m: number): string {
+  for (const [min, text] of content.ui.scaleAnchors) if (m >= min) return text;
+  return content.ui.scaleAnchorSmallest;
 }

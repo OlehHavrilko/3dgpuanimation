@@ -13,11 +13,11 @@ export const card = {
     'Our electron arrives on the 12 V rail, through the 12V-2x6 connector; the VRM steps it down to ~1 V and pushes it into the GPU.',
   /** Story captions, in order (switch points live in the level). */
   captions: [
-    'Double flow-through: 2 fans push air straight through the fins',
-    'Fans spin down',
-    'Exploded: shroud · fans · 2 fin stacks · 3D vapor chamber · heat pipes',
-    'Compact main PCB + separate PCIe and display boards on flex cables',
-    'Diving into the board',
+    'Two fans drive air straight through the fins. This is the machine.',
+    'The fans spin down so you can see inside',
+    'Exploded: shroud · two fin stacks · vapour chamber · heat pipes',
+    'Under the cooler: one main board, two smaller ones on flex cables',
+    'Follow the power onto the board',
   ],
   controls: { disassembly: 'Disassembly', fans: 'Fans' },
   thermal: {

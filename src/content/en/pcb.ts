@@ -12,9 +12,9 @@ export const pcb = {
   follow:
     'On the board: one of many parallel power phases chops 12 V down to the ~1 V core rail, and the current heads under the GPU package.',
   captions: {
-    intro: 'Compact main board: GPU, memory and power delivery only',
-    memoryOnline: (n: number) => `GDDR7 online: ${n} / 16 × 2 GB · 28 Gbps · 512-bit`,
-    bandwidth: '1.79 TB/s of memory bandwidth converging on GB202',
+    intro: 'The board is a city: one GPU, sixteen memory chips, power everywhere',
+    memoryOnline: (n: number) => `GDDR7 online: ${n} / 16 × 2 GB — 28 Gbps each`,
+    bandwidth: '1.79 terabytes a second, all of it converging on GB202',
     outro: 'Into the GPU package',
   },
   controls: { dataFlow: 'Data flow' },

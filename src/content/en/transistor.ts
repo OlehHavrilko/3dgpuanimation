@@ -11,11 +11,11 @@ export const transistor = {
   },
   follow: 'Into a transistor: down the contact, into the source, and across the channel the gate has just switched on.',
   captions: {
-    array: 'FinFET array · fin pitch ~28 nm · gate pitch ~51 nm',
-    clocks: 'Each gate switches on its own clock: watch the high-k collars light up',
-    dielectric: 'High-k dielectric (HfO₂, ~1–2 nm) insulates gate from channel',
-    on: 'Gate ON → inversion layer forms, electrons flow source → drain',
-    off: 'Gate OFF → barrier up, electrons pile up at the source',
+    array: 'FinFETs: fins 28 nm apart, gates 51 nm apart',
+    clocks: 'Every gate has its own clock — watch them switch',
+    dielectric: 'A high-k layer one nanometre thick decides whether current flows',
+    on: 'Gate on: electrons pour from source to drain',
+    off: 'Gate off: the barrier holds them back',
   },
   controls: { drive: 'Gate drive', voltage: 'Gate voltage (manual)', clock: 'Clock speed' },
   readouts: {

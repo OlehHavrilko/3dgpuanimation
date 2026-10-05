@@ -23,25 +23,46 @@ export class Hud {
   private inspActions = this.insp.querySelector('.insp-actions')!;
   private inspControls = this.insp.querySelector('.insp-controls')!;
   private crumbs = document.getElementById('crumbs')!;
+  private thermalLegend = document.getElementById('thermal-legend')!;
   private prevBtn = document.getElementById('nav-prev') as HTMLButtonElement;
   private nextBtn = document.getElementById('nav-next') as HTMLButtonElement;
   private tipKey = '';
   private readouts: { el: HTMLElement; get: () => string }[] = [];
   private lastReadout = 0;
+  /** Cached inspector bounds: `getBoundingClientRect()` forces a layout, so never call it per frame. */
+  private rect: DOMRect | null = null;
+  private rectDirty = true;
 
   onClose: (() => void) | null = null;
 
   constructor() {
     this.insp.querySelector('.insp-close')!.addEventListener('click', () => this.onClose?.());
     // Phones: the bottom sheet collapses to its title bar so the 3D view gets the screen back.
-    const toggle = () => window.innerWidth <= 640 && this.insp.classList.toggle('collapsed');
+    const toggle = () => {
+      if (window.innerWidth > 640) return;
+      this.insp.classList.toggle('collapsed');
+      this.invalidateRect();
+    };
     this.insp.querySelector('.insp-grip')!.addEventListener('click', toggle);
     this.inspTitle.addEventListener('click', toggle);
   }
 
+  /** Called when the viewport changes and the cached inspector bounds may be stale. */
+  invalidateRect() {
+    this.rectDirty = true;
+  }
+
   /** Inspector bounds while it is open (for keeping the subject clear of it). */
   inspectorRect(): DOMRect | null {
-    return this.insp.classList.contains('on') ? this.insp.getBoundingClientRect() : null;
+    if (!this.insp.classList.contains('on')) {
+      this.rect = null;
+      return null;
+    }
+    if (this.rectDirty || !this.rect) {
+      this.rect = this.insp.getBoundingClientRect();
+      this.rectDirty = false;
+    }
+    return this.rect;
   }
 
   // ---------------------------------------------------------------- tooltip
@@ -97,6 +118,11 @@ export class Hud {
     this.spot.classList.remove('on');
   }
 
+  /** Show the ironbow temperature legend while the Thermal view is active. */
+  setThermalLegend(on: boolean) {
+    this.thermalLegend.classList.toggle('on', on);
+  }
+
   // ---------------------------------------------------------------- inspector
   openInspector(
     heading: { kind: string; title: string; specs?: [string, string][]; note?: string },
@@ -125,11 +151,14 @@ export class Hud {
     this.renderControls(controls);
     this.insp.classList.add('on');
     document.body.classList.add('inspecting');
+    this.invalidateRect();
   }
 
   closeInspector() {
+    if (!this.insp.classList.contains('on')) return;
     this.insp.classList.remove('on');
     document.body.classList.remove('inspecting');
+    this.invalidateRect();
   }
 
   private renderControls(controls: LevelControl[]) {

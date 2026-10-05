@@ -45,12 +45,12 @@ export const pkg = {
   follow:
     'Up through a solder ball, the copper layers of the substrate and a C4 micro-bump: now it is inside the silicon.',
   captions: {
-    intro: 'Flip-chip BGA: GB202 die on an organic substrate',
-    peel: 'Peeling the substrate apart (thicknesses ×5)',
+    intro: 'The die sits face-down on a substrate that fans its pins out to the board',
+    peel: 'Peeling it apart — every layer drawn five times too thick to see',
     stack: (layer: string) => `Build-up stack · ${layer}`,
     counts: (balls: number, bumps: number) =>
-      `${balls.toLocaleString('en-US')} BGA balls below · ~${bumps.toLocaleString('en-US')} C4 bumps above`,
-    die: 'Die: TSMC 4N · ~750 mm² · 92.2 billion transistors',
+      `${balls.toLocaleString('en-US')} balls below, ${bumps.toLocaleString('en-US')} bumps above — every one a wire`,
+    die: 'Now the die itself: 750 mm² of silicon',
   },
   controls: { peel: 'Peel apart' },
   layers,

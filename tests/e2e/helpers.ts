@@ -1,7 +1,11 @@
 import { expect, type Page } from '@playwright/test';
 
-/** Open the app with the debug handle (window.__teardown) and collect JS errors. */
-export async function openApp(page: Page, query = '') {
+/**
+ * Open the app with the debug handle (window.__teardown) and collect JS errors.
+ * Defaults: no landing card (its attract drift owns the timeline) and a fixed quality tier,
+ * so the run doesn't depend on the machine's core count.
+ */
+export async function openApp(page: Page, query = '&nointro&quality=medium') {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
   page.on('console', (m) => {

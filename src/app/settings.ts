@@ -1,3 +1,5 @@
+import { qualityLabel, type Quality } from '../core/quality';
+
 /** Runtime settings shared by the render loop, the debug panel and the tour. */
 export interface Settings {
   /** Timeline position 0..1 (mirrors the scroll unless `override`). */
@@ -15,13 +17,8 @@ export interface Settings {
   drawCalls: number;
   triangles: number;
   pixelRatio: number;
-}
-
-export type Quality = 'low' | 'high' | 'auto';
-
-export function readQuality(search: string): Quality {
-  const q = new URLSearchParams(search).get('quality');
-  return q === 'low' || q === 'high' ? q : 'auto';
+  /** Device tier + AA + cache, for the debug HUD. */
+  tier: string;
 }
 
 export function createSettings(quality: Quality): Settings {
@@ -30,7 +27,7 @@ export function createSettings(quality: Quality): Settings {
     override: false,
     bloom: 1.1,
     threshold: 0.62,
-    dof: quality !== 'low',
+    dof: quality.dof,
     bokeh: 1,
     timeScale: 1,
     fps: 0,
@@ -38,5 +35,6 @@ export function createSettings(quality: Quality): Settings {
     drawCalls: 0,
     triangles: 0,
     pixelRatio: 0,
+    tier: qualityLabel(quality),
   };
 }

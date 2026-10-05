@@ -7,8 +7,10 @@ import { metal } from './metal';
 import { transistor } from './transistor';
 import { lattice } from './lattice';
 import { atom } from './atom';
+import { story } from './story';
 
 export const en = {
   ui,
+  story,
   levels: { card, pcb, package: pkg, die, metal, transistor, lattice, atom },
 };

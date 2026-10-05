@@ -12,10 +12,10 @@ export const atom = {
   follow:
     "Finally it is one of silicon's four valence electrons, in a 3p orbital: not a dot, but a cloud of probability. End of the journey.",
   captions: [
-    'Si · Z = 14 · 1s² 2s² 2p⁶ 3s² 3p²',
-    'Electron density sampled from |ψ|², Slater-screened shells',
-    'Valence 3s² 3p²: the four electrons that bond the lattice',
-    '²⁸Si nucleus · 14 p⁺ + 14 n⁰ · drawn ~10⁴× too large',
+    'Silicon: 14 protons, 14 neutrons, 14 electrons',
+    'That cloud is the quantum wavefunction — where a transistor really lives',
+    'Four valence electrons: the bonds you just saw',
+    'The nucleus, drawn ten thousand times too large',
   ],
   controls: { orbitals: 'Orbitals' },
   entities: {

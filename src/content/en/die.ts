@@ -10,13 +10,12 @@ export const die = {
   },
   follow: 'On the die: the power grid spreads current to all 170 active SMs; ours heads for one of them.',
   captions: {
-    film: 'Thin-film interference: oxide thickness paints the colours',
-    gpc: '12 Graphics Processing Clusters (GPC)',
-    sm: (total: number, enabled: number) =>
-      `${total} Streaming Multiprocessors · ${enabled} enabled on RTX 5090 · 21,760 CUDA cores`,
-    l2: 'L2 cache · 128 MB on die (96 MB enabled)',
-    mc: '16 × 32-bit GDDR7 memory controllers = 512-bit bus',
-    outro: 'Zooming into one SM',
+    film: 'No paint, no dye — that colour is thin-film interference',
+    gpc: 'Twelve clusters, each one a small factory',
+    sm: (total: number, enabled: number) => `${total} streaming multiprocessors · ${enabled} alive on this one`,
+    l2: '128 MB of L2 cache sits in the middle of the die',
+    mc: 'Sixteen memory controllers, 512 bits wide',
+    outro: 'Down into a single SM',
   },
   controls: { highlight: 'Highlight' },
   /** Signal-trace narration per waypoint. */

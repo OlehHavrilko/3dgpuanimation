@@ -11,10 +11,10 @@ export const lattice = {
   },
   follow: 'Inside the fin it is no longer a particle in a wire: it moves through the crystal from bond to bond.',
   captions: [
-    'Diamond-cubic Si · a = 5.431 Å (green box = one unit cell, 8 atoms)',
-    '4 covalent bonds per atom · 2.35 Å · 109.5° — glow = shared electron pairs',
-    'Dopants: phosphorus (white) donates an electron · boron (amber) leaves a hole',
-    '5 × 10²² atoms per cm³ — zooming into one of them',
+    'Under everything, a crystal: silicon atoms in a diamond lattice',
+    'Each atom holds four neighbours at 109.5° — these bonds are the material',
+    'Phosphorus donates an electron · boron leaves a hole',
+    '5 × 10²² atoms in a single cubic centimetre',
   ],
   controls: { doping: 'Doping' },
   entities: {
