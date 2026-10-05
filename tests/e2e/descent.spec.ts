@@ -82,6 +82,13 @@ test('log ruler follows the view; reverse zoom ends on "You were looking at one.
   // Finale → Zoom back out → closing line.
   await goToLevel(page, 7, 0.99);
   await expect.poll(() => page.evaluate(() => (window as any).__teardown.story.finaleVisible)).toBe(true);
+  // The 20 s fly-up is wall-clock; software rendering runs at a frame every few seconds, so
+  // let gsap use real elapsed time and run the timeline fast.
+  await page.evaluate(() => {
+    const { gsap } = (window as any).__teardown;
+    gsap.ticker.lagSmoothing(0);
+    gsap.globalTimeline.timeScale(40);
+  });
   await page.locator('#fin-zoomout').click();
   await expect.poll(() => page.evaluate(() => (window as any).__teardown.settings.progress)).toBeLessThan(0.9);
   await expect(page.locator('#coda')).toHaveClass(/on/, { timeout: 120_000 });

@@ -343,6 +343,15 @@ const FRAG = /* glsl */ `
     return 0.5 + 0.5 * cos(6.2831853 * opd / lambda);
   }
 
+  // Anti-aliased square wave: 0 below duty, 1 above, filtered by the screen-space step of v so
+  // fine patterns fade to their mean instead of aliasing into moire.
+  float sq(float v, float duty) {
+    float w = fwidth(v);
+    float f = fract(v);
+    float edge = smoothstep(duty - w, duty + w, f) * (1.0 - smoothstep(1.0 - w, 1.0, f));
+    return mix(edge, 1.0 - duty, smoothstep(0.3, 0.7, w));
+  }
+
   void main() {
     vec2 p = vP;
     vec2 half_ = vec2(DIE_W, DIE_H) * 0.5;
@@ -372,20 +381,19 @@ const FRAG = /* glsl */ `
       vec2 r1 = vertical ? vec2(sign(p.x) * (half_.x - 0.25), hi) : vec2(hi, sign(p.y) * (half_.y - 0.25));
       mcEdge = abs(rectDist(p, min(r0, r1), max(r0, r1)));
       if (rectDist(p, min(r0, r1), max(r0, r1)) > 0.0) cat = 0.0;
-      detail = step(0.5, fract((vertical ? p.x : p.y) * 6.0));
+      detail = sq((vertical ? p.x : p.y) * 6.0, 0.5);
     } else if (a.y < L2_HALF) {
       // Central L2 band, split by the hub (GigaThread, PCIe 5.0, media, display) in the middle.
       if (a.x < 2.6) {
         cat = 0.0;
-        detail = step(0.5, fract(p.x * 2.0 + floor(p.y * 2.0) * 0.5));
+        detail = sq(p.x * 2.0 + floor(p.y * 2.0) * 0.5, 0.5);
       } else {
         cat = 2.0;
         float side = sign(p.x);
         vec2 lo = vec2(side > 0.0 ? 2.8 : -(half_.x - EDGE - 0.2), -L2_HALF + 0.2);
         vec2 hi = vec2(side > 0.0 ? half_.x - EDGE - 0.2 : -2.8, L2_HALF - 0.2);
         l2Edge = abs(rectDist(p, lo, hi));
-        vec2 bank = fract(p * vec2(2.2, 3.0));
-        detail = step(0.08, bank.x) * step(0.1, bank.y);
+        detail = sq(p.x * 2.2, 0.08) * sq(p.y * 3.0, 0.1);
       }
     } else {
       // GPC grid
@@ -399,7 +407,7 @@ const FRAG = /* glsl */ `
       gpcEdge = abs(rectDist(vec2(p.x, yIn), vec2(x0 + 0.12, 0.12), vec2(x0 + gpcW - 0.12, gpcH - 0.12)));
       if (yIn < 0.35) {
         cat = 3.0; // raster / ROP front end strip
-        detail = step(0.5, fract(p.x * 4.0));
+        detail = sq(p.x * 4.0, 0.5);
       } else {
         cat = 4.0;
         float smW = gpcW / SM_COLS;
@@ -412,13 +420,13 @@ const FRAG = /* glsl */ `
         smId = ((row * GPC_COLS + col) * SM_COLS + sc) * SM_ROWS + sr;
         // SM internals: 4 processing blocks + tensor cores + L1/shared memory
         vec2 q = (vec2(p.x, yIn) - lo) / (hi - lo);
-        detail = q.x < 0.78 ? step(0.12, fract(q.x * 4.0 / 0.78)) * step(0.15, fract(q.y * 2.0)) : 0.5 + 0.5 * step(0.5, fract(q.y * 10.0));
+        detail = q.x < 0.78 ? sq(q.x * 4.0 / 0.78, 0.12) * sq(q.y * 2.0, 0.15) : 0.5 + 0.5 * sq(q.y * 10.0, 0.5);
       }
     }
 
     // ---- film thickness by block type + fine structure + a slow shimmer
     float thick = cat == 1.0 ? 560.0 : cat == 2.0 ? 430.0 : cat == 3.0 ? 360.0 : cat == 4.0 ? 300.0 : 480.0;
-    thick += detail * 45.0 + (hash(floor(p * 3.0)) - 0.5) * 20.0;
+    thick += detail * 45.0 + (hash(floor(p * 3.0)) - 0.5) * 20.0 * (1.0 - smoothstep(0.1, 0.4, fwidth(p.x) * 3.0));
     thick += 18.0 * sin(p.x * 0.3 + p.y * 0.2 + uTime * 0.15);
 
     vec3 V = normalize(cameraPosition - vWorld);
@@ -453,7 +461,7 @@ const FRAG = /* glsl */ `
     col += green * uHl.w * (mcLine * 3.0 + (cat == 1.0 ? 0.25 : 0.0));
 
     // Fine standard-cell rows, visible only when zoomed in
-    float rows = step(0.5, fract(p.y * 40.0));
+    float rows = sq(p.y * 40.0, 0.5);
     col *= 1.0 - 0.12 * rows * smoothstep(0.02, 0.004, px);
 
     gl_FragColor = vec4(col, 1.0);

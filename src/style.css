@@ -1417,6 +1417,31 @@ body.touring .hud-bottom {
   align-items: center;
   gap: 10px;
 }
+.fin-actions button {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 12px 18px;
+  color: var(--white);
+  background: rgba(9, 16, 11, 0.7);
+  border: 1px solid rgba(225, 240, 215, 0.2);
+  cursor: pointer;
+  transition:
+    color 0.2s,
+    border-color 0.2s,
+    background 0.2s,
+    transform 0.2s;
+}
+.fin-actions button:hover {
+  border-color: var(--green);
+  transform: translateY(-1px);
+}
+.fin-actions button.primary {
+  color: #061000;
+  background: var(--green);
+  border-color: var(--green);
+}
 .fin-actions a {
   font-family: var(--mono);
   font-size: 11px;

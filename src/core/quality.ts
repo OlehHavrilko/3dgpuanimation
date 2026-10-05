@@ -12,6 +12,8 @@ export interface Quality {
   tier: QualityTier;
   /** Hard cap on device pixel ratio. */
   maxPixelRatio: number;
+  /** Render at least this many pixels per CSS pixel on 1x screens (supersampling kills shimmer). */
+  supersample: number;
   /** Adaptive resolution may step below the cap when the frame rate drops. */
   adaptive: boolean;
   /** MSAA samples on the composer's render target (0 disables). */
@@ -54,6 +56,7 @@ function probeTier(): QualityTier {
 const PRESETS: Record<QualityTier, Omit<Quality, 'tier' | 'reducedMotion'>> = {
   high: {
     maxPixelRatio: 1.75,
+    supersample: 1.5,
     adaptive: true,
     msaaSamples: 4,
     fxaa: false,
@@ -67,6 +70,7 @@ const PRESETS: Record<QualityTier, Omit<Quality, 'tier' | 'reducedMotion'>> = {
   },
   medium: {
     maxPixelRatio: 1.5,
+    supersample: 1.25,
     adaptive: true,
     msaaSamples: 2,
     fxaa: false,
@@ -80,6 +84,7 @@ const PRESETS: Record<QualityTier, Omit<Quality, 'tier' | 'reducedMotion'>> = {
   },
   low: {
     maxPixelRatio: 1,
+    supersample: 1,
     adaptive: true,
     msaaSamples: 0,
     fxaa: true,
