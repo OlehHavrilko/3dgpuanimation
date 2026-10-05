@@ -13,7 +13,7 @@ export const atom = {
     "Finally it is one of silicon's four valence electrons, in a 3p orbital: not a dot, but a cloud of probability. End of the journey.",
   captions: [
     'Silicon: 14 protons, 14 neutrons, 14 electrons',
-    'That cloud is the quantum wavefunction — where a transistor really lives',
+    'That cloud is |ψ|²: where its electrons are likely to be — where a transistor really lives',
     'Four valence electrons: the bonds you just saw',
     'The nucleus, drawn ten thousand times too large',
   ],

@@ -101,7 +101,7 @@ The inspector's **View** control offers four modes:
 
 - **Normal**: the regular rendering.
 - **X-Ray**: everything becomes a Fresnel ghost. The selected part stays solid, which isolates it.
-- **Section**: a clipping plane with a cut slider. Each level has its own axis, and the atom's electron cloud is sliced as well.
+- **Section**: a clipping plane with a cut slider. Each level has its own axis. Cut solids are filled with a hatched face in their own colour, so copper reads as copper and silicon as silicon; the boards cut as a 14-layer stack of copper planes in laminate. The atom's electron cloud is sliced as well.
 - **Thermal** (card and PCB): an illustrative lumped heat model drives a thermal-camera palette.
   - Heat visibly spreads die → vapor chamber → heat pipes → fins.
   - You can set GPU load and fan mode.
@@ -238,6 +238,8 @@ There is no cut and no flash between scales; the next level exists _inside_ the 
 
 **Visual grade.** `PostFX` runs DOF → bloom → chromatic aberration → brightness/contrast → hue/saturation → vignette → ACES tone mapping → film grain, with a per-level look from `Grade.ts` (the SEM level goes near-monochrome and grainy, the die goes saturated, the atom goes dark and bloomy). Low-tier devices get asset-free FXAA instead of MSAA.
 
+**Section caps.** Filled cut faces without a stencil buffer: every closed opaque mesh gets a back-face twin (`SectionCaps` in `ViewModes.ts`) that intersects the view ray with the cut plane and colours that point, with an optional layer stack from `mesh.userData.section` (`core/sectionStack.ts`).
+
 **Content.** Every user-facing string (captions, entity info, control labels, acts, key numbers, UI) lives in `src/content/en/` behind one `content` export; levels and UI read it, so a second language is a new dictionary. The fixed text in `index.html` is the English fallback, partly filled in from the dictionary by `app/staticText.ts`.
 
 **Narrative layer.** `Story.ts` is deliberately separate from the renderer: it reads the per-frame `FrameState` (level index, local progress, dive) and drives its own DOM, and the only thing it hands back is a `pullback` amount that `main.ts` applies to the camera for the finale. That keeps a scene-agnostic story controller out of the per-level code. `Attract.ts` is the same idea for the landing — a slow ping-pong through the first scale's content that writes to the timeline while the card is up and hands the progress over on dismissal, so _Start_ and _Scroll it yourself_ both continue from wherever the drift had reached.
@@ -270,6 +272,8 @@ To add a level, extend `BaseLevel`, implement `build()`, `cameraKeys()`, `animat
 - **Robustness.** WebGL context loss pauses the loop, then rebuilds the environment and drops the cached levels on restore; `prefers-reduced-motion` disables parallax; the inspector's bounding rect is cached instead of read every frame; `?debug` shows FPS, frame time, draw calls, triangles, pixel ratio and tier.
 
 ## Accuracy notes
+
+In the page, **How accurate is this?** under each scale's description lists, for that scale, what comes from published specs, what is representative, and what is deliberately not to scale (`src/content/en/accuracy.ts`).
 
 These figures come from NVIDIA's public specs:
 
