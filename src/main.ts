@@ -267,6 +267,7 @@ function startFollow() {
   document.body.classList.add('following');
   followBtn.textContent = 'Stop';
   interaction.exitExplore();
+  activeTour?.stop(); // the two auto-scroll systems must not both drive the timeline
   followTween?.kill();
   const total = LEVELS.reduce((s, l) => s + l.meta.weight, 0);
   if (settings.override) {
@@ -336,6 +337,7 @@ const tour = new Tour(
       settings.progress = p;
     },
     begin: () => {
+      if (ctx.journey.follow) stopFollow(); // hand the timeline over from follow mode
       interaction.exitExplore();
       interaction.stopTrace();
       settings.override = true;
