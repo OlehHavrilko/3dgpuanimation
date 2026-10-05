@@ -46,11 +46,44 @@ Per-level controls appear in the inspector in Explore mode:
 
 On touch screens, a first tap identifies a part (tooltip) and a second tap on it inspects, so swiping through the story never drops you into Explore by accident. In Explore, one finger orbits, a pinch zooms and two fingers pan. The inspector becomes a bottom sheet that collapses to its title (tap the grip). While it is open, the view slides so the subject stays clear of the panel.
 
+### View modes (Explore)
+
+The inspector's **View** control offers four modes:
+
+- **Normal**: the regular rendering.
+- **X-Ray**: everything becomes a Fresnel ghost. The selected part stays solid, which isolates it.
+- **Section**: a clipping plane with a cut slider. Each level has its own axis, and the atom's electron cloud is sliced as well.
+- **Thermal** (card and PCB): an illustrative lumped heat model drives a thermal-camera palette.
+  - Heat visibly spreads die → vapor chamber → heat pipes → fins.
+  - You can set GPU load and fan mode.
+  - Live readouts show temperatures, an estimated hotspot and board power. Throttling starts above 90 °C.
+
+### Signal trace
+
+Click any GDDR7 chip → **Trace signal**. The chip's own 32-bit bus lights up with fast packets while the other buses fade. The camera then walks through each stage on its own:
+
+1. On the board: chip → bus → GPU package.
+2. **Follow into the die**: memory controller (numbered to match the chip) → L2 → GPC → SM, along a glowing on-die path.
+
+### Transistor
+
+Gate drive has four settings: OFF, ON, CLOCK, or MANUAL with a gate-voltage slider (threshold about 0.3 V). Live readouts show the channel state, the relative drain current and a rolling logic trace (`0 1 0 1 …`).
+
+### Follow the electron
+
+Press the **Follow e⁻** button or `F`. The page scrolls itself through all eight scales while a glowing electron with a tail follows one physical path:
+
+12V-2x6 connector → VRM → PCB → solder ball and substrate → on-die power grid → down the via stack → contact → source → channel → through the silicon crystal → a 3p orbital.
+
+Each level shows its own narration. The tour pauses while you explore and stops on a second press or with `Esc`.
+
 The interaction layer lives in `src/interaction/` and is shared by every level:
 
 - `InteractionManager.ts` handles raycasting, hover and selection, Explore mode (OrbitControls), camera fly-to, keyboard input and parallax.
 - `Hud.ts` handles the DOM: tooltip, leader line, spotlight, inspector, breadcrumb and nav.
 - `pick.ts` holds the helpers levels use to declare what is pickable.
+- `ViewModes.ts` implements X-Ray, Section and Thermal, plus the heat model.
+- `FollowTracer.ts` draws the followed electron.
 
 Levels only describe *what* can be picked (`pickables`, with `EntityInfo` metadata) and *which* controls they offer (`controls`). They never handle input themselves.
 

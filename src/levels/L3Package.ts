@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { BaseLevel, setControlValue } from '../core/BaseLevel';
 import type { CameraKey } from '../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../core/types';
-import { mulberry32, smootherstep } from '../core/math';
+import { mulberry32, smoothstep, smootherstep } from '../core/math';
 import { canvasTexture, route45 } from '../core/canvas';
 import { pickInstancedGroup, pickObject } from '../interaction/pick';
 
@@ -60,6 +60,8 @@ export class PackageLevel extends BaseLevel {
     this.bloom = 1.0;
     this.bokeh = 1.6;
     this.sectionNormal = [0, 0, 1];
+    this.followCaption =
+      'Up through a solder ball, the copper layers of the substrate and a C4 micro-bump: now it is inside the silicon.';
   }
 
   protected cameraKeys(): CameraKey[] {
@@ -370,6 +372,17 @@ export class PackageLevel extends BaseLevel {
   onExploreChange(active: boolean) {
     if (active) setControlValue(this.controls[0], Math.round(this.lastPeel * 100));
     else this.peelOverride = null;
+  }
+
+  /** Straight up through one solder ball, the substrate stack and a C4 bump into the die. */
+  followPoint(t: number, out: THREE.Vector3) {
+    const u = smoothstep(0.06, 0.98, t);
+    const x = 4.62;
+    const bottom = this.balls.position.y - 1.5;
+    const top = this.dieGroup.position.y + 1.08;
+    if (u < 0.85) return out.set(x, bottom + (top - bottom) * (u / 0.85), x);
+    const k = (u - 0.85) / 0.15;
+    return out.set(x * (1 - k), top, x * (1 - k));
   }
 
   getTransitionTarget() {

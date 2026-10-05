@@ -135,6 +135,52 @@ function jumpToLevel(index: number) {
   });
 }
 
+// ---------------------------------------------------------------- follow-the-electron tour
+/**
+ * Guided tour: scroll from the very top to the very bottom at a steady pace while each level
+ * shows where "our" electron is. Pauses in Explore, stops on a second press (or F / Esc).
+ */
+let tour: gsap.core.Tween | null = null;
+const followBtn = document.getElementById('nav-follow')!;
+function startFollow() {
+  ctx.journey.follow = true;
+  document.body.classList.add('following');
+  followBtn.textContent = 'Stop';
+  interaction.exitExplore();
+  tour?.kill();
+  const total = LEVELS.reduce((s, l) => s + l.meta.weight, 0);
+  if (settings.override) {
+    settings.progress = 0;
+    tour = gsap.to(settings, { progress: 1, duration: total * 11, ease: 'none' });
+    return;
+  }
+  window.scrollTo({ top: 0, behavior: 'instant' });
+  tour = gsap.to(window, {
+    scrollTo: { y: maxScroll(), autoKill: true },
+    duration: total * 11,
+    ease: 'none',
+    delay: 0.6,
+  });
+}
+function stopFollow() {
+  ctx.journey.follow = false;
+  document.body.classList.remove('following');
+  followBtn.textContent = 'Follow e⁻';
+  tour?.kill();
+  tour = null;
+}
+followBtn.addEventListener('click', () => (ctx.journey.follow ? stopFollow() : startFollow()));
+window.addEventListener('keydown', (e) => {
+  const t = e.target as HTMLElement | null;
+  if (t && t.tagName === 'INPUT') return;
+  if (e.key === 'f' || e.key === 'F' || e.key === 'а' || e.key === 'А') ctx.journey.follow ? stopFollow() : startFollow();
+  else if (e.key === 'Escape' && ctx.journey.follow && !interaction.exploring) stopFollow();
+});
+interaction.onExploreToggle = (active) => {
+  if (active) tour?.pause();
+  else tour?.resume();
+};
+
 // ---------------------------------------------------------------- debug (?debug)
 const settings = {
   progress: 0,
@@ -218,10 +264,10 @@ function frame(now: number) {
   manager.setProgress(p);
   const state = manager.tick(dt, simTime);
   const level = manager.current!;
-  interaction.update(rawDt);
+  interaction.update(rawDt, state.content);
   const exploreFocus = interaction.getFocusOverride();
 
-  overlay.setCaption(level.caption);
+  overlay.setCaption(ctx.journey.follow && level.followCaption ? level.followCaption : level.caption);
   overlay.setFov(
     exploreFocus
       ? 2 *

@@ -5,6 +5,7 @@ import type { LevelMeta, TransitionTarget } from '../core/types';
 import { mulberry32, smoothstep } from '../core/math';
 import { pointScale } from '../core/points';
 import { pickInstances, pickObject } from '../interaction/pick';
+import { splineAt } from '../interaction/FollowTracer';
 
 /**
  * Level 6 — FinFETs. Units: nanometres.
@@ -58,7 +59,12 @@ export class TransistorLevel extends BaseLevel {
   private eVel = new Float32Array(ELECTRONS);
   private gateOn = 0;
   /** Explore controls: gate mode and clock speed. */
-  private gateMode: 'OFF' | 'ON' | 'CLOCK' = 'CLOCK';
+  private gateMode: 'OFF' | 'ON' | 'CLOCK' | 'MANUAL' = 'CLOCK';
+  /** Manual gate voltage (V); threshold ~0.3 V, full inversion by ~0.45 V. */
+  private vg = 0.75;
+  /** Rolling logic trace of the focused transistor (CLOCK mode). */
+  private bits = '';
+  private lastBit = -1;
   private clockSpeed = 1;
   private clockT = 0;
   private finZ = (i: number) => (i - CENTER_FIN) * FIN_PITCH;
@@ -72,6 +78,8 @@ export class TransistorLevel extends BaseLevel {
     this.bloom = 1.25;
     this.bokeh = 0.5;
     this.sectionNormal = [0, 0, 1];
+    this.followCaption =
+      'Into a transistor: down the contact, into the source, and across the channel the gate has just switched on.';
     this.target = {
       position: new THREE.Vector3(this.gateX(CENTER_GATE), FIN_H * 0.6, this.finZ(FOCUS_FIN)),
       radius: 4,
@@ -340,10 +348,23 @@ export class TransistorLevel extends BaseLevel {
     this.controls = [
       {
         kind: 'choice',
-        label: 'Gate voltage',
-        options: ['OFF', 'ON', 'CLOCK'],
+        label: 'Gate drive',
+        options: ['OFF', 'ON', 'CLOCK', 'MANUAL'],
         value: 'CLOCK',
-        onChange: (v) => (this.gateMode = v as 'OFF' | 'ON' | 'CLOCK'),
+        onChange: (v) => (this.gateMode = v as 'OFF' | 'ON' | 'CLOCK' | 'MANUAL'),
+      },
+      {
+        kind: 'slider',
+        label: 'Gate voltage (manual)',
+        min: 0,
+        max: 0.8,
+        step: 0.01,
+        value: this.vg,
+        format: (v) => `${v.toFixed(2)} V`,
+        onInput: (v) => {
+          this.vg = v;
+          this.gateMode = 'MANUAL';
+        },
       },
       {
         kind: 'slider',
@@ -355,6 +376,14 @@ export class TransistorLevel extends BaseLevel {
         format: (v) => `${v.toFixed(2)}×`,
         onInput: (v) => (this.clockSpeed = v),
       },
+      { kind: 'readout', label: 'Mode', get: () => (this.gateMode === 'MANUAL' ? `manual · Vg ${this.vg.toFixed(2)} V` : this.gateMode) },
+      {
+        kind: 'readout',
+        label: 'Channel',
+        get: () => (this.gateOn > 0.85 ? 'strong inversion (ON)' : this.gateOn > 0.08 ? 'near threshold' : 'depleted (OFF)'),
+      },
+      { kind: 'readout', label: 'Drain current (rel.)', get: () => `${'▮'.repeat(Math.round(this.gateOn * 10)).padEnd(10, '▯')} ${Math.round(this.gateOn * 100)}%` },
+      { kind: 'readout', label: 'Logic out', get: () => this.bits.split('').join(' ') || '—' },
     ];
 
     // ---- glowing high-k shell around the focused channel
@@ -474,7 +503,20 @@ export class TransistorLevel extends BaseLevel {
     this.capGlow.needsUpdate = true;
 
     // ---- the focused transistor
-    const v = this.gateMode === 'OFF' ? 0 : this.gateMode === 'ON' ? 1 : this.gateState(CENTER_GATE);
+    const v =
+      this.gateMode === 'OFF'
+        ? 0
+        : this.gateMode === 'ON'
+          ? 1
+          : this.gateMode === 'MANUAL'
+            ? smoothstep(0.24, 0.45, this.vg) // threshold ~0.3 V
+            : this.gateState(CENTER_GATE);
+    // Logic trace: record a bit on every transition through the midpoint.
+    const bit = v > 0.5 ? 1 : 0;
+    if (bit !== this.lastBit) {
+      this.lastBit = bit;
+      this.bits = (this.bits + bit).slice(-12);
+    }
     this.gateOn = v;
     const reveal = smoothstep(0.45, 0.75, t);
     this.focusGateMat.opacity = 1 - 0.9 * reveal;
@@ -532,10 +574,28 @@ export class TransistorLevel extends BaseLevel {
     if (!active) {
       this.gateMode = 'CLOCK';
       this.clockSpeed = 1;
+      this.vg = 0.75;
       setControlValue(this.controls[0], 'CLOCK');
-      setControlValue(this.controls[1], 1);
+      setControlValue(this.controls[1], 0.75);
+      setControlValue(this.controls[2], 1);
     }
   }
+
+  /** Down a contact into the source, then into the channel the gate has opened. */
+  followPoint(t: number, out: THREE.Vector3) {
+    const cx = this.gateX(CENTER_GATE);
+    const fz = this.finZ(FOCUS_FIN);
+    const path = (this.followCache ??= [
+      [cx - CPP / 2, FIN_H + 70, fz + 6],
+      [cx - CPP / 2, FIN_H + 10, fz + 2],
+      [cx - CPP / 2, FIN_H * 0.7, fz],
+      [cx - GATE_L, FIN_H * 0.62, fz + FIN_W / 2 - 1],
+      [cx, FIN_H * 0.6, fz + FIN_W / 2 - 1],
+    ]);
+    return splineAt(path, smoothstep(0.06, 0.98, t), out);
+  }
+
+  private followCache: [number, number, number][] | null = null;
 
   getTransitionTarget() {
     return this.target;

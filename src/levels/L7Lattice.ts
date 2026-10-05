@@ -2,8 +2,10 @@ import * as THREE from 'three';
 import { BaseLevel, setControlValue } from '../core/BaseLevel';
 import type { CameraKey } from '../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../core/types';
+import { smoothstep } from '../core/math';
 import { pointScale } from '../core/points';
 import { pickInstancedGroup, pickInstances } from '../interaction/pick';
+import { splineAt } from '../interaction/FollowTracer';
 
 /**
  * Level 7 — crystalline silicon. Units: ångström.
@@ -68,6 +70,8 @@ export class LatticeLevel extends BaseLevel {
     this.bloom = 1.15;
     this.bokeh = 1.2;
     this.sectionNormal = [0, 0, 1];
+    this.followCaption =
+      'Inside the fin it is no longer a particle in a wire: it moves through the crystal from bond to bond.';
     // Atom closest to the centre is the one we dive into.
     let best = Infinity;
     this.atoms.forEach((p, i) => {
@@ -389,6 +393,36 @@ export class LatticeLevel extends BaseLevel {
     if (active) setControlValue(this.controls[0], 'Mixed');
     this.applyDoping();
   }
+
+  /** Through the crystal from bond to bond, towards the atom we dive into. */
+  followPoint(t: number, out: THREE.Vector3) {
+    if (!this.followCache) {
+      const c = this.atoms[this.centerIndex];
+      // Walk the bond network: from an edge atom, greedily step to the neighbour nearest the centre.
+      let cur = this.atoms.reduce((best, p) => (p.x + p.y + p.z > best.x + best.y + best.z ? p : best));
+      const pts: [number, number, number][] = [[cur.x + 4, cur.y + 4, cur.z + 4]];
+      for (let guard = 0; guard < 40 && cur.distanceTo(c) > 0.1; guard++) {
+        pts.push([cur.x, cur.y, cur.z]);
+        let next = cur;
+        let bestD = Infinity;
+        for (const a of this.atoms) {
+          if (Math.abs(a.distanceTo(cur) - 2.35) > 0.06) continue;
+          const d = a.distanceTo(c);
+          if (d < bestD) {
+            bestD = d;
+            next = a;
+          }
+        }
+        if (next === cur) break;
+        cur = next;
+      }
+      pts.push([c.x, c.y, c.z]);
+      this.followCache = pts;
+    }
+    return splineAt(this.followCache, smoothstep(0.06, 0.98, t), out);
+  }
+
+  private followCache: [number, number, number][] | null = null;
 
   getTransitionTarget() {
     return this.target;

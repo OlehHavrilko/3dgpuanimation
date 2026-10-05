@@ -4,6 +4,7 @@ import type { Level, LevelContext, Pickable, PickHit } from '../core/types';
 import type { LevelManager } from '../core/LevelManager';
 import { Hud, type InspectorAction } from './Hud';
 import { ViewModes, type ViewMode } from './ViewModes';
+import { FollowTracer } from './FollowTracer';
 
 const _v = new THREE.Vector3();
 const _v2 = new THREE.Vector3();
@@ -20,7 +21,10 @@ const _sphere = new THREE.Sphere();
 export class InteractionManager {
   readonly hud = new Hud();
   readonly views: ViewModes;
+  readonly tracer = new FollowTracer();
   exploring = false;
+  /** Explore toggled (the guided tour pauses while the user explores). */
+  onExploreToggle: ((active: boolean) => void) | null = null;
 
   private raycaster = new THREE.Raycaster();
   private ndc = new THREE.Vector2(9, 9);
@@ -86,12 +90,14 @@ export class InteractionManager {
   /** Call before the current level is disposed (brackets must not be disposed with it). */
   detach(scene: THREE.Scene) {
     this.views.detach();
+    this.tracer.detach(scene);
     scene.remove(this.hoverBracket, this.selectBracket);
   }
 
   /** Call after a new level became active. */
   attach(level: Level, index: number) {
     this.views.attach(level);
+    this.tracer.attach(level);
     level.scene.add(this.hoverBracket, this.selectBracket);
     this.hoverBracket.visible = false;
     this.selectBracket.visible = false;
@@ -261,6 +267,7 @@ export class InteractionManager {
     controls.update();
     this.controls = controls;
     level.onExploreChange?.(true);
+    this.onExploreToggle?.(true);
     this.refreshPanel();
   }
 
@@ -280,6 +287,7 @@ export class InteractionManager {
     this.views.setFocus(null);
     this.views.setMode('Normal');
     this.manager.current?.onExploreChange?.(false);
+    this.onExploreToggle?.(false);
     // Glide back to the scripted camera instead of snapping.
     this.returnBlend = immediate ? null : { t: 0, pos: cam.position.clone(), quat: cam.quaternion.clone() };
     this.refreshPanel();
@@ -336,8 +344,9 @@ export class InteractionManager {
 
   // ---------------------------------------------------------------- per frame
   /** Runs after the level positioned the camera (and after the dive). */
-  update(dt: number) {
+  update(dt: number, content = 0) {
     const cam = this.ctx.camera;
+    this.tracer.update(this.manager.current, this.ctx.journey.follow, content, this.ctx.renderer.getPixelRatio());
 
     if (this.exploring && this.controls) {
       if (this.fly) {

@@ -5,6 +5,7 @@ import type { LevelMeta, TransitionTarget } from '../core/types';
 import { mulberry32, smoothstep } from '../core/math';
 import type { EntityInfo, PickHit } from '../core/types';
 import { boxFrom } from '../interaction/pick';
+import { splineAt } from '../interaction/FollowTracer';
 
 /**
  * Level 4 — the GB202 die. Units: millimetres.
@@ -56,6 +57,8 @@ export class DieLevel extends BaseLevel {
     this.bloom = 1.15;
     this.bokeh = 1.3;
     this.sectionNormal = [1, 0, 0];
+    this.followCaption =
+      'On the die: the power grid spreads current to all 170 active SMs; ours heads for one of them.';
     // Dive into SM #3 of the third GPC in the top row.
     this.target = { position: smCenter(2, 1, 0, 3), radius: 0.9, approach: new THREE.Vector3(0.15, 0.9, 0.4).normalize() };
   }
@@ -437,6 +440,20 @@ export class DieLevel extends BaseLevel {
       },
     };
   }
+
+  /** Across the on-die power grid to the SM we are about to dive into. */
+  followPoint(t: number, out: THREE.Vector3) {
+    const p = this.target.position;
+    const path = (this.followCache ??= [
+      [0, 0.08, 0],
+      [p.x * 0.5, 0.08, 0],
+      [p.x, 0.08, p.z * 0.3],
+      [p.x, 0.06, p.z],
+    ]);
+    return splineAt(path, smoothstep(0.06, 0.98, t), out);
+  }
+
+  private followCache: [number, number, number][] | null = null;
 
   getTransitionTarget() {
     return this.target;

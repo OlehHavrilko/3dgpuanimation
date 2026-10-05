@@ -5,6 +5,7 @@ import type { LevelMeta, PickHit, TransitionTarget } from '../core/types';
 import { mulberry32, range, smoothstep } from '../core/math';
 import { canvasTexture, route45 } from '../core/canvas';
 import { pickInstancedGroup, pickInstances, pickObject } from '../interaction/pick';
+import { splineAt } from '../interaction/FollowTracer';
 
 /**
  * Level 2 — the RTX 5090 FE main board. Units: millimetres.
@@ -50,6 +51,8 @@ export class PcbLevel extends BaseLevel {
     this.bloom = 1.1;
     this.bokeh = 1.4;
     this.sectionNormal = [0, 0, 1];
+    this.followCaption =
+      'On the board: one of ~30 power phases chops 12 V down to the ~1 V core rail, and the current heads under the GPU package.';
   }
 
   protected cameraKeys(): CameraKey[] {
@@ -617,6 +620,20 @@ export class PcbLevel extends BaseLevel {
     } else {
       this.flowOverride = null;
     }
+  }
+
+  private readonly followPath: [number, number, number][] = [
+    [15, 9, D / 2 - 4],
+    [15, 1.5, 47],
+    [-10, 1.5, 44.5],
+    [-34, 1.0, 44.5],
+    [-30, 0.4, 22],
+    [-8, 1.8, 6],
+    [0, 2.2, 0],
+  ];
+
+  followPoint(t: number, out: THREE.Vector3) {
+    return splineAt(this.followPath, smoothstep(0.06, 0.98, t), out);
   }
 
   getTransitionTarget() {

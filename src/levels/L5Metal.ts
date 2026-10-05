@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { BaseLevel, addGlowAttribute, makeInstanceGlow } from '../core/BaseLevel';
 import type { CameraKey } from '../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../core/types';
-import { mulberry32 } from '../core/math';
+import { mulberry32, smoothstep } from '../core/math';
 import type { EntityInfo } from '../core/types';
 import { pickInstancedGroup, pickInstances } from '../interaction/pick';
 
@@ -51,6 +51,8 @@ export class MetalLevel extends BaseLevel {
     this.bloom = 1.1;
     this.bokeh = 1.2;
     this.sectionNormal = [0, 0, 1];
+    this.followCaption =
+      'Down through ~15 metal layers: via after via, from wires 10 µm wide to wires 28 nm apart, then into a contact.';
     this.layout();
   }
 
@@ -329,6 +331,16 @@ export class MetalLevel extends BaseLevel {
       ],
       note: 'Pitches are representative of a 4/5 nm-class stack; TSMC does not publish the exact 4N numbers.',
     };
+  }
+
+  /** Down the via stack: thick top metal to 28 nm wiring, then into a contact. */
+  followPoint(t: number, out: THREE.Vector3) {
+    const u = smoothstep(0.04, 0.99, t);
+    // Ease in log space so it spends time in every layer, not just the thick top ones.
+    const top = 0.5;
+    const bottom = this.feolTop - 0.05;
+    const y = top - (top - bottom) * (1 - Math.pow(1 - u, 2.2));
+    return out.set(0, y, -0.004);
   }
 
   getTransitionTarget() {

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { BaseLevel, setControlValue } from '../core/BaseLevel';
 import type { CameraKey } from '../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../core/types';
-import { mulberry32 } from '../core/math';
+import { mulberry32, smoothstep } from '../core/math';
 import { pointScale } from '../core/points';
 import type { EntityInfo } from '../core/types';
 import { boxFrom, pickObject } from '../interaction/pick';
@@ -76,6 +76,8 @@ export class AtomLevel extends BaseLevel {
     this.bloom = 1.25;
     this.bokeh = 0.8;
     this.sectionNormal = [0, 0, 1];
+    this.followCaption =
+      'Finally it is one of silicon\'s four valence electrons, in a 3p orbital: not a dot, but a cloud of probability. End of the journey.';
   }
 
   protected cameraKeys(): CameraKey[] {
@@ -337,6 +339,15 @@ export class AtomLevel extends BaseLevel {
   onExploreChange(active: boolean) {
     if (!active) this.showTarget = [1, 1, 1, 1, 1];
     else setControlValue(this.controls[0], 'All');
+  }
+
+  /** Spirals in and settles into a 3p lobe: a cloud, not a dot. */
+  followPoint(t: number, out: THREE.Vector3) {
+    const u = smoothstep(0.02, 0.9, t);
+    const r = 90 * (1 - u) + 24 * u;
+    const a = u * Math.PI * 6;
+    // Settle onto the +x lobe of the 3p orbital
+    return out.set(r * Math.cos(a), r * 0.3 * Math.sin(a * 0.7) * (1 - u), r * Math.sin(a) * (1 - u * 0.85));
   }
 
   getTransitionTarget() {

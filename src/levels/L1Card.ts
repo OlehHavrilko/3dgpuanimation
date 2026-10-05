@@ -4,6 +4,7 @@ import type { CameraKey } from '../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../core/types';
 import { smoothstep, smootherstep } from '../core/math';
 import { pickInstancedGroup, pickInstances, pickObject } from '../interaction/pick';
+import { splineAt } from '../interaction/FollowTracer';
 
 /**
  * Level 1 — GeForce RTX 5090 Founders Edition. Units: centimetres.
@@ -65,6 +66,8 @@ export class CardLevel extends BaseLevel {
     this.bloom = 1;
     this.bokeh = 1.6;
     this.sectionNormal = [0, 0, 1];
+    this.followCaption =
+      'Our electron arrives on the 12 V rail, through the 12V-2x6 connector; the VRM steps it down to ~1 V and pushes it into the GPU.';
   }
 
   protected cameraKeys(): CameraKey[] {
@@ -594,6 +597,20 @@ export class CardLevel extends BaseLevel {
       this.explodeOverride = null;
       this.fanOverride = null;
     }
+  }
+
+  /** Followed electron: from the PSU cable, through the 12V-2x6 connector and VRM, into the GPU. */
+  private readonly followPath: [number, number, number][] = [
+    [3.5, 3.5, 10],
+    [1.5, 0.3, 5.6],
+    [-1.0, -0.12, 5.3],
+    [-4.6, -0.12, 4.8],
+    [-2.0, -0.12, 2.2],
+    [0, -0.08, 0],
+  ];
+
+  followPoint(t: number, out: THREE.Vector3) {
+    return splineAt(this.followPath, smoothstep(0.06, 0.98, t), out);
   }
 
   getTransitionTarget() {
