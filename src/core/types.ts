@@ -9,6 +9,25 @@ export interface LevelContext {
   envMap: THREE.Texture;
   /** Shared view state. freeCamera = Explore mode: the user drives the camera, levels must not. */
   view: { freeCamera: boolean };
+  /** Cross-level story state that survives scene swaps. */
+  journey: Journey;
+  /** Fly to another scale (scrolls there, passing through each dive). */
+  go: (levelIndex: number) => void;
+  /** Start a signal trace from GDDR7 chip n; runs on levelIndex (jumping there if needed). */
+  trace: (chip: number, levelIndex: number) => void;
+}
+
+export interface Journey {
+  /** Signal trace in progress: which GDDR7 chip (0..15) the data comes from. */
+  trace: { chip: number } | null;
+  /** Guided "follow the electron" tour is running. */
+  follow: boolean;
+}
+
+/** A button shown in the inspector for an entity (e.g. "Trace signal"). */
+export interface EntityAction {
+  label: string;
+  run: () => void;
 }
 
 /** Human-facing metadata for anything the user can hover or select. */
@@ -20,6 +39,8 @@ export interface EntityInfo {
   specs?: [string, string][];
   /** One or two sentences of context for the inspector. */
   note?: string;
+  /** Extra inspector buttons for this entity. */
+  actions?: EntityAction[];
 }
 
 /** A resolved hover/selection target. */
@@ -29,6 +50,8 @@ export interface PickHit {
   info: EntityInfo;
   /** World-space bounds (level units): used for the bracket, spotlight and camera focus. */
   box: THREE.Box3;
+  /** The scene object behind it (kept solid when X-Ray isolates the selection). */
+  object?: THREE.Object3D;
 }
 
 /** Something in a level the raycaster may hit. */
@@ -58,7 +81,37 @@ export type LevelControl =
       options: string[];
       value: string;
       onChange: (v: string) => void;
+    }
+  | {
+      /** Live value refreshed a few times per second (temperatures, currents...). */
+      kind: 'readout';
+      label: string;
+      get: () => string;
     };
+
+/** Lumped thermal model for a level (illustrative, not measured). */
+export interface ThermalSpec {
+  nodes: {
+    id: string;
+    label: string;
+    objects: THREE.Object3D[];
+    /** Heat capacity, J/K (sets how fast it warms). */
+    capacity: number;
+    /** Heat input in W at 100 % load. */
+    power?: number;
+    /** Conductance to ambient air, W/K (scaled by fan speed if fanCooled). */
+    toAir?: number;
+    fanCooled?: boolean;
+    /** Draw see-through (outer shells), so hot parts inside stay visible. */
+    ghost?: boolean;
+    /** Show in the live readout. */
+    readout?: boolean;
+  }[];
+  /** [a, b, conductance W/K] */
+  links: [string, string, number][];
+  /** Node that throttles when it passes 90 °C. */
+  throttleNode?: string;
+}
 
 export interface LevelMeta {
   /** Display name, e.g. "Graphics card". */
@@ -113,6 +166,18 @@ export interface Level {
   controls?: LevelControl[];
   /** Explore mode toggled: levels reset any control overrides when it turns off. */
   onExploreChange?(active: boolean): void;
+  /** Explore view mode changed (Normal / X-Ray / Section / Thermal). */
+  onViewModeChange?(mode: string): void;
+  /** Section-plane normal for this level (the side it points to is cut away). */
+  sectionNormal?: [number, number, number];
+  /** Thermal model; levels without one do not offer the Thermal view. */
+  thermal?: ThermalSpec;
+  /** Signal-trace waypoints for this level when journey.trace is set. */
+  tracePlan?(): PickHit[] | null;
+  /** Where the followed electron is at content time t (level units), or null if hidden. */
+  followPoint?(t: number, out: THREE.Vector3): THREE.Vector3 | null;
+  /** Narration while following the electron through this level. */
+  followCaption?: string;
 }
 
 export type LevelFactory = (ctx: LevelContext) => Level;

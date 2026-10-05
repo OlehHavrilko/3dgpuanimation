@@ -50,6 +50,7 @@ export class MetalLevel extends BaseLevel {
     this.far = 500;
     this.bloom = 1.1;
     this.bokeh = 1.2;
+    this.sectionNormal = [0, 0, 1];
     this.layout();
   }
 

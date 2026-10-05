@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BaseLevel } from '../core/BaseLevel';
+import { BaseLevel, setControlValue } from '../core/BaseLevel';
 import type { CameraKey } from '../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../core/types';
 import { smoothstep, smootherstep } from '../core/math';
@@ -64,6 +64,7 @@ export class CardLevel extends BaseLevel {
     this.far = 400;
     this.bloom = 1;
     this.bokeh = 1.6;
+    this.sectionNormal = [0, 0, 1];
   }
 
   protected cameraKeys(): CameraKey[] {
@@ -290,7 +291,7 @@ export class CardLevel extends BaseLevel {
     );
 
     // ---------- boards
-    this.buildMainPcb(darkPlastic);
+    const board = this.buildMainPcb(darkPlastic);
     const pcie = this.buildPcieBoard();
     const io = this.buildIoBoard(aluminium, darkPlastic);
 
@@ -319,6 +320,33 @@ export class CardLevel extends BaseLevel {
     );
 
     this.parts = { fans: fansGroup, shroud, fins, centerFins, cooler, bottom, pcie, io };
+
+    // Illustrative heat network for the Thermal view (tuned so full load lands near
+    // ~75 °C GPU / ~80 °C memory with fans at load, and throttles with the fans stopped).
+    this.thermal = {
+      nodes: [
+        { id: 'gpu', label: 'GPU die', objects: [board.die, board.substrate], capacity: 30, power: 450, readout: true },
+        { id: 'cooler', label: 'Vapor chamber + pipes', objects: [cooler], capacity: 280, readout: true },
+        { id: 'fins', label: 'Fin stacks', objects: [fins], capacity: 160, toAir: 22, fanCooled: true, readout: true },
+        { id: 'cfins', label: 'Centre fins', objects: [centerFins], capacity: 40, toAir: 4, fanCooled: true },
+        { id: 'mem', label: 'GDDR7', objects: [board.mem], capacity: 6, power: 60, readout: true },
+        { id: 'vrm', label: 'VRM', objects: [board.choke, board.conn], capacity: 6, power: 40, readout: true },
+        { id: 'pcb', label: 'PCB', objects: [board.pcb, pcie, io], capacity: 60, power: 25, toAir: 1.4 },
+        { id: 'case', label: 'Shroud', objects: [shroud, bottom, fansGroup], capacity: 120, toAir: 3, ghost: true },
+      ],
+      links: [
+        ['gpu', 'cooler', 20],
+        ['cooler', 'fins', 70],
+        ['cooler', 'cfins', 12],
+        ['mem', 'cooler', 1.5],
+        ['vrm', 'cooler', 1.6],
+        ['mem', 'pcb', 0.6],
+        ['vrm', 'pcb', 0.8],
+        ['gpu', 'pcb', 0.6],
+        ['fins', 'case', 1.5],
+      ],
+      throttleNode: 'gpu',
+    };
 
     this.controls = [
       {
@@ -410,6 +438,7 @@ export class CardLevel extends BaseLevel {
           ['Speed', '28 Gbps'],
         ],
         note: '16 chips × 32 bits = the 512-bit bus: 1.79 TB/s together.',
+        actions: [{ label: 'Trace signal ▸', run: () => this.ctx.trace(i, 1) }],
       })),
     );
 
@@ -444,6 +473,7 @@ export class CardLevel extends BaseLevel {
         specs: [['Rated', 'up to 600 W'], ['Card TGP', '575 W']],
       }),
     );
+    return { pcb, substrate, die, mem, choke, conn };
   }
 
   /** Separate PCIe board on the bottom edge, tied to the main PCB by a flex cable. */
@@ -545,13 +575,21 @@ export class CardLevel extends BaseLevel {
               : 'Diving into the board';
   }
 
+  /** Thermal view: open the card part-way so the hot parts are not hidden behind the shroud. */
+  onViewModeChange(mode: string) {
+    if (mode === 'Thermal' && (this.explodeOverride ?? this.lastExplode) < 0.4) {
+      this.explodeOverride = 0.55;
+      setControlValue(this.controls[0], 55);
+    }
+  }
+
   onExploreChange(active: boolean) {
     if (active) {
       // Start the controls from what is on screen.
       const [explode, fans] = this.controls;
-      explode.value = Math.round(this.lastExplode * 100);
+      setControlValue(explode, Math.round(this.lastExplode * 100));
       const sp = this.fanBlurs[0]?.opacity / 0.72 || 0;
-      if (fans.kind === 'choice') fans.value = sp > 0.6 ? 'Load' : sp > 0.05 ? 'Idle' : 'Stop';
+      setControlValue(fans, sp > 0.6 ? 'Load' : sp > 0.05 ? 'Idle' : 'Stop');
     } else {
       this.explodeOverride = null;
       this.fanOverride = null;

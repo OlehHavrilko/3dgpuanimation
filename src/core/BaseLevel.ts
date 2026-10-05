@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Level, LevelContext, LevelControl, LevelMeta, Pickable, TransitionTarget } from './types';
+import type { Level, LevelContext, LevelControl, LevelMeta, Pickable, ThermalSpec, TransitionTarget } from './types';
 import { CameraRig, type CameraKey } from './CameraRig';
 import { disposeObject } from './dispose';
 
@@ -15,6 +15,9 @@ export abstract class BaseLevel implements Level {
   bokeh = 1.5;
   pickables: Pickable[] = [];
   controls: LevelControl[] = [];
+  thermal?: ThermalSpec;
+  sectionNormal?: [number, number, number];
+  followCaption?: string;
 
   protected rig!: CameraRig;
   protected readonly lookAt = new THREE.Vector3();
@@ -73,6 +76,12 @@ export abstract class BaseLevel implements Level {
     disposeObject(this.scene, new Set([this.ctx.envMap]));
     this.scene.clear();
   }
+}
+
+/** Set a control's displayed value (no-op for readouts). */
+export function setControlValue(c: LevelControl | undefined, v: number | string) {
+  if (!c || c.kind === 'readout') return;
+  (c as { value: number | string }).value = v;
 }
 
 /**

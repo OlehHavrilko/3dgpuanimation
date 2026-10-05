@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BaseLevel, addGlowAttribute, addRimLight, makeInstanceGlow } from '../core/BaseLevel';
+import { BaseLevel, addGlowAttribute, addRimLight, makeInstanceGlow, setControlValue } from '../core/BaseLevel';
 import type { CameraKey } from '../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../core/types';
 import { mulberry32, smoothstep } from '../core/math';
@@ -71,6 +71,7 @@ export class TransistorLevel extends BaseLevel {
     this.far = 6000;
     this.bloom = 1.25;
     this.bokeh = 0.5;
+    this.sectionNormal = [0, 0, 1];
     this.target = {
       position: new THREE.Vector3(this.gateX(CENTER_GATE), FIN_H * 0.6, this.finZ(FOCUS_FIN)),
       radius: 4,
@@ -531,8 +532,8 @@ export class TransistorLevel extends BaseLevel {
     if (!active) {
       this.gateMode = 'CLOCK';
       this.clockSpeed = 1;
-      this.controls[0].value = 'CLOCK';
-      this.controls[1].value = 1;
+      setControlValue(this.controls[0], 'CLOCK');
+      setControlValue(this.controls[1], 1);
     }
   }
 

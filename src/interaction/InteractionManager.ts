@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { Level, LevelContext, Pickable, PickHit } from '../core/types';
 import type { LevelManager } from '../core/LevelManager';
 import { Hud, type InspectorAction } from './Hud';
+import { ViewModes, type ViewMode } from './ViewModes';
 
 const _v = new THREE.Vector3();
 const _v2 = new THREE.Vector3();
@@ -18,6 +19,7 @@ const _sphere = new THREE.Sphere();
  */
 export class InteractionManager {
   readonly hud = new Hud();
+  readonly views: ViewModes;
   exploring = false;
 
   private raycaster = new THREE.Raycaster();
@@ -39,6 +41,8 @@ export class InteractionManager {
   private mouse = new THREE.Vector2();
   private idleTimer = 0;
   private pickMap = new Map<THREE.Object3D, Pickable>();
+  /** Auto-advancing signal trace: the system picks each waypoint and flies the camera there. */
+  private traceRun: { stages: PickHit[]; i: number; t: number } | null = null;
   private pickObjects: THREE.Object3D[] = [];
 
   constructor(
@@ -47,6 +51,7 @@ export class InteractionManager {
     private canvas: HTMLCanvasElement,
     private jumpToLevel: (index: number) => void,
   ) {
+    this.views = new ViewModes(ctx.renderer);
     this.hoverBracket = makeBracket(0x9cff3a, 0.65);
     this.selectBracket = makeBracket(0xe9ffd0, 1);
 
@@ -69,18 +74,24 @@ export class InteractionManager {
     document.getElementById('nav-explore')!.addEventListener('click', () => this.toggleExplore());
     document.getElementById('nav-prev')!.addEventListener('click', () => this.go(-1));
     document.getElementById('nav-next')!.addEventListener('click', () => this.go(1));
-    this.hud.onClose = () => (this.selected ? this.select(null) : this.exitExplore());
+    this.hud.onClose = () => {
+      this.stopTrace();
+      if (this.selected) this.select(null);
+      else this.exitExplore();
+    };
     this.wake();
   }
 
   // ---------------------------------------------------------------- level lifecycle
   /** Call before the current level is disposed (brackets must not be disposed with it). */
   detach(scene: THREE.Scene) {
+    this.views.detach();
     scene.remove(this.hoverBracket, this.selectBracket);
   }
 
   /** Call after a new level became active. */
   attach(level: Level, index: number) {
+    this.views.attach(level);
     level.scene.add(this.hoverBracket, this.selectBracket);
     this.hoverBracket.visible = false;
     this.selectBracket.visible = false;
@@ -95,6 +106,9 @@ export class InteractionManager {
       this.pickObjects.push(p.object);
     }
     if (this.exploring) this.exitExplore(true);
+    this.traceRun = null;
+    const plan = this.ctx.journey.trace ? level.tracePlan?.() : null;
+    if (plan?.length) this.traceRun = { stages: plan, i: -1, t: -0.9 }; // let the arrival flash clear
     this.refreshPanel();
     this.updateCrumbs(index);
     this.hud.setNav(index, this.manager.entries.length);
@@ -127,6 +141,7 @@ export class InteractionManager {
       }
       return;
     }
+    this.traceRun = null; // the user took over
     if (hit) {
       if (!this.exploring) this.enterExplore();
       this.select(hit);
@@ -153,6 +168,7 @@ export class InteractionManager {
     } else if (e.key === 'e' || e.key === 'E' || e.key === 'у' || e.key === 'У') {
       this.toggleExplore();
     } else if (e.key === 'Escape') {
+      this.stopTrace();
       if (this.selected) this.select(null);
       else if (this.exploring) this.exitExplore();
     }
@@ -202,6 +218,7 @@ export class InteractionManager {
 
   select(hit: PickHit | null) {
     this.selected = hit;
+    this.views.setFocus(hit?.object ?? null);
     if (hit) {
       fitBracket(this.selectBracket, hit.box);
       this.focusOn(hit.box);
@@ -260,6 +277,8 @@ export class InteractionManager {
     this.selected = null;
     this.selectBracket.visible = false;
     this.hud.hideSpot();
+    this.views.setFocus(null);
+    this.views.setMode('Normal');
     this.manager.current?.onExploreChange?.(false);
     // Glide back to the scripted camera instead of snapping.
     this.returnBlend = immediate ? null : { t: 0, pos: cam.position.clone(), quat: cam.quaternion.clone() };
@@ -284,6 +303,30 @@ export class InteractionManager {
       fromTarget: this.controls.target.clone(),
       toTarget: _sphere.center.clone(),
     };
+  }
+
+  /** Start (or restart) the trace on the current level. */
+  beginTrace() {
+    const plan = this.manager.current?.tracePlan?.();
+    if (plan?.length) this.traceRun = { stages: plan, i: -1, t: 0 };
+  }
+
+  stopTrace() {
+    this.traceRun = null;
+    this.ctx.journey.trace = null;
+  }
+
+  private stepTrace(dt: number) {
+    const run = this.traceRun;
+    if (!run) return;
+    run.t += dt;
+    const next = run.i < 0 ? run.t >= 0 : run.t > 3.6;
+    if (!next || run.i >= run.stages.length - 1) return;
+    run.i++;
+    run.t = 0;
+    if (!this.exploring) this.enterExplore();
+    const st = run.stages[run.i];
+    this.select({ ...st, info: { ...st.info, kind: `Trace ${run.i + 1}/${run.stages.length} · ${st.info.kind}` } });
   }
 
   /** Explore mode: the orbit target is what the user is looking at (DOF focus, FOV readout). */
@@ -346,6 +389,9 @@ export class InteractionManager {
     }
 
     this.updateViewShift(dt);
+    this.views.update(dt);
+    this.stepTrace(dt);
+    this.hud.tickReadouts();
 
     // Screen-space UI follows its 3D anchors.
     if (this.hover && this.hover.key !== this.selected?.key) {
@@ -405,6 +451,7 @@ export class InteractionManager {
     }
     const count = this.manager.entries.length;
     const actions: InspectorAction[] = [];
+    for (const a of this.selected?.info.actions ?? []) actions.push(a);
     if (this.selected) actions.push({ label: 'Re-centre', run: () => this.selected && this.focusOn(this.selected.box) });
     if (index < count - 1) actions.push({ label: `Dive ▸ ${this.manager.entries[index + 1].meta.scale}`, run: () => this.jumpToLevel(index + 1) });
     if (index > 0) actions.push({ label: `◂ ${this.manager.entries[index - 1].meta.scale}`, run: () => this.jumpToLevel(index - 1) });
@@ -419,7 +466,17 @@ export class InteractionManager {
             ? 'Hover anything to identify it, click to inspect. Drag to orbit, wheel to zoom.'
             : 'Drag to orbit, wheel to zoom.',
         };
-    this.hud.openInspector(heading, actions, this.exploring ? level.controls ?? [] : []);
+    const controls = this.exploring
+      ? [...this.views.controls((m: ViewMode) => this.setViewMode(m)), ...(level.controls ?? [])]
+      : [];
+    this.hud.openInspector(heading, actions, controls);
+  }
+
+  setViewMode(mode: ViewMode) {
+    if (!this.exploring) this.enterExplore();
+    this.views.setMode(mode);
+    if (mode === 'X-Ray') this.views.setFocus(this.selected?.object ?? null);
+    this.refreshPanel();
   }
 
   private updateCrumbs(index: number) {

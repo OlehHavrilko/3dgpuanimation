@@ -400,3 +400,7 @@ body.idle:not(.exploring) #crumbs { opacity: 0.12; transition: opacity 1.2s; }
   #crumbs .far { display: none; }
   #tip { max-width: 200px; }
 }
+
+.ctl.readout { margin-bottom: 4px; }
+.ctl.readout .ctl-head { margin-bottom: 0; }
+.ctl-group { margin: 14px 0 8px; font-family: var(--mono); font-size: 9px; letter-spacing: 0.2em; color: var(--green-soft); text-transform: uppercase; }

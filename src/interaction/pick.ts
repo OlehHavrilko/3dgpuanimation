@@ -10,7 +10,7 @@ export function pickObject(object: THREE.Object3D, info: EntityInfo, priority = 
   return {
     object,
     priority,
-    resolve: (): PickHit => ({ key, info, box: new THREE.Box3().setFromObject(object) }),
+    resolve: (): PickHit => ({ key, info, box: new THREE.Box3().setFromObject(object), object }),
   };
 }
 
@@ -33,7 +33,7 @@ export function pickInstances(
       mesh.getMatrixAt(i, _m);
       _m.premultiply(mesh.matrixWorld);
       const box = mesh.geometry.boundingBox!.clone().applyMatrix4(_m);
-      return { key: `${key}:${i}`, info: entity, box };
+      return { key: `${key}:${i}`, info: entity, box, object: mesh };
     },
   };
 }
@@ -47,7 +47,7 @@ export function pickInstancedGroup(mesh: THREE.InstancedMesh, info: EntityInfo, 
     resolve: () => {
       mesh.computeBoundingBox();
       const box = mesh.boundingBox!.clone().applyMatrix4(mesh.matrixWorld);
-      return { key, info, box };
+      return { key, info, box, object: mesh };
     },
   };
 }

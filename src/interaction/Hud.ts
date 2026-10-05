@@ -26,6 +26,8 @@ export class Hud {
   private prevBtn = document.getElementById('nav-prev') as HTMLButtonElement;
   private nextBtn = document.getElementById('nav-next') as HTMLButtonElement;
   private tipKey = '';
+  private readouts: { el: HTMLElement; get: () => string }[] = [];
+  private lastReadout = 0;
 
   onClose: (() => void) | null = null;
 
@@ -132,6 +134,7 @@ export class Hud {
 
   private renderControls(controls: LevelControl[]) {
     this.inspControls.innerHTML = '';
+    this.readouts = [];
     for (const c of controls) {
       const wrap = document.createElement('div');
       wrap.className = 'ctl';
@@ -142,7 +145,11 @@ export class Hud {
       const val = document.createElement('b');
       head.append(label, val);
       wrap.appendChild(head);
-      if (c.kind === 'slider') {
+      if (c.kind === 'readout') {
+        wrap.classList.add('readout');
+        val.textContent = c.get();
+        this.readouts.push({ el: val, get: c.get });
+      } else if (c.kind === 'slider') {
         const input = document.createElement('input');
         input.type = 'range';
         input.min = String(c.min);
@@ -178,6 +185,14 @@ export class Hud {
       }
       this.inspControls.appendChild(wrap);
     }
+  }
+
+  /** Refresh live readouts (temperatures etc.) a few times per second. */
+  tickReadouts() {
+    const now = performance.now();
+    if (!this.readouts.length || now - this.lastReadout < 200) return;
+    this.lastReadout = now;
+    for (const r of this.readouts) r.el.textContent = r.get();
   }
 
   // ---------------------------------------------------------------- breadcrumb + nav

@@ -1,9 +1,9 @@
 import * as THREE from 'three';
-import { BaseLevel } from '../core/BaseLevel';
+import { BaseLevel, setControlValue } from '../core/BaseLevel';
 import type { CameraKey } from '../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../core/types';
 import { mulberry32, smoothstep } from '../core/math';
-import type { EntityInfo } from '../core/types';
+import type { EntityInfo, PickHit } from '../core/types';
 import { boxFrom } from '../interaction/pick';
 
 /**
@@ -36,6 +36,17 @@ export class DieLevel extends BaseLevel {
   private mat!: THREE.ShaderMaterial;
   private disabled = new Uint8Array(SMS);
   private hlOverride: THREE.Vector4 | null = null;
+  /** Signal-trace path drawn on the die (MC -> L2 -> GPC -> SM) + a packet running along it. */
+  private tracePath = new THREE.Mesh(
+    new THREE.BufferGeometry(),
+    new THREE.MeshBasicMaterial({ color: new THREE.Color(0.6, 1.8, 0.25), toneMapped: false, transparent: true }),
+  );
+  private tracePacket = new THREE.Mesh(
+    new THREE.SphereGeometry(0.22, 16, 12),
+    new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 3, 1.4), toneMapped: false }),
+  );
+  private traceCurve: THREE.CurvePath<THREE.Vector3> | null = null;
+  private traceChip = -1;
   private target: TransitionTarget;
 
   constructor(ctx: ConstructorParameters<typeof BaseLevel>[0]) {
@@ -44,6 +55,7 @@ export class DieLevel extends BaseLevel {
     this.far = 500;
     this.bloom = 1.15;
     this.bokeh = 1.3;
+    this.sectionNormal = [1, 0, 0];
     // Dive into SM #3 of the third GPC in the top row.
     this.target = { position: smCenter(2, 1, 0, 3), radius: 0.9, approach: new THREE.Vector3(0.15, 0.9, 0.4).normalize() };
   }
@@ -155,9 +167,14 @@ export class DieLevel extends BaseLevel {
     );
     substrate.position.y = -1.6;
     s.add(substrate);
+    this.tracePath.visible = false;
+    this.tracePacket.visible = false;
+    this.tracePath.renderOrder = 5;
+    s.add(this.tracePath, this.tracePacket);
   }
 
   protected animate(t: number, _dt: number, time: number) {
+    this.updateTraceVisual(time);
     const u = this.mat.uniforms;
     u.uTime.value = time;
     // Highlight sequence: GPC -> SM -> L2 -> memory controllers.
@@ -189,11 +206,101 @@ export class DieLevel extends BaseLevel {
                 : 'Zooming into one SM';
   }
 
+  /** Waypoints on the die for a trace that started at GDDR7 chip `chip` (plane-local coords). */
+  private traceWaypoints(chip: number) {
+    const hx = DIE_W / 2;
+    const hy = DIE_H / 2;
+    // Controllers are numbered clockwise from the top edge, like the chips on the board.
+    const side = Math.floor(chip / 4);
+    const slotIdx = chip % 4;
+    const slot = side === 0 || side === 3 ? slotIdx : 3 - slotIdx;
+    const vertical = side === 1 || side === 3;
+    const span = vertical ? DIE_H - 2 * EDGE : DIE_W - 2 * EDGE;
+    const along = -span / 2 + (slot + 0.5) * (span / 4);
+    const mc = vertical
+      ? new THREE.Vector2(side === 1 ? hx - EDGE / 2 : -(hx - EDGE / 2), along)
+      : new THREE.Vector2(along, side === 0 ? hy - EDGE / 2 : -(hy - EDGE / 2));
+    const l2 = new THREE.Vector2(Math.sign(mc.x || 1) * (hx - EDGE) * 0.55, 0);
+    // Nearest GPC column to the controller, in the controller's half of the die.
+    const innerW = DIE_W - 2 * EDGE;
+    const gpcW = innerW / GPC_COLS;
+    const gpcH = hy - EDGE - L2_HALF;
+    const col = Math.min(GPC_COLS - 1, Math.max(0, Math.floor((mc.x + innerW / 2) / gpcW)));
+    const row = mc.y >= 0 ? 0 : 1;
+    const ySign = row === 0 ? 1 : -1;
+    const x0 = -innerW / 2 + col * gpcW;
+    const gpc = new THREE.Vector2(x0 + gpcW / 2, ySign * (L2_HALF + 0.17));
+    // First enabled SM in that GPC, nearest the L2.
+    const smW = gpcW / SM_COLS;
+    const smH = (gpcH - 0.35) / SM_ROWS;
+    let sm = new THREE.Vector2(x0 + smW / 2, ySign * (L2_HALF + 0.35 + smH / 2));
+    search: for (let sr = 0; sr < SM_ROWS; sr++) {
+      for (let sc = 0; sc < SM_COLS; sc++) {
+        const id = ((row * GPC_COLS + col) * SM_COLS + sc) * SM_ROWS + sr;
+        if (!this.disabled[id]) {
+          sm = new THREE.Vector2(x0 + (sc + 0.5) * smW, ySign * (L2_HALF + 0.35 + (sr + 0.5) * smH));
+          break search;
+        }
+      }
+    }
+    return { mc, l2, gpc, sm };
+  }
+
+  tracePlan(): PickHit[] | null {
+    const tr = this.ctx.journey.trace;
+    if (!tr) return null;
+    const w = this.traceWaypoints(tr.chip);
+    const hit = (p: THREE.Vector2, smLevel: boolean, extra: Partial<EntityInfo>) => {
+      const b = this.classify(p.x, p.y, smLevel);
+      if (!b) return null;
+      const [lx, ly, hx2, hy2] = b.rect;
+      return { key: `trace-${b.key}`, box: boxFrom(lx, 0, -hy2, hx2, 0.08, -ly), info: { ...b.info, ...extra } } as PickHit;
+    };
+    const stages = [
+      hit(w.mc, false, { note: 'The PHY recovers the PAM3 symbols and the controller queues the burst for the cache.' }),
+      hit(w.l2, false, { note: 'Every memory access passes through L2 first; a hit here would never have reached the DRAM at all.' }),
+      hit(w.gpc, false, { note: 'The crossbar hands the cache line to the GPC that asked for it.' }),
+      hit(w.sm, true, {
+        note: 'Destination: the SM\'s L1 / shared memory, where 128 CUDA cores and 4 tensor cores consume it.',
+        actions: [
+          { label: 'Dive into the SM ▸', run: () => this.ctx.go(4) },
+          { label: 'End trace', run: () => (this.ctx.journey.trace = null) },
+        ],
+      }),
+    ];
+    return stages.filter((x): x is PickHit => !!x);
+  }
+
+  private updateTraceVisual(time: number) {
+    const tr = this.ctx.journey.trace;
+    const on = !!tr;
+    this.tracePath.visible = on;
+    this.tracePacket.visible = on;
+    if (!tr) return;
+    if (tr.chip !== this.traceChip) {
+      this.traceChip = tr.chip;
+      const w = this.traceWaypoints(tr.chip);
+      // Plane-local (x, y) -> world (x, 0.06, -y); right-angle hops like on-die routing.
+      const pts = [w.mc, new THREE.Vector2(w.mc.x, 0), w.l2, new THREE.Vector2(w.gpc.x, 0), w.gpc, w.sm]
+        .filter((p, i, arr) => i === 0 || p.distanceTo(arr[i - 1]) > 1e-3)
+        .map((p) => new THREE.Vector3(p.x, 0.06, -p.y));
+      const path = new THREE.CurvePath<THREE.Vector3>();
+      for (let i = 1; i < pts.length; i++) path.add(new THREE.LineCurve3(pts[i - 1], pts[i]));
+      this.traceCurve = path;
+      // A thin glowing tube (GL lines are 1 px and vanish against the floorplan).
+      this.tracePath.geometry.dispose();
+      this.tracePath.geometry = new THREE.TubeGeometry(path, 240, 0.07, 6, false);
+    }
+    const k = (time * 0.22) % 1;
+    this.traceCurve!.getPointAt(k, this.tracePacket.position);
+    (this.tracePath.material as THREE.MeshBasicMaterial).opacity = 0.65 + 0.35 * Math.sin(time * 4);
+  }
+
   onExploreChange(active: boolean) {
     if (!active) this.hlOverride = null;
     else {
       this.hlOverride = new THREE.Vector4();
-      this.controls[0].value = 'None';
+      setControlValue(this.controls[0], 'None');
     }
   }
 
@@ -223,7 +330,7 @@ export class DieLevel extends BaseLevel {
       if (x < rect[0] || x > rect[2] || y < rect[1] || y > rect[3]) return null;
       // Number controllers clockwise from the top edge.
       const side = vertical ? (sx > 0 ? 1 : 3) : sy > 0 ? 0 : 2;
-      const idx = side * 4 + (side === 0 || side === 1 ? slot : 3 - slot) + 1;
+      const idx = side * 4 + (side === 0 || side === 3 ? slot : 3 - slot) + 1;
       return {
         key: `mc${idx}`,
         rect,

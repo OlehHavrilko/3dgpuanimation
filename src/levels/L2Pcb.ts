@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { BaseLevel, addGlowAttribute, makeInstanceGlow } from '../core/BaseLevel';
 import type { CameraKey } from '../core/CameraRig';
-import type { LevelMeta, TransitionTarget } from '../core/types';
+import type { LevelMeta, PickHit, TransitionTarget } from '../core/types';
 import { mulberry32, range, smoothstep } from '../core/math';
 import { canvasTexture, route45 } from '../core/canvas';
 import { pickInstancedGroup, pickInstances, pickObject } from '../interaction/pick';
@@ -27,9 +27,13 @@ const MEM = 16;
 export class PcbLevel extends BaseLevel {
   readonly meta = meta;
   private memGlow!: THREE.InstancedBufferAttribute;
-  private busUniforms = { uLit: { value: 0 }, uTime: { value: 0 } };
+  private busUniforms = { uLit: { value: 0 }, uTime: { value: 0 }, uTrace: { value: -1 } };
+  private buses: { chip: number; pts: [number, number][] }[] = [];
+  private dieBox = new THREE.Box3();
   /** Explore-mode data-flow override: null = scripted, else pulse speed multiplier (0 = off). */
   private flowOverride: number | null = null;
+  /** Objects grouped by thermal node. */
+  private tp: Record<'gpu' | 'mem' | 'vrm' | 'pcb', THREE.Object3D[]> = { gpu: [], mem: [], vrm: [], pcb: [] };
   private busTime = 0;
   private dieMat!: THREE.MeshStandardMaterial;
   private gpuLight!: THREE.PointLight;
@@ -45,6 +49,7 @@ export class PcbLevel extends BaseLevel {
     this.far = 3000;
     this.bloom = 1.1;
     this.bokeh = 1.4;
+    this.sectionNormal = [0, 0, 1];
   }
 
   protected cameraKeys(): CameraKey[] {
@@ -83,6 +88,26 @@ export class PcbLevel extends BaseLevel {
     const mem = this.memPositions();
     this.buildBoard(mem);
     this.buildComponents(mem);
+
+    // Illustrative heat network. The cooler sits above this board (not drawn at this scale).
+    this.thermal = {
+      nodes: [
+        { id: 'gpu', label: 'GPU die', objects: this.tp.gpu, capacity: 30, power: 450, readout: true },
+        { id: 'cooler', label: 'Cooler (above)', objects: [], capacity: 440, toAir: 26, fanCooled: true, readout: true },
+        { id: 'mem', label: 'GDDR7', objects: this.tp.mem, capacity: 6, power: 60, readout: true },
+        { id: 'vrm', label: 'VRM', objects: this.tp.vrm, capacity: 6, power: 40, readout: true },
+        { id: 'pcb', label: 'PCB', objects: this.tp.pcb, capacity: 60, power: 25, toAir: 1.4, readout: true },
+      ],
+      links: [
+        ['gpu', 'cooler', 20],
+        ['mem', 'cooler', 1.5],
+        ['vrm', 'cooler', 1.6],
+        ['mem', 'pcb', 0.6],
+        ['vrm', 'pcb', 0.8],
+        ['gpu', 'pcb', 0.6],
+      ],
+      throttleNode: 'gpu',
+    };
   }
 
   private buildBoard(mem: [number, number][]) {
@@ -93,7 +118,7 @@ export class PcbLevel extends BaseLevel {
     const rng = mulberry32(2);
 
     // Memory bus geometry, shared by the colour map and the emissive "data" map.
-    const buses: { chip: number; pts: [number, number][] }[] = [];
+    const buses = this.buses;
     mem.forEach(([mx, mz], i) => {
       const horizontal = Math.abs(mx) > 33;
       for (let k = 0; k < 9; k++) {
@@ -213,8 +238,9 @@ export class PcbLevel extends BaseLevel {
       shader.uniforms.uBusMap = { value: busMap };
       shader.uniforms.uLit = uniforms.uLit;
       shader.uniforms.uTime = uniforms.uTime;
+      shader.uniforms.uTrace = uniforms.uTrace;
       shader.fragmentShader =
-        'uniform sampler2D uBusMap;\nuniform float uLit;\nuniform float uTime;\n' +
+        'uniform sampler2D uBusMap;\nuniform float uLit;\nuniform float uTime;\nuniform float uTrace;\n' +
         shader.fragmentShader.replace(
           '#include <emissivemap_fragment>',
           /* glsl */ `#include <emissivemap_fragment>
@@ -223,8 +249,12 @@ export class PcbLevel extends BaseLevel {
             float idx = bus.g / bus.r * 16.0 - 0.5;
             float d = bus.b / bus.r;
             float on = smoothstep(idx, idx + 0.9, uLit);
-            float pulse = pow(fract(d * 2.5 - uTime * 0.9 + idx * 0.13), 8.0);
-            totalEmissiveRadiance += vec3(0.46, 0.95, 0.12) * bus.r * on * (0.35 + 2.4 * pulse);
+            // Signal trace: one channel blazes with fast packets, the rest fade back.
+            bool traced = uTrace >= 0.0 && abs(idx - uTrace) < 0.5;
+            float gain = uTrace < 0.0 ? 1.0 : traced ? 2.4 : 0.1;
+            float speed = traced ? 2.4 : 0.9;
+            float pulse = pow(fract(d * 2.5 - uTime * speed + idx * 0.13), 8.0);
+            totalEmissiveRadiance += vec3(0.46, 0.95, 0.12) * bus.r * on * gain * (0.35 + 2.4 * pulse);
           }`,
         );
     };
@@ -236,15 +266,18 @@ export class PcbLevel extends BaseLevel {
     top.rotation.x = -Math.PI / 2;
     top.position.y = 0.01;
     this.scene.add(top);
+    this.tp.pcb.push(top);
 
     const edgeMat = new THREE.MeshStandardMaterial({ color: 0x0a2614, roughness: 0.7 });
     const body = new THREE.Mesh(new THREE.BoxGeometry(W, 1.6, D), edgeMat);
     body.position.y = -0.8;
     this.scene.add(body);
+    this.tp.pcb.push(body);
     // Separate PCIe 5.0 x16 board below the main board's edge, joined by a flex cable.
     const tab = new THREE.Mesh(new THREE.BoxGeometry(92, 1.6, 16), edgeMat);
     tab.position.set(-26, -0.8, -D / 2 - 14);
     this.scene.add(tab);
+    this.tp.pcb.push(tab);
     this.pickables.push(
       pickObject(tab, {
         title: 'PCIe board',
@@ -290,6 +323,7 @@ export class PcbLevel extends BaseLevel {
     );
     substrate.position.y = 0.65;
     s.add(substrate);
+    this.tp.gpu.push(substrate);
     this.pickables.push(
       pickObject(substrate, {
         title: 'GB202 package',
@@ -307,8 +341,10 @@ export class PcbLevel extends BaseLevel {
     });
     // GB202: ~750 mm²
     const die = new THREE.Mesh(new THREE.BoxGeometry(29, 0.8, 26), this.dieMat);
+    this.dieBox.setFromCenterAndSize(new THREE.Vector3(0, 1.7, 0), new THREE.Vector3(29, 0.8, 26));
     die.position.y = 1.7;
     s.add(die);
+    this.tp.gpu.push(die);
     this.pickables.push(
       pickObject(
         die,
@@ -338,6 +374,7 @@ export class PcbLevel extends BaseLevel {
     });
     this.memGlow = addGlowAttribute(memMesh);
     s.add(memMesh);
+    this.tp.mem.push(memMesh);
     this.pickables.push(
       pickInstances(memMesh, (i) => ({
         title: `GDDR7 · M${i + 1}`,
@@ -349,6 +386,7 @@ export class PcbLevel extends BaseLevel {
           ['Bandwidth', '112 GB/s'],
         ],
         note: 'Each chip has its own 32-bit controller on the die; 16 × 112 GB/s = 1.79 TB/s.',
+        actions: [{ label: 'Trace signal ▸', run: () => this.ctx.trace(i, 1) }],
       })),
     );
 
@@ -383,6 +421,7 @@ export class PcbLevel extends BaseLevel {
       mlcc.setMatrixAt(i, m.compose(v.set(x, y, z), q, one));
     });
     s.add(mlcc);
+    this.tp.pcb.push(mlcc);
     this.pickables.push(
       pickInstances(mlcc, () => ({
         title: 'MLCC capacitor',
@@ -410,6 +449,7 @@ export class PcbLevel extends BaseLevel {
       stages.setMatrixAt(i, m.makeTranslation(x, 0.5, row * 44.5));
     }
     s.add(chokes, stages);
+    this.tp.vrm.push(chokes, stages);
     this.pickables.push(
       pickInstances(chokes, (i) => ({
         title: `Power phase ${i + 1}`,
@@ -433,6 +473,7 @@ export class PcbLevel extends BaseLevel {
       polys.setMatrixAt(i, m.makeTranslation(i < 6 ? -66 : 66, 2.75, -27 + (i % 6) * 11));
     }
     s.add(polys);
+    this.tp.vrm.push(polys);
     this.pickables.push(pickInstances(polys, () => ({ title: 'Polymer capacitor', kind: 'Passive · bulk', specs: [['Role', 'input/output filtering']] })));
 
     // PCIe 5.0 x16 gold fingers on the separate PCIe board (with the x1 key notch)
@@ -443,6 +484,7 @@ export class PcbLevel extends BaseLevel {
       fingers.setMatrixAt(i, m.makeTranslation(x, 0.04, -D / 2 - 18.5));
     }
     s.add(fingers);
+    this.tp.pcb.push(fingers);
     this.pickables.push(
       pickInstancedGroup(fingers, {
         title: 'PCIe gold fingers',
@@ -459,6 +501,7 @@ export class PcbLevel extends BaseLevel {
     const conn = new THREE.Mesh(new THREE.BoxGeometry(19, 9, 8), plastic);
     conn.position.set(15, 4.5, D / 2 - 4);
     s.add(conn);
+    this.tp.vrm.push(conn);
     this.pickables.push(pickObject(conn, { title: '12V-2x6 connector', kind: 'Power input', specs: [['Rated', '600 W']] }));
 
     this.controls = [
@@ -475,11 +518,17 @@ export class PcbLevel extends BaseLevel {
   protected animate(t: number, dt: number, time: number) {
     // Memory chips light up one after another, walking clockwise around the GPU.
     const flow = this.flowOverride;
-    const lit = flow === null ? range(t, 0.18, 0.66) * MEM : flow > 0 ? MEM : 0;
+    const lit = this.ctx.journey.trace ? MEM : flow === null ? range(t, 0.18, 0.66) * MEM : flow > 0 ? MEM : 0;
     this.busTime += dt * (flow ?? 1);
+    const trace = this.ctx.journey.trace;
+    this.busUniforms.uTrace.value = trace ? trace.chip : -1;
     for (let i = 0; i < MEM; i++) {
       const on = smoothstep(i, i + 0.9, lit);
-      this.memGlow.array[i] = on * (0.16 + 0.06 * Math.sin(time * 5 + i * 1.3));
+      this.memGlow.array[i] = trace
+        ? trace.chip === i
+          ? 0.75 + 0.25 * Math.sin(time * 8)
+          : 0.02
+        : on * (0.16 + 0.06 * Math.sin(time * 5 + i * 1.3));
     }
     this.memGlow.needsUpdate = true;
     this.busUniforms.uLit.value = lit;
@@ -496,6 +545,68 @@ export class PcbLevel extends BaseLevel {
           : t < 0.9
             ? '1.79 TB/s of memory bandwidth converging on GB202'
             : 'Into the GPU package';
+  }
+
+  /** Signal trace on the board: the chip, its 32-bit bus, then the GPU package. */
+  tracePlan(): PickHit[] | null {
+    const tr = this.ctx.journey.trace;
+    if (!tr) return null;
+    const c = tr.chip;
+    const [mx, mz] = this.memPositions()[c];
+    const side = Math.abs(mx) > 33;
+    const chipBox = new THREE.Box3().setFromCenterAndSize(
+      new THREE.Vector3(mx, 0.55, mz),
+      new THREE.Vector3(side ? 12 : 14, 1.1, side ? 14 : 12),
+    );
+    const busBox = new THREE.Box3();
+    for (const b of this.buses) {
+      if (b.chip !== c) continue;
+      for (const [x, z] of b.pts) busBox.expandByPoint(new THREE.Vector3(x, 0, z));
+    }
+    busBox.max.y = 1;
+    return [
+      {
+        key: `trace-chip${c}`,
+        box: chipBox,
+        info: {
+          title: `GDDR7 · M${c + 1}`,
+          kind: 'Memory',
+          specs: [
+            ['Width', '32 bits'],
+            ['Per pin', '28 Gbps · PAM3'],
+            ['Per chip', '112 GB/s'],
+          ],
+          note: 'A read starts here: the DRAM drives 32 data lines at once, three voltage levels per symbol (PAM3).',
+        },
+      },
+      {
+        key: `trace-bus${c}`,
+        box: busBox,
+        info: {
+          title: `Memory bus · channel ${c + 1}`,
+          kind: 'PCB traces',
+          specs: [
+            ['Length', 'a few cm'],
+            ['Routing', 'length-matched, impedance-controlled'],
+          ],
+          note: 'Every trace in the channel is tuned to the same length so all 32 bits arrive within picoseconds of each other.',
+        },
+      },
+      {
+        key: 'trace-gpu',
+        box: this.dieBox.clone(),
+        info: {
+          title: 'GB202 package',
+          kind: 'Arrival',
+          specs: [
+            ['Path', 'BGA ball → substrate → C4 bump'],
+            ['Destination', `memory controller ${c + 1}`],
+          ],
+          note: 'The signal drops through the package into the die. Follow it inside.',
+          actions: [{ label: 'Follow into the die ▸', run: () => this.ctx.go(3) }],
+        },
+      },
+    ];
   }
 
   onExploreChange(active: boolean) {

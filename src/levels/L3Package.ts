@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BaseLevel } from '../core/BaseLevel';
+import { BaseLevel, setControlValue } from '../core/BaseLevel';
 import type { CameraKey } from '../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../core/types';
 import { mulberry32, smootherstep } from '../core/math';
@@ -59,6 +59,7 @@ export class PackageLevel extends BaseLevel {
     this.far = 2000;
     this.bloom = 1.0;
     this.bokeh = 1.6;
+    this.sectionNormal = [0, 0, 1];
   }
 
   protected cameraKeys(): CameraKey[] {
@@ -367,7 +368,7 @@ export class PackageLevel extends BaseLevel {
   }
 
   onExploreChange(active: boolean) {
-    if (active) this.controls[0].value = Math.round(this.lastPeel * 100);
+    if (active) setControlValue(this.controls[0], Math.round(this.lastPeel * 100));
     else this.peelOverride = null;
   }
 

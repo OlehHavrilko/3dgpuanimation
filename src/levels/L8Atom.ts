@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BaseLevel } from '../core/BaseLevel';
+import { BaseLevel, setControlValue } from '../core/BaseLevel';
 import type { CameraKey } from '../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../core/types';
 import { mulberry32 } from '../core/math';
@@ -75,6 +75,7 @@ export class AtomLevel extends BaseLevel {
     this.far = 2000;
     this.bloom = 1.25;
     this.bokeh = 0.8;
+    this.sectionNormal = [0, 0, 1];
   }
 
   protected cameraKeys(): CameraKey[] {
@@ -218,6 +219,7 @@ export class AtomLevel extends BaseLevel {
       depthWrite: false,
       blending: THREE.AdditiveBlending,
       vertexColors: true,
+      clipping: true, // Section view slices the cloud open
       uniforms: {
         uTime: { value: 0 },
         uSize: { value: 0.32 },
@@ -225,6 +227,7 @@ export class AtomLevel extends BaseLevel {
         uShow: { value: this.show },
       },
       vertexShader: /* glsl */ `
+        #include <clipping_planes_pars_vertex>
         attribute float aShell;
         attribute float aRand;
         attribute float aAlpha;
@@ -241,6 +244,8 @@ export class AtomLevel extends BaseLevel {
           // Tiny per-point shimmer so the cloud never looks frozen.
           p += 0.15 * vec3(sin(uTime * 1.7 + aRand * 40.0), cos(uTime * 1.3 + aRand * 31.0), sin(uTime * 1.1 + aRand * 17.0));
           vec4 mv = modelViewMatrix * vec4(p, 1.0);
+          vec4 mvPosition = mv;
+          #include <clipping_planes_vertex>
           float dist = -mv.z;
           gl_Position = projectionMatrix * mv;
           gl_PointSize = min(uSize * uScale * (0.6 + aRand * 0.8) / dist, 48.0);
@@ -250,9 +255,11 @@ export class AtomLevel extends BaseLevel {
         }
       `,
       fragmentShader: /* glsl */ `
+        #include <clipping_planes_pars_fragment>
         varying vec3 vColor;
         varying float vAlpha;
         void main() {
+          #include <clipping_planes_fragment>
           vec2 uv = gl_PointCoord * 2.0 - 1.0;
           float r2 = dot(uv, uv);
           if (r2 > 1.0) discard;
@@ -329,7 +336,7 @@ export class AtomLevel extends BaseLevel {
 
   onExploreChange(active: boolean) {
     if (!active) this.showTarget = [1, 1, 1, 1, 1];
-    else this.controls[0].value = 'All';
+    else setControlValue(this.controls[0], 'All');
   }
 
   getTransitionTarget() {

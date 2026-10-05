@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BaseLevel } from '../core/BaseLevel';
+import { BaseLevel, setControlValue } from '../core/BaseLevel';
 import type { CameraKey } from '../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../core/types';
 import { pointScale } from '../core/points';
@@ -67,6 +67,7 @@ export class LatticeLevel extends BaseLevel {
     this.far = 1000;
     this.bloom = 1.15;
     this.bokeh = 1.2;
+    this.sectionNormal = [0, 0, 1];
     // Atom closest to the centre is the one we dive into.
     let best = Infinity;
     this.atoms.forEach((p, i) => {
@@ -385,7 +386,7 @@ export class LatticeLevel extends BaseLevel {
 
   onExploreChange(active: boolean) {
     this.doping = 'Mixed';
-    if (active) this.controls[0].value = 'Mixed';
+    if (active) setControlValue(this.controls[0], 'Mixed');
     this.applyDoping();
   }
 

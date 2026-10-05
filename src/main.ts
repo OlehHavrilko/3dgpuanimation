@@ -47,7 +47,19 @@ const pmrem = new THREE.PMREMGenerator(renderer);
 const envMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 pmrem.dispose();
 
-const ctx: LevelContext = { renderer, camera, envMap, view: { freeCamera: false } };
+const ctx: LevelContext = {
+  renderer,
+  camera,
+  envMap,
+  view: { freeCamera: false },
+  journey: { trace: null, follow: false },
+  go: (i) => jumpToLevel(i),
+  trace: (chip, levelIndex) => {
+    ctx.journey.trace = { chip };
+    if (manager.currentIndex === levelIndex) interaction.beginTrace();
+    else jumpToLevel(levelIndex);
+  },
+};
 
 // ---------------------------------------------------------------- post
 const composer = new EffectComposer(renderer, {
@@ -141,7 +153,7 @@ const settings = {
 
 if (new URLSearchParams(location.search).has('debug')) {
   // Handle for automated screenshots / console scrubbing: __teardown.settings.override = true; ...progress = 0.5
-  (window as unknown as Record<string, unknown>).__teardown = { settings, manager, renderer };
+  (window as unknown as Record<string, unknown>).__teardown = { settings, manager, renderer, ctx, interaction };
   import('lil-gui').then(({ default: GUI }) => {
     const gui = new GUI({ title: 'GPU → Atom debug' });
     const perfFolder = gui.addFolder('Performance');
