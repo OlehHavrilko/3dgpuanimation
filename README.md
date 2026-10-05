@@ -1,8 +1,11 @@
 # GPU → Atom
 
-A scroll-driven 3D teardown of a **GeForce RTX 5090 Founders Edition**, from the whole card down to a single silicon atom. Eight scales, one scroll.
+A scroll-driven 3D teardown of a **GeForce RTX 5090 Founders Edition**, from the whole card down to a single silicon atom. Eight scales in **three acts**, one continuous dive — every part modelled procedurally and rendered live, with a **guided tour**, match-dissolve transitions, X-Ray / section / thermal views and a command palette.
 
-**Быстрый старт:** `npm install`, then `npm run dev`, then open the URL Vite prints and scroll. Add `?debug` to get a timeline scrubber.
+The eight scales are a chronology; the **narrative layer** gives them a shape. The landing shows a live attract loop, the descent is framed as *I — The Machine* (GPU → PCB → package), *II — The Computation* (die → metal → transistor) and *III — The Matter* (lattice → atom), three anchor numbers land where they mean something, one dive runs chrome-free for a breath, and the journey ends on a finale instead of simply stopping.
+
+**Быстрый старт:** `npm install`, then `npm run dev`, then open the URL Vite prints. Click **Start the descent** or scroll. Add `?debug` for a timeline scrubber, `?nointro` to skip the landing card, or `?quality=low|high` to force a tier.
+
 
 | # | Level | Scale | What happens |
 |---|-------|-------|--------------|
@@ -28,8 +31,55 @@ The page has two modes:
 | Click | Inspects it: spotlight, inspector panel, the camera glides to it |
 | Drag / wheel / right-drag | Orbit / zoom / pan (Explore) |
 | `←` `→` | Previous / next scale, flying through the dive |
+| `Space` | Play / pause the guided tour; replay at the finale |
+| `1`–`8` | Jump straight to a scale |
+| `E` | Toggle Explore mode |
+| `L` | Toggle 3D part labels |
+| `M` | Toggle ambient sound (off by default) |
+| `X` `C` `T` `N` | X-Ray / Section / Thermal / Normal view (in Explore) |
+| `Ctrl`/`Cmd` + `K` | Command palette: jump to a scale or a part |
+| `F` | Fullscreen |
 | `Esc` | Deselect, then leave Explore |
 | Breadcrumb, scale rail, ◀ ▶ | Jump to any scale |
+
+## The descent
+
+Click **Start the descent** on the landing card, or press `Space` at any time. The tour drives
+the timeline directly rather than the scrollbar, so the pacing is authored: it moves slowly
+through each scale's content, holds for a beat before the dive, then accelerates through the
+transition. The bar at the bottom shows the chapter, elapsed time and a clickable progress
+track. Any deliberate input — wheel, touch, arrow keys, or selecting a part — hands control
+back to the user; `Space` resumes.
+
+**Three acts.** `Story.ts` groups the scales and drops a two-second title card at each act
+boundary — whether you arrive there on the tour or by jumping/scrolling there. The card carries
+the act's thesis: *This is the machine*, *This is how it thinks*, *This is what it is made of*.
+
+**Three anchor numbers.** Each act contributes one fact, shown only at the moment it explains
+the frame: **92.2 billion transistors** on the die, **15 metal layers** in the interconnect,
+**≈0.1 nanometre** at the atom. Count one transistor a second and you would still be counting
+in 2,900 years.
+
+**The clean shot.** On the final dive — lattice into atom — the HUD, tour bar and captions all
+fade out for a few seconds. Nothing but the zoom. Then the atom arrives and the chrome returns.
+
+**The finale.** Reaching the bottom of the atom does not call `stop()`. The camera eases back
+off the nucleus, "You reached the bottom" rises, and the whole descent resolves into one
+composition: GPU → transistor → silicon → atom, with the three anchor numbers and the actions
+that matter — **Replay** (`Space`), **Explore**, **Share frame**, and the source. Share frame
+re-renders the live frame into a 1200×630 card with the scale, caption and a real scale bar, and
+downloads it as a PNG.
+
+**A sound invitation.** Starting the descent is a user gesture, so that is the one moment the
+page offers its procedural ambience — a small, dismissible prompt. Turning it down is
+remembered; the `Sound` button and `M` still work at any time.
+
+## Deep links
+
+The URL tracks the current scale and view mode (`#l=5&v=Section`), so a frame can be shared or
+bookmarked. `?nointro` skips the landing card, `?quality=low|high` forces a tier and `?debug`
+opens the lil-gui panel.
+
 
 Per-level controls appear in the inspector in Explore mode:
 
@@ -49,7 +99,11 @@ On touch screens, a first tap identifies a part (tooltip) and a second tap on it
 The interaction layer lives in `src/interaction/` and is shared by every level:
 
 - `InteractionManager.ts` handles raycasting, hover and selection, Explore mode (OrbitControls), camera fly-to, keyboard input and parallax.
-- `Hud.ts` handles the DOM: tooltip, leader line, spotlight, inspector, breadcrumb and nav.
+- `Hud.ts` handles the DOM: tooltip, leader line, spotlight, inspector, breadcrumb, nav and the temperature legend.
+- `ViewModes.ts` implements the X-Ray, Section and Thermal views plus the lumped thermal model.
+- `Labels.ts` pins a level's named parts in 3D (toggle `L`); it reads them from `pickables`, so every level gets labels for free.
+- `CommandPalette.ts` is the `Ctrl/Cmd+K` jump-to-anything dialog.
+- `entities.ts` resolves a level's pickables into titled entities without a pointer.
 - `pick.ts` holds the helpers levels use to declare what is pickable.
 
 Levels only describe *what* can be picked (`pickables`, with `EntityInfo` metadata) and *which* controls they offer (`controls`). They never handle input themselves.
@@ -69,40 +123,61 @@ npm run preview    # serve dist/
 
 Open `http://localhost:5173/?debug` to get a lil-gui panel with:
 
-- an FPS readout
+- an FPS readout, frame time, draw calls, triangles and the active quality tier
 - a timeline slider (it scrolls the page, or drives the timeline directly when "scrub with slider" is on)
 - a time scale
 - jump buttons for every level
-- bloom and depth-of-field controls
+- bloom, depth-of-field, grain and chromatic-aberration controls
 
-In debug mode, `window.__teardown` exposes `{ settings, manager, renderer }` for console scripting.
+In debug mode, `window.__teardown` exposes `{ settings, manager, renderer, ctx, interaction }` for console scripting.
 
 ## Architecture
 
 ```
 src/
-  main.ts               renderer, post chain (DOF → bloom/vignette/ACES), ScrollTrigger, debug GUI
+  main.ts               renderer, post chain, ScrollTrigger, tour + intro, deep links, debug GUI
   core/
-    LevelManager.ts     timeline → level segments, scene swap, dive + flash
+    LevelManager.ts     timeline → level segments, scene pool, dive, prebuild, flash
+    PostFX.ts           the effect chain + per-level colour grade
+    Grade.ts            hand-tuned look per level (bloom, contrast, grain, chromatic)
+    FxaaEffect.ts       a compact asset-free FXAA effect (MSAA fallback on low tier)
+    FrameDissolve.ts    freezes the last frame and fades it out across a scene swap
+    Tour.ts             the guided autoplay tour and its progress bar
+    Story.ts            acts, anchor numbers, clean shot, finale, share-frame composer
+    Attract.ts          the landing's slow drift so the scene is live before the first click
+    Audio.ts            procedural Web Audio ambience (hum, air, whoosh, blips)
+    quality.ts          device-tier probe → resolution, MSAA, effects, cache sizes
     BaseLevel.ts        scene/camera-rig/dispose boilerplate, per-instance glow material patch
     CameraRig.ts        Catmull-Rom keyframed camera path
-    Overlay.ts          HUD: scale label, name, caption, scale rail, live field of view
+    Overlay.ts          HUD: scale label, name, caption, scale rail, FOV + scale bar
     types.ts            Level interface, EntityInfo, Pickable, LevelControl
     canvas.ts, points.ts, dispose.ts, math.ts
   interaction/
     InteractionManager.ts  hover / select / Explore / keyboard / parallax
-    Hud.ts                 tooltip, leader, spotlight, inspector, breadcrumb, nav
+    Hud.ts                 tooltip, leader, spotlight, inspector, breadcrumb, nav, legend
+    ViewModes.ts           X-Ray / Section / Thermal + thermal simulation
+    Labels.ts              in-world part labels
+    CommandPalette.ts      Ctrl/Cmd+K palette
+    entities.ts            pickables → titled entities without a ray
     pick.ts                pickObject / pickInstances / pickInstancedGroup helpers
   levels/
     L1Card.ts … L8Atom.ts, index.ts (ordered registry)
 ```
 
-**Powers of Ten without float problems.** Each level is its own `THREE.Scene` in its own local units: cm, mm, µm, nm, Å, and stylised pm for the atom. Only one level exists at a time. `LevelManager` maps scroll progress (0..1) onto weighted segments. When the scroll crosses a boundary, it disposes the old level and `init()`s the new one. All levels share one camera, and each level sets its near and far planes for its own units.
+**Powers of Ten without float problems.** Each level is its own `THREE.Scene` in its own local units: cm, mm, µm, nm, Å, and stylised pm for the atom. `LevelManager` maps scroll progress (0..1) onto weighted segments. All levels share one camera, and each level sets its near and far planes for its own units.
+
+**Scene pool + speculative prebuild.** A small LRU of inactive levels (`QUALITY.sceneCache`) keeps scrubbing back and forth instant. While the camera is dollying into the next scale, `LevelManager` builds that level off-screen and calls `renderer.compileAsync()`, so the swap does not stall on shader compilation.
 
 **Transition.** Each segment has two parts:
 
 1. **Content (first 84%).** The level animates its story via `update(t)`, with `t` running 0..1.
-2. **Dive (last 16%).** The manager dollies the camera logarithmically into `getTransitionTarget()` until the target is about 3× larger than the frame. A green/white flash ramps up with the scroll. On swap, a 0.3 s time-based flash pops and fades, and the next level starts zoomed out. The flash is also scroll-driven at the start of each level, so it behaves the same when scrolling backwards.
+2. **Dive (last 16%).** The manager dollies the camera logarithmically into `getTransitionTarget()` until the target is about 3× larger than the frame.
+
+At the boundary the outgoing frame is copied into a 2D overlay (`FrameDissolve`) during the dive and faded + pushed in over ~0.56 s while the new level renders underneath; a much subtler green flash rides on top. Because the fade is a CSS transform/opacity transition, it keeps running even if the new level's first frame is busy. The flash is also scroll-driven at the start of each level, so it behaves the same when scrolling backwards.
+
+**Visual grade.** `PostFX` runs DOF → bloom → chromatic aberration → brightness/contrast → hue/saturation → vignette → ACES tone mapping → film grain, with a per-level look from `Grade.ts` (the SEM level goes near-monochrome and grainy, the die goes saturated, the atom goes dark and bloomy). Low-tier devices get asset-free FXAA instead of MSAA.
+
+**Narrative layer.** `Story.ts` is deliberately separate from the renderer: it reads the per-frame `FrameState` (level index, local progress, dive) and drives its own DOM, and the only thing it hands back is a `pullback` amount that `main.ts` applies to the camera for the finale. That keeps a scene-agnostic story controller out of the per-level code. `Attract.ts` is the same idea for the landing — a slow ping-pong through the first scale's content that writes to the timeline while the card is up and hands the progress over on dismissal, so *Start* and *Scroll it yourself* both continue from wherever the drift had reached.
 
 Level interface:
 
@@ -125,11 +200,11 @@ To add a level, extend `BaseLevel`, implement `build()`, `cameraKeys()`, `animat
 
 - Every repeated object uses `InstancedMesh`: fins, blades, chips, MLCCs, BGA balls, bumps, wires, vias, fins and gates, atoms, bonds.
 - Per-instance glow comes from an `aGlow` attribute patched into `MeshStandardMaterial`, so there are no material clones.
-- Levels dispose all their geometries, materials and textures on swap. Renderer memory counters stay flat while cycling through all levels.
-- Pixel ratio is capped at 1.75, and DOF runs at half resolution. DOF is switched off entirely in Explore mode.
-- **Adaptive resolution.** If the frame rate stays below ~52 fps for 1.5 s, the render resolution steps down. After 8 s of smooth frames it steps back up. Hysteresis and cooldowns keep it from oscillating.
-- `?quality=low` forces pixel ratio 1, no MSAA and no DOF. `?quality=high` sets pixel ratio up to 2 with adaptation off.
-- `?debug` shows FPS, frame time, draw calls, triangles and the current pixel ratio.
+- Levels dispose all their geometries, materials and textures on swap, and the pool disposes on eviction.
+- DOF runs at half resolution and is switched off entirely in Explore mode.
+- **Device tiers.** `quality.ts` probes cores, memory, pointer type and `prefers-reduced-motion` once and derives a coherent preset: pixel-ratio cap, MSAA samples, FXAA fallback, DOF, grain/chromatic amounts, and how many scenes to cache and pre-build. `?quality=low|high` overrides it.
+- **Adaptive resolution.** On the auto tiers, if the frame rate stays below ~52 fps for 1.5 s the render resolution steps down; after 8 s of smooth frames it steps back up. Hysteresis and cooldowns keep it from oscillating.
+- **Robustness.** WebGL context loss pauses the loop, then rebuilds the environment and drops the scene pool on restore; `prefers-reduced-motion` disables parallax; the inspector's bounding rect is cached instead of read every frame; `?debug` shows FPS, frame time, draw calls, triangles, pixel ratio and tier.
 
 ## Accuracy notes
 
@@ -149,4 +224,4 @@ Everything is procedural: no external models or textures.
 
 ## Stack
 
-Vite, TypeScript, Three.js r186, GSAP ScrollTrigger, [postprocessing](https://github.com/pmndrs/postprocessing) and lil-gui.
+Vite, TypeScript, Three.js r186, GSAP ScrollTrigger, [postprocessing](https://github.com/pmndrs/postprocessing), lil-gui, the Web Audio API and hand-written GLSL (FXAA, the thin-film shader, per-instance glow). No model, texture or audio files ship with the project.

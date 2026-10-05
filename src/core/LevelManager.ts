@@ -7,6 +7,13 @@ export interface LevelEntry {
   create: (ctx: LevelContext) => Level;
 }
 
+export interface LevelManagerOptions {
+  /** How many inactive levels to keep alive for instant scrubbing (0 disables). */
+  sceneCache: number;
+  /** Build + shader-compile the next level during the dive so the swap is instant. */
+  prebuild: boolean;
+}
+
 interface Segment {
   start: number;
   end: number;
@@ -51,6 +58,9 @@ export class LevelManager {
   private progress = 0;
   private flashPulse = 0;
   private built = false;
+  /** Inactive levels kept alive, most-recently-used last. */
+  private pool = new Map<number, Level>();
+  private order: number[] = [];
   private readonly tmpDir0 = new THREE.Vector3();
   private readonly tmpDir = new THREE.Vector3();
   private readonly tmpLook = new THREE.Vector3();
@@ -61,6 +71,7 @@ export class LevelManager {
     private ctx: LevelContext,
     readonly entries: LevelEntry[],
     private flashEl: HTMLElement,
+    private options: LevelManagerOptions = { sceneCache: 0, prebuild: false },
   ) {
     const total = entries.reduce((s, e) => s + e.meta.weight, 0);
     let acc = 0;
@@ -95,17 +106,62 @@ export class LevelManager {
   private activate(index: number) {
     if (this.current) {
       this.onBeforeDispose?.(this.current);
-      this.current.dispose();
+      // Recycle instead of disposing when the cache has room, so scrubbing back is instant.
+      this.retain(this.currentIndex, this.current);
       this.current = null;
     }
-    const level = this.entries[index].create(this.ctx);
-    level.init();
+    const level = this.takeFromPool(index) ?? this.build(index);
     this.current = level;
     this.currentIndex = index;
     // Skip the flash on the very first build.
     this.flashPulse = this.built ? 1 : 0;
     this.built = true;
     this.onSwap?.(index, level);
+  }
+
+  private build(index: number): Level {
+    const level = this.entries[index].create(this.ctx);
+    level.init();
+    return level;
+  }
+
+  private takeFromPool(index: number): Level | null {
+    const level = this.pool.get(index);
+    if (!level) return null;
+    this.pool.delete(index);
+    this.order = this.order.filter((i) => i !== index);
+    return level;
+  }
+
+  private retain(index: number, level: Level) {
+    const max = this.options.sceneCache;
+    if (max <= 0) {
+      level.dispose();
+      return;
+    }
+    this.pool.set(index, level);
+    this.order.push(index);
+    while (this.order.length > max) {
+      const evict = this.order.shift()!;
+      const stale = this.pool.get(evict);
+      this.pool.delete(evict);
+      stale?.dispose();
+    }
+  }
+
+  /**
+   * While the camera is dollying into the next scale, build that level off-screen and
+   * let the driver compile its shaders (`compileAsync`, via KHR_parallel_shader_compile)
+   * so the swap does not stall on a few hundred ms of geometry + program setup.
+   */
+  private maybePrebuild(index: number, dive: number) {
+    if (!this.options.prebuild || this.options.sceneCache <= 0) return;
+    if (this.ctx.view.freeCamera || dive <= 0.35) return;
+    const next = index + 1;
+    if (next >= this.entries.length || this.pool.has(next)) return;
+    const level = this.build(next);
+    this.retain(next, level);
+    void this.ctx.renderer.compileAsync(level.scene, this.ctx.camera).catch(() => {});
   }
 
   tick(dt: number, time: number): FrameState {
@@ -121,6 +177,7 @@ export class LevelManager {
     const dive = isLast ? 0 : clamp((local - CONTENT_SHARE) / (1 - CONTENT_SHARE));
 
     level.update(content, dt, time);
+    this.maybePrebuild(index, dive);
 
     const cam = this.ctx.camera;
     let focusDist = cam.position.distanceTo(level.getFocus?.() ?? level.getLookAt());
@@ -131,10 +188,12 @@ export class LevelManager {
 
     // Flash: scroll-driven ramp at the end of a dive and at the start of a level
     // (so it is symmetric when scrolling backwards) + a time-based pop on swap.
+    // Kept subtle now that the frame dissolve carries the actual transition: the green
+    // should read as light bloom over the cut, not as an opaque wipe.
     this.flashPulse = Math.max(0, this.flashPulse - dt / FLASH_SECONDS);
-    const flashOut = isLast ? 0 : smoothstep(0.72, 1, dive) * 0.9;
-    const flashIn = index === 0 ? 0 : (1 - smoothstep(0, ARRIVAL, local)) * 0.9;
-    const pulse = this.flashPulse * this.flashPulse * (3 - 2 * this.flashPulse);
+    const flashOut = isLast ? 0 : smoothstep(0.72, 1, dive) * 0.42;
+    const flashIn = index === 0 ? 0 : (1 - smoothstep(0, ARRIVAL, local)) * 0.42;
+    const pulse = this.flashPulse * this.flashPulse * (3 - 2 * this.flashPulse) * 0.4;
     this.flashEl.style.opacity = Math.max(flashOut, flashIn, pulse).toFixed(3);
 
     const fovMeters =
@@ -186,8 +245,16 @@ export class LevelManager {
     return level.getFocus?.() ?? level.getLookAt();
   }
 
+  /** Forget cached scenes (used after a WebGL context restore: their GPU state is gone). */
+  dropPool() {
+    this.pool.forEach((level) => level.dispose());
+    this.pool.clear();
+    this.order = [];
+  }
+
   dispose() {
     this.current?.dispose();
     this.current = null;
+    this.dropPool();
   }
 }

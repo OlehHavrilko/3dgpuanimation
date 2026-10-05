@@ -565,14 +565,14 @@ export class CardLevel extends BaseLevel {
 
     this.caption =
       t < 0.1
-        ? 'Double flow-through: 2 fans push air straight through the fins'
+        ? 'Two fans drive air straight through the fins. This is the machine.'
         : t < 0.3
-          ? 'Fans spin down'
+          ? 'The fans spin down so you can see inside'
           : t < 0.66
-            ? 'Exploded: shroud · fans · 2 fin stacks · 3D vapor chamber · heat pipes'
+            ? 'Exploded: shroud · two fin stacks · vapour chamber · heat pipes'
             : t < 0.9
-              ? 'Compact main PCB + separate PCIe and display boards on flex cables'
-              : 'Diving into the board';
+              ? 'Under the cooler: one main board, two smaller ones on flex cables'
+              : 'Follow the power onto the board';
   }
 
   /** Thermal view: open the card part-way so the hot parts are not hidden behind the shroud. */

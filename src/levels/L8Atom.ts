@@ -326,12 +326,12 @@ export class AtomLevel extends BaseLevel {
 
     this.caption =
       t < 0.25
-        ? 'Si · Z = 14 · 1s² 2s² 2p⁶ 3s² 3p²'
+        ? 'Silicon: 14 protons, 14 neutrons, 14 electrons'
         : t < 0.5
-          ? 'Electron density sampled from |ψ|², Slater-screened shells'
+          ? 'That cloud is the quantum wavefunction — where a transistor really lives'
           : t < 0.78
-            ? 'Valence 3s² 3p²: the four electrons that bond the lattice'
-            : '²⁸Si nucleus · 14 p⁺ + 14 n⁰ · drawn ~10⁴× too large';
+            ? 'Four valence electrons: the bonds you just saw'
+            : 'The nucleus, drawn ten thousand times too large';
   }
 
   onExploreChange(active: boolean) {

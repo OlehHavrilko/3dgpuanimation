@@ -539,11 +539,11 @@ export class PcbLevel extends BaseLevel {
 
     this.caption =
       t < 0.18
-        ? 'Compact main board: GPU, memory and power delivery only'
+        ? 'The board is a city: one GPU, sixteen memory chips, power everywhere'
         : t < 0.66
-          ? `GDDR7 online: ${Math.min(MEM, Math.floor(lit + 0.1))} / 16 × 2 GB · 28 Gbps · 512-bit`
+          ? `GDDR7 online: ${Math.min(MEM, Math.floor(lit + 0.1))} / 16 × 2 GB — 28 Gbps each`
           : t < 0.9
-            ? '1.79 TB/s of memory bandwidth converging on GB202'
+            ? '1.79 terabytes a second, all of it converging on GB202'
             : 'Into the GPU package';
   }
 
