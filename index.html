@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <title>GPU to Atom</title>
+    <meta name="description" content="Scroll-driven 3D teardown of a graphics card, from the shroud down to a single silicon atom." />
+  </head>
+  <body>
+    <canvas id="gl"></canvas>
+    <div id="flash"></div>
+
+    <div id="hud">
+      <header class="hud-top">
+        <span class="brand">GPU <span class="arrow">&#9656;</span> ATOM</span>
+        <span id="lvl-index">01 / 08</span>
+      </header>
+
+      <section class="hud-main">
+        <div id="lvl-scale">30 cm</div>
+        <div id="lvl-name">Graphics card</div>
+        <div id="lvl-desc"></div>
+        <div id="lvl-caption"></div>
+      </section>
+
+      <nav id="rail"></nav>
+
+      <footer class="hud-bottom">
+        <div class="fov">
+          <span class="fov-label">field of view</span>
+          <span id="fov-value">&mdash;</span>
+        </div>
+        <div id="scroll-hint">scroll to descend <span>&darr;</span></div>
+      </footer>
+    </div>
+
+    <div id="scroll-space"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

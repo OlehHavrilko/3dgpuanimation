@@ -1,0 +1,24 @@
+{
+  "name": "gpu-to-atom",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Scroll-driven 3D teardown of an NVIDIA-style GPU, from graphics card down to a single silicon atom.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "gsap": "^3.15.0",
+    "lil-gui": "^0.21.0",
+    "postprocessing": "^6.39.5",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "@types/three": "^0.186.0",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.2"
+  }
+}
