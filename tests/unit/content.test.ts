@@ -37,6 +37,13 @@ describe('content dictionary', () => {
     ).toBe('SM 5 (fused off)');
   });
 
+  it('has an accuracy note for every level, each with at least one entry', () => {
+    expect(content.accuracy.levels).toHaveLength(8);
+    for (const n of content.accuracy.levels) {
+      expect(n.spec.length + n.representative.length + n.notToScale.length).toBeGreaterThan(0);
+    }
+  });
+
   it('UI helpers format their arguments', () => {
     expect(content.ui.dive('5 cm')).toBe('Dive ▸ 5 cm');
     expect(content.ui.traceStage(2, 4, 'Cache')).toBe('Trace 2/4 · Cache');

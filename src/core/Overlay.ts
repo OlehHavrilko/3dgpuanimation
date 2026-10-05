@@ -14,6 +14,8 @@ export class Overlay {
   private barFill = document.getElementById('scalebar-fill')!;
   private barLabel = document.getElementById('scalebar-label')!;
   private barAnchor = document.getElementById('scalebar-anchor')!;
+  private accuracyBtn = document.getElementById('accuracy-btn') as HTMLButtonElement;
+  private accuracyEl = document.getElementById('accuracy')!;
   private ticks: HTMLElement[] = [];
   private caption = '';
   private shownIndex = -1;
@@ -24,6 +26,11 @@ export class Overlay {
     private metas: LevelMeta[],
     onJump: (index: number) => void,
   ) {
+    this.accuracyBtn.textContent = content.accuracy.button;
+    this.accuracyBtn.addEventListener('click', () => this.toggleAccuracy());
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Escape' && !this.accuracyEl.hidden) this.toggleAccuracy(false);
+    });
     const rail = document.getElementById('rail')!;
     metas.forEach((m, i) => {
       const el = document.createElement('div');
@@ -46,6 +53,7 @@ export class Overlay {
     this.scaleEl.textContent = m.scale;
     this.nameEl.textContent = m.name;
     this.descEl.textContent = m.description;
+    this.fillAccuracy(index);
     this.indexEl.textContent = `${String(index + 1).padStart(2, '0')} / ${String(this.metas.length).padStart(2, '0')}`;
     // Web Animations (wall-clock driven) so titles appear on time even after a heavy level init.
     [this.scaleEl, this.nameEl, this.descEl].forEach((el, i) => {
@@ -115,6 +123,35 @@ export class Overlay {
 
   setProgress(p: number) {
     this.hintEl.style.opacity = p > 0.995 ? '0' : String(Math.max(0.25, 1 - p * 40));
+  }
+  /** Open / close the per-level accuracy note. */
+  toggleAccuracy(open = this.accuracyEl.hidden) {
+    this.accuracyEl.hidden = !open;
+    this.accuracyBtn.setAttribute('aria-expanded', String(open));
+    this.accuracyBtn.classList.toggle('on', open);
+  }
+
+  private fillAccuracy(index: number) {
+    const A = content.accuracy;
+    const notes = A.levels[index];
+    this.accuracyEl.replaceChildren();
+    if (!notes) return;
+    for (const kind of ['spec', 'representative', 'notToScale'] as const) {
+      if (!notes[kind].length) continue;
+      const group = document.createElement('div');
+      group.className = `acc-group acc-${kind}`;
+      const h = document.createElement('div');
+      h.className = 'acc-head';
+      h.textContent = A.headings[kind];
+      const list = document.createElement('ul');
+      for (const text of notes[kind]) {
+        const li = document.createElement('li');
+        li.textContent = text;
+        list.appendChild(li);
+      }
+      group.append(h, list);
+      this.accuracyEl.appendChild(group);
+    }
   }
 }
 
