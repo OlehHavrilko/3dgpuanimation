@@ -207,6 +207,22 @@ interaction.onSpace = () => {
   tour.toggle();
   if (tour.playing) sound.offer();
 };
+// The reverse zoom owns the timeline like the tour does; any deliberate input ends it.
+let zoomTween: gsap.core.Tween | null = null;
+function releaseZoom() {
+  zoomTween = null;
+  scrollState.p = settings.progress;
+  settings.override = false;
+  scrollToProgress(settings.progress);
+}
+const stopZoom = () => {
+  if (!zoomTween) return;
+  zoomTween.kill();
+  releaseZoom();
+};
+window.addEventListener('wheel', stopZoom, { passive: true });
+window.addEventListener('touchmove', stopZoom, { passive: true });
+window.addEventListener('keydown', (e) => e.code === 'Escape' && stopZoom());
 // Any deliberate input hands control back from the tour to the user.
 window.addEventListener('wheel', () => tour.interrupt(), { passive: true });
 window.addEventListener('touchmove', () => tour.interrupt(), { passive: true });
@@ -274,6 +290,23 @@ const story = new Story({
   levelCaption: () => manager.current?.caption ?? '',
   stopTour: () => tour.stop(),
   replay: () => tour.restart(),
+  zoomOut: (done) => {
+    tour.stop();
+    interaction.exitExplore();
+    settings.override = true;
+    // Same path as scrolling back up, just fast: the seams work in both directions. Slow
+    // at the atom, quickest through the middle, easing into the card.
+    zoomTween?.kill();
+    zoomTween = gsap.to(settings, {
+      progress: 0,
+      duration: 20,
+      ease: 'power2.inOut',
+      onComplete: () => {
+        releaseZoom();
+        done();
+      },
+    });
+  },
   enterExplore: () => interaction.enterExplore(),
   getCanvas: () => canvas,
 });

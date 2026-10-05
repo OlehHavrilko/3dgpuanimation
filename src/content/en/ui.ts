@@ -23,6 +23,19 @@ export const ui = {
   },
   stop: 'Stop',
   sound: { on: 'Sound on', off: 'Sound' },
+  /** The logarithmic ruler: familiar objects at their real size (metres). */
+  ruler: {
+    label: 'Scale ruler, logarithmic',
+    marks: [
+      { m: 1.7, text: 'a person' },
+      { m: 1e-2, text: 'a fingernail' },
+      { m: 7e-5, text: 'a hair' },
+      { m: 7e-6, text: 'a blood cell' },
+      { m: 1e-7, text: 'a virus' },
+      { m: 2e-9, text: 'DNA' },
+      { m: 2e-10, text: 'an atom' },
+    ] as { m: number; text: string }[],
+  },
   palette: {
     scale: (n: number) => `Scale ${String(n).padStart(2, '0')}`,
     part: 'Part',

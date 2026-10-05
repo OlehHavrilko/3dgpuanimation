@@ -48,6 +48,7 @@
       </section>
 
       <nav id="rail"></nav>
+      <div id="ruler" role="img"></div>
 
       <footer class="hud-bottom">
         <div class="fov">
@@ -140,6 +141,18 @@
     </div>
 
     <!-- Finale: the descent ends on a chord, not on a stop(). -->
+    <div id="coda" aria-hidden="true">
+      <div class="coda-inner">
+        <h2 id="coda-title"></h2>
+        <p id="coda-body"></p>
+        <p id="coda-note"></p>
+        <div class="fin-actions">
+          <button id="coda-again" type="button" class="primary"></button>
+          <button id="coda-explore" type="button"></button>
+        </div>
+      </div>
+    </div>
+
     <div id="finale" aria-hidden="true">
       <div class="fin-inner">
         <div class="fin-tag">End of the descent</div>
@@ -161,6 +174,7 @@
         </div>
         <div class="fin-actions">
           <button id="fin-replay" type="button" class="primary">Replay</button>
+          <button id="fin-zoomout" type="button">Zoom back out</button>
           <button id="fin-explore" type="button">Explore</button>
           <button id="fin-share" type="button">Share frame</button>
           <a id="fin-source" href="https://github.com/OlehHavrilko/3dgpuanimation" target="_blank" rel="noopener"

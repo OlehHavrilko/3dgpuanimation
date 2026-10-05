@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { expectNoErrors, openApp, waitForLevel } from './helpers';
+import { expectNoErrors, goToLevel, openApp, waitForLevel } from './helpers';
 
 /**
  * Phase C: the whole route GPU → Atom as one continuous descent. For every boundary the dive
@@ -63,5 +63,29 @@ test('seamless descent: every boundary from the card to the atom', async ({ page
   const back = await at(6, dive(0.995));
   expect(back.continuous).toBe(true);
   expect(back.revealing).toBe(true);
+  expectNoErrors(errors);
+});
+
+test('log ruler follows the view; reverse zoom ends on "You were looking at one."', async ({ page }) => {
+  test.setTimeout(600_000);
+  const errors = await openApp(page);
+  const marker = () =>
+    page.evaluate(() => parseFloat((document.querySelector('.ruler-marker') as HTMLElement).style.top));
+  await goToLevel(page, 0, 0.5);
+  const top = await marker();
+  await goToLevel(page, 7, 0.5);
+  const bottom = await marker();
+  // From the card (tens of cm) to the atom: the marker rides down the ruler.
+  expect(bottom).toBeGreaterThan(top + 50);
+  await expect(page.locator('.ruler-mark')).toHaveCount(7);
+
+  // Finale → Zoom back out → closing line.
+  await goToLevel(page, 7, 0.99);
+  await expect.poll(() => page.evaluate(() => (window as any).__teardown.story.finaleVisible)).toBe(true);
+  await page.locator('#fin-zoomout').click();
+  await expect.poll(() => page.evaluate(() => (window as any).__teardown.settings.progress)).toBeLessThan(0.9);
+  await expect(page.locator('#coda')).toHaveClass(/on/, { timeout: 120_000 });
+  await expect(page.locator('#coda-title')).toHaveText('You were looking at one.');
+  await expect(page.locator('#coda-body')).toContainText('2.9 × 10²²');
   expectNoErrors(errors);
 });

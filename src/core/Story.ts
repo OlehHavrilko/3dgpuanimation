@@ -1,6 +1,7 @@
 import { formatMeters } from './math';
 import type { FrameState } from './LevelManager';
 import { content } from '../content';
+import { GB202_ATOMS, scientific } from './facts';
 
 /**
  * The narrative layer: three acts, three anchor numbers, one finale.
@@ -78,6 +79,8 @@ export interface StoryHooks {
   stopTour(): void;
   /** Restart the guided tour from the first scale. */
   replay(): void;
+  /** Fly back up through every scale, then call `done`. */
+  zoomOut(done: () => void): void;
   enterExplore(): void;
   /** The live WebGL canvas, for Share frame. */
   getCanvas(): HTMLCanvasElement;
@@ -114,6 +117,9 @@ export class Story {
   constructor(private hook: StoryHooks) {
     const byId = (id: string) => document.getElementById(id) as HTMLButtonElement;
     byId('fin-replay').addEventListener('click', () => this.replay());
+    byId('fin-zoomout').textContent = content.story.zoomOut;
+    byId('fin-zoomout').addEventListener('click', () => this.zoomOut());
+    this.initCoda();
     byId('fin-explore').addEventListener('click', () => this.explore());
     byId('fin-share').addEventListener('click', () => {
       this.captureRequested = true;
@@ -256,6 +262,42 @@ export class Story {
     this.hideFinale(true);
     this.reset();
     this.hook.replay();
+  }
+
+  /** The reverse zoom: back up through every scale, ending on the closing line. */
+  zoomOut() {
+    this.hideFinale(true);
+    this.hook.zoomOut(() => this.showCoda());
+  }
+
+  private initCoda() {
+    const C = content.story.coda;
+    const set = (id: string, text: string) => (document.getElementById(id)!.textContent = text);
+    set('coda-title', C.title);
+    set('coda-body', C.body(scientific(GB202_ATOMS)));
+    set('coda-note', C.note);
+    set('coda-again', C.again);
+    set('coda-explore', C.explore);
+    document.getElementById('coda-again')!.addEventListener('click', () => {
+      this.hideCoda();
+      this.hook.replay();
+    });
+    document.getElementById('coda-explore')!.addEventListener('click', () => {
+      this.hideCoda();
+      this.hook.enterExplore();
+    });
+  }
+
+  private showCoda() {
+    const el = document.getElementById('coda')!;
+    el.setAttribute('aria-hidden', 'false');
+    el.classList.add('on');
+  }
+
+  private hideCoda() {
+    const el = document.getElementById('coda')!;
+    el.setAttribute('aria-hidden', 'true');
+    el.classList.remove('on');
   }
 
   private explore() {

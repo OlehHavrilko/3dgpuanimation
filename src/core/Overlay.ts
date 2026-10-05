@@ -1,6 +1,7 @@
 import type { LevelMeta } from './types';
 import { formatMeters, powerOfTen } from './math';
 import { content } from '../content';
+import { ScaleRuler } from './ScaleRuler';
 
 /** Minimal HUD: level name + scale label, contextual caption, scale rail, live field of view. */
 export class Overlay {
@@ -16,6 +17,7 @@ export class Overlay {
   private barAnchor = document.getElementById('scalebar-anchor')!;
   private accuracyBtn = document.getElementById('accuracy-btn') as HTMLButtonElement;
   private accuracyEl = document.getElementById('accuracy')!;
+  private ruler = new ScaleRuler(document.getElementById('ruler')!);
   private ticks: HTMLElement[] = [];
   private caption = '';
   private shownIndex = -1;
@@ -96,6 +98,7 @@ export class Overlay {
       this.fovEl.textContent = text;
     }
     this.setScaleBar(meters);
+    this.ruler.update(meters);
   }
 
   /**

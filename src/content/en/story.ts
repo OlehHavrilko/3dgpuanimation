@@ -18,6 +18,16 @@ export const story = {
     },
   ],
   tour: { play: 'Play', pause: 'Pause' },
+  /** After the reverse zoom: the closing line. */
+  coda: {
+    title: 'You were looking at one.',
+    body: (atoms: string) =>
+      `The die of this card holds about ${atoms} silicon atoms. The last scale showed one of them.`,
+    note: 'Assumes a ~0.78 mm die; the real thickness is not published.',
+    again: 'Start again',
+    explore: 'Explore',
+  },
+  zoomOut: 'Zoom back out',
   palette: {
     label: 'Command palette',
     placeholder: 'Jump to a scale or a part…',
