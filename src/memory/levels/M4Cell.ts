@@ -108,7 +108,7 @@ export class CellLevel extends BaseLevel {
     this.pickables.push(pickObject(silicon, C.entities.substrate, -1));
     const oxide = new THREE.MeshPhysicalMaterial({
       color: 0x0d2130,
-      roughness: 0.2,
+      roughness: 0.75,
       transparent: true,
       opacity: 0.5,
       depthWrite: false,
@@ -117,7 +117,7 @@ export class CellLevel extends BaseLevel {
     box(50, 160, D, 105, -80, 0, oxide);
 
     // n+ source (shared, centre) and drains, drawn on the cut face.
-    const nplus = new THREE.MeshStandardMaterial({ color: 0x6a2a1e, roughness: 0.5, emissive: 0x3a0e06 });
+    const nplus = new THREE.MeshStandardMaterial({ color: 0x5a2a1a, roughness: 0.55, emissive: 0x2a0c04 });
     box(22, 34, 1, 0, -17, D / 2 + 0.6, nplus);
     box(26, 34, 1, -SN_X, -17, D / 2 + 0.6, nplus);
     box(26, 34, 1, SN_X, -17, D / 2 + 0.6, nplus);
@@ -161,9 +161,9 @@ export class CellLevel extends BaseLevel {
 
     // Bitline contact and the bitline itself, running along z out of the frame.
     const tungsten = addRimLight(
-      new THREE.MeshStandardMaterial({ color: 0x9ba3ae, metalness: 1, roughness: 0.4 }),
+      new THREE.MeshStandardMaterial({ color: 0x7d8590, metalness: 1, roughness: 0.5 }),
       0x7ac8ff,
-      0.25,
+      0.12,
     );
     box(18, 40, 18, 0, 20, 0, tungsten);
     this.bitlineMat = new THREE.MeshStandardMaterial({
@@ -301,7 +301,7 @@ export class CellLevel extends BaseLevel {
     const restore = range(t, 0.54, 0.68);
     const leak = range(t, 0.72, 0.86);
     const refresh = range(t, 0.87, 0.94);
-    this.bitlineMat.emissiveIntensity = 0.6 * Math.sin(Math.PI * clamp(read * 1.2)) + 0.4 * Math.sin(Math.PI * restore);
+    this.bitlineMat.emissiveIntensity = 0.3 * Math.sin(Math.PI * clamp(read * 1.2)) + 0.2 * Math.sin(Math.PI * restore);
 
     let home = 0;
     const p = this.tmp;

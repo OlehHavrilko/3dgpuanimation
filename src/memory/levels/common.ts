@@ -5,11 +5,11 @@ export const PAM3_COLORS = [0x3aa8ff, 0x46505a, 0xb6ff3a] as const;
 
 /** Key + rim + fill, the studio look of the main descent (green NVIDIA-ish rim). */
 export function studioLights(scene: THREE.Scene, scale: number, rimColor: THREE.ColorRepresentation = 0x76b900) {
-  scene.add(new THREE.HemisphereLight(0xe8f5e0, 0x040805, 0.45));
+  scene.add(new THREE.HemisphereLight(0xe8eef5, 0x040506, 0.4));
   const key = new THREE.DirectionalLight(0xffffff, 2.1);
   key.position.set(1.2 * scale, 2.4 * scale, 1.5 * scale);
   scene.add(key);
-  const rim = new THREE.DirectionalLight(rimColor, 1.8);
+  const rim = new THREE.DirectionalLight(rimColor, 0.55);
   rim.position.set(-1.6 * scale, 0.6 * scale, -1.4 * scale);
   scene.add(rim);
 }

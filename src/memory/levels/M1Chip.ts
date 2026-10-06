@@ -85,9 +85,6 @@ export class ChipLevel extends BaseLevel {
   protected build() {
     const s = this.scene;
     studioLights(s, 40);
-    const glow = new THREE.PointLight(0x9cff3a, 4, 40, 1.6);
-    glow.position.set(0, 10, 4);
-    s.add(glow);
 
     this.buildBoard();
     this.buildChip();
@@ -99,7 +96,7 @@ export class ChipLevel extends BaseLevel {
     const BD = 70;
     const rng = mulberry32(31);
     const tex = canvasTexture(1024, 800, (g, w, h) => {
-      g.fillStyle = '#0b2412';
+      g.fillStyle = '#0a1a10';
       g.fillRect(0, 0, w, h);
       // Faint inner-layer routing seen through the solder mask.
       g.strokeStyle = 'rgba(80, 150, 70, 0.18)';
@@ -147,7 +144,7 @@ export class ChipLevel extends BaseLevel {
 
     // Neighbouring GDDR7 chips, 16 mm apart as on the board level.
     const neighbourMat = makeInstanceGlow(
-      new THREE.MeshStandardMaterial({ color: 0x15171a, roughness: 0.42, metalness: 0.2 }),
+      new THREE.MeshStandardMaterial({ color: 0x0c0d10, roughness: 0.62, metalness: 0.05 }),
       0x9cff3a,
     );
     const neighbours = new THREE.InstancedMesh(new THREE.BoxGeometry(PW, 1.2, PD), neighbourMat, 2);
@@ -211,7 +208,7 @@ export class ChipLevel extends BaseLevel {
     // Substrate.
     const sub = new THREE.Mesh(
       new THREE.BoxGeometry(PW, SUB, PD),
-      new THREE.MeshStandardMaterial({ color: 0x2c3a1c, roughness: 0.5, metalness: 0.25 }),
+      new THREE.MeshStandardMaterial({ color: 0x1c2116, roughness: 0.55, metalness: 0.2 }),
     );
     sub.position.y = BALL_R * 2 + SUB / 2;
     chip.add(sub);
@@ -241,8 +238,8 @@ export class ChipLevel extends BaseLevel {
     });
     this.dieGlow = new THREE.MeshStandardMaterial({
       map: dieTex,
-      metalness: 0.5,
-      roughness: 0.35,
+      metalness: 0.3,
+      roughness: 0.4,
       emissive: 0x9cff3a,
       emissiveIntensity: 0,
     });
@@ -303,8 +300,8 @@ export class ChipLevel extends BaseLevel {
 
     // X-ray: the mould fades so the die shows through.
     const x = smoothstep(0.6, 0.78, t);
-    this.mouldMat.opacity = 1 - 0.85 * x;
-    this.topMat.opacity = 1 - 0.92 * x;
+    this.mouldMat.opacity = 1 - 0.93 * x;
+    this.topMat.opacity = 1 - 0.96 * x;
     const see = x > 0.01;
     this.mouldMat.depthWrite = !see;
     this.topMat.depthWrite = !see;

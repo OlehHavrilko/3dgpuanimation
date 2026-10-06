@@ -1,7 +1,7 @@
 name: Update visual snapshots
 
 # Run by hand on a branch after an intended visual change: re-renders every frame in
-# tests/e2e/visual.spec.ts on the same runner image as CI and commits the new baselines.
+# tests/e2e/visual*.spec.ts on the same runner image as CI and commits the new baselines.
 on:
   workflow_dispatch:
 
@@ -28,7 +28,7 @@ jobs:
       - run: npm run test:visual -- --update-snapshots=all
       - name: Commit changed baselines
         run: |
-          git add tests/e2e/visual.spec.ts-snapshots
+          git add tests/e2e/visual.spec.ts-snapshots tests/e2e/visual-branch.spec.ts-snapshots
           if git diff --cached --quiet; then
             echo "Baselines unchanged."
             exit 0

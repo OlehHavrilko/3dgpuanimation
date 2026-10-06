@@ -9,6 +9,12 @@
   color: var(--green-soft);
 }
 
+.mem-brand {
+  color: inherit;
+  text-decoration: none;
+  pointer-events: auto;
+}
+
 .mem-back {
   font-family: var(--mono);
   font-size: 10px;
@@ -74,12 +80,17 @@
   font-size: 12px;
 }
 
+/* At the end card the level text steps aside, so the two never overlap. */
+body.mem-ended .hud-main {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+}
+
 @media (max-width: 640px) {
-  /* The phone HUD has no room for the long label: keep the arrow only. */
+  /* The phone top bar has no room for the long label: the brand links back instead. */
   .mem-back {
-    max-width: 34vw;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    display: none;
   }
   #mem-end {
     bottom: calc(132px + var(--safe-bottom));

@@ -353,6 +353,7 @@ function renderFrame(rawDt: number) {
   if (atEnd !== endShown) {
     endShown = atEnd;
     endCard.classList.toggle('on', atEnd);
+    document.body.classList.toggle('mem-ended', atEnd);
     endCard.setAttribute('aria-hidden', String(!atEnd));
   }
 
