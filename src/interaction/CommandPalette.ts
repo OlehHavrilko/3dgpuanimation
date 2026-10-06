@@ -20,6 +20,7 @@ export class CommandPalette {
   private items: PaletteItem[] = [];
   private shown: PaletteItem[] = [];
   private active = 0;
+  private lastFocus: HTMLElement | null = null;
 
   constructor(private provider: () => PaletteItem[]) {
     this.root.innerHTML = `
@@ -53,8 +54,10 @@ export class CommandPalette {
     this.isOpen = true;
     this.items = this.provider();
     this.root.classList.add('on');
+    // The dialog must announce itself; leaving `aria-hidden="true"` hid it from screen readers.
     this.root.setAttribute('aria-hidden', 'false');
     document.body.classList.add('palette');
+    this.lastFocus = (document.activeElement as HTMLElement | null) ?? null;
     this.input.value = '';
     this.active = 0;
     this.render();
@@ -67,6 +70,8 @@ export class CommandPalette {
     this.root.setAttribute('aria-hidden', 'true');
     document.body.classList.remove('palette');
     this.input.blur();
+    this.lastFocus?.focus?.();
+    this.lastFocus = null;
   }
 
   private onKey(e: KeyboardEvent) {

@@ -7,6 +7,11 @@
   --faint: rgba(225, 240, 215, 0.18);
   --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
   --sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* Notches and home indicators: 0 on devices that do not report them. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
 }
 
 * {
@@ -20,6 +25,8 @@ body {
   color: var(--white);
   font-family: var(--sans);
   -webkit-font-smoothing: antialiased;
+  /* A scroll-driven piece should not rubber-band or pull-to-refresh under the finger. */
+  overscroll-behavior-y: none;
 }
 
 #gl {
@@ -27,6 +34,8 @@ body {
   inset: 0;
   width: 100vw;
   height: 100vh;
+  /* Dynamic viewport so the canvas matches the visible area while mobile chrome slides. */
+  height: 100dvh;
   display: block;
   z-index: 0;
 }
@@ -36,6 +45,7 @@ body {
   inset: 0;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   display: block;
   z-index: 1;
   pointer-events: none;
@@ -53,7 +63,9 @@ body {
   inset: 0;
   pointer-events: none;
   z-index: 2;
-  padding: clamp(16px, 3vw, 40px);
+  /* Honour notches and the home indicator without a second layout. */
+  padding: max(clamp(16px, 3vw, 40px), var(--safe-top)) max(clamp(16px, 3vw, 40px), var(--safe-right))
+    max(clamp(16px, 3vw, 40px), var(--safe-bottom)) max(clamp(16px, 3vw, 40px), var(--safe-left));
   display: grid;
   grid-template-rows: auto 1fr auto;
 }
@@ -358,46 +370,6 @@ body {
   }
 }
 
-@media (max-width: 640px) {
-  #rail {
-    display: none;
-  }
-  .hud-main {
-    max-width: 100%;
-  }
-  #lvl-desc {
-    font-size: 13px;
-  }
-}
-
-#scroll-hint {
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  font-size: 11px;
-}
-#scroll-hint span {
-  color: var(--green);
-  display: inline-block;
-  animation: bob 1.6s ease-in-out infinite;
-}
-@keyframes bob {
-  50% {
-    transform: translateY(4px);
-  }
-}
-
-@media (max-width: 640px) {
-  #rail {
-    display: none;
-  }
-  .hud-main {
-    max-width: 100%;
-  }
-  #lvl-desc {
-    font-size: 13px;
-  }
-}
-
 .lil-gui.root {
   z-index: 10;
 }
@@ -485,6 +457,7 @@ body.exploring #gl.hovering {
   inset: 0;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   z-index: 3;
   pointer-events: none;
   opacity: 0;
@@ -688,8 +661,8 @@ body.idle:not(.exploring) #crumbs {
 }
 #inspector.on {
   opacity: 1;
-  visibility: visible;
   transform: translate(0, -50%);
+  visibility: visible;
   pointer-events: auto;
 }
 /* Instrument-panel corner ticks */
@@ -1096,8 +1069,8 @@ body.following #lvl-caption {
 }
 #tour.on {
   opacity: 1;
-  visibility: visible;
   transform: translate(-50%, 0);
+  visibility: visible;
   pointer-events: auto;
 }
 #tour-play {
@@ -1548,8 +1521,8 @@ body.touring .hud-bottom {
 }
 #sound-invite.on {
   opacity: 1;
-  visibility: visible;
   transform: translate(-50%, 0);
+  visibility: visible;
   pointer-events: auto;
 }
 .si-glyph {
@@ -1595,6 +1568,7 @@ body.cleanshot #sound-invite,
 body.cleanshot #thermal-legend,
 body.cleanshot #inspector,
 body.finale-open #hud,
+body.finale-open #ruler,
 body.finale-open #tour,
 body.finale-open #sound-invite,
 body.finale-open #thermal-legend {
@@ -2157,4 +2131,286 @@ body.keynum-on:not(.exploring) #ruler {
 }
 .acc-more:hover {
   color: var(--white);
+}
+
+/* ============================================================ mobile layout pass
+   The portrait HUD used to be a single unwrapped flex row — scale bar + six nav
+   buttons + scroll cue. On a 320 px screen the buttons stacked into a 180 px
+   column, the cue wrapped onto four lines and the level copy ran under the ruler.
+   What follows turns the bottom into a deliberate, thumb-sized bar. */
+/* Tablet portrait: the level copy used to run under the scale ruler. */
+@media (min-width: 641px) and (max-width: 900px) {
+  .hud-main {
+    max-width: calc(100% - 110px);
+  }
+  #ruler {
+    right: 16px;
+    width: 84px;
+  }
+  .ruler-mark {
+    display: none;
+  }
+}
+@media (max-width: 640px) {
+  #rail {
+    display: none;
+  }
+
+  /* Keep the text column clear of the scale ruler instead of underlapping it. */
+  .hud-main {
+    max-width: calc(100% - 86px);
+    margin-bottom: 12px;
+  }
+  #lvl-desc {
+    font-size: 13px;
+  }
+  #lvl-caption {
+    font-size: 12.5px;
+  }
+  /* Sit the ruler higher and shorter so its lower end clears the bottom bar. */
+  #ruler {
+    top: 42%;
+    height: min(44vh, 420px);
+  }
+
+  /* Bottom chrome: scroll cue, scale bar, then a full-width control bar. */
+  .hud-bottom {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    align-items: end;
+  }
+  #scroll-hint {
+    order: -1;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .fov {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+  }
+  .fov-label {
+    display: none;
+  }
+  #fov-value {
+    font-size: 12px;
+  }
+  #scalebar {
+    margin-top: 0;
+    flex: 1 1 auto;
+  }
+  .scalebar-track {
+    width: auto;
+    max-width: none;
+  }
+  .scalebar-meta {
+    margin-top: 4px;
+  }
+
+  /* Six equal buttons; two rows on the narrowest phones, one row from 361 px up. */
+  #nav {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+    width: 100%;
+  }
+  #nav button {
+    min-width: 0;
+    min-height: 44px;
+    padding: 6px 2px;
+    font-size: 11px;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Thumb-sized controls elsewhere. */
+  #accuracy-btn {
+    min-height: 32px;
+    padding: 7px 12px;
+    font-size: 12px;
+  }
+  #tour {
+    gap: 8px;
+    padding: 8px;
+    bottom: calc(var(--safe-bottom) + 10px);
+  }
+  #tour-play {
+    min-height: 44px;
+    min-width: 56px;
+  }
+  #tour-close {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .tour-meta {
+    flex-wrap: wrap;
+    gap: 4px 10px;
+  }
+  #tour-label {
+    white-space: normal;
+  }
+  #sound-invite {
+    bottom: calc(var(--safe-bottom) + 118px);
+  }
+  #sound-invite button {
+    min-height: 44px;
+  }
+  .insp-close {
+    top: 0;
+    right: 0;
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .insp-actions button,
+  .seg button {
+    min-height: 40px;
+  }
+  .ref-close {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .ref-tab {
+    min-height: 44px;
+  }
+  .ref-go {
+    min-height: 44px;
+    padding: 0 6px;
+  }
+  .pal-row {
+    min-height: 44px;
+  }
+  .pal-search input {
+    min-height: 24px;
+  }
+
+  /* The inspector is a bottom sheet: let the covered HUD step back behind it. */
+  body.inspecting .hud-bottom {
+    opacity: 0;
+    pointer-events: none;
+  }
+  body.inspecting .hud-main {
+    opacity: 0;
+    pointer-events: none;
+  }
+  body.inspecting #scroll-hint {
+    opacity: 0 !important;
+  }
+  /* The explore hint floats above the control bar instead of over the scale bar. */
+  #explore-hint {
+    bottom: calc(var(--safe-bottom) + 118px);
+  }
+
+  /* Intro and finale must never clip their own actions on a short phone. */
+  .intro-actions button {
+    min-height: 44px;
+  }
+  #finale {
+    place-items: safe center;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: calc(var(--safe-top) + 18px) 18px calc(var(--safe-bottom) + 18px);
+  }
+  .fin-actions button {
+    min-height: 44px;
+  }
+  .fin-actions a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}
+@media (min-width: 361px) {
+  #nav {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+@media (max-width: 360px) {
+  /* The control bar is two rows here, so the cards have to clear a taller bar. */
+  #sound-invite,
+  #explore-hint {
+    bottom: calc(var(--safe-bottom) + 168px);
+  }
+}
+
+/* Landscape phones: the three-column bottom row does not fit and the ruler has no
+   vertical room, so drop it and let the scroll cue wrap onto its own line. Scoped to
+   coarse pointers so a short desktop window keeps the full layout. */
+@media (max-height: 560px) and (pointer: coarse) {
+  #ruler {
+    display: none;
+  }
+  .hud-main {
+    max-width: min(56vw, 460px);
+    margin-bottom: 8px;
+  }
+  .hud-bottom {
+    flex-wrap: wrap;
+  }
+  #scroll-hint {
+    order: 3;
+    flex: 1 0 100%;
+    text-align: right;
+  }
+  #finale {
+    place-items: safe center;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  #tour {
+    bottom: calc(var(--safe-bottom) + 8px);
+  }
+}
+
+/* Coarse pointers: no hover, so every control needs a visible pressed state. */
+@media (hover: none) {
+  /* Touch devices (portrait or landscape) get thumb-sized targets everywhere, not only
+     under the 640 px width query — landscape phones are wider than that. */
+  #nav button,
+  #tour-play,
+  #sound-invite button,
+  .fin-actions button,
+  .fin-actions a,
+  .intro-actions button,
+  .ref-tab,
+  .ref-go,
+  .pal-row,
+  .insp-actions button,
+  .seg button {
+    min-height: 44px;
+  }
+  #accuracy-btn {
+    min-height: 32px;
+    padding: 7px 12px;
+  }
+  #tour-close,
+  .insp-close,
+  .ref-close {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .ctl input[type='range'] {
+    min-height: 24px;
+  }
+  .pal-search input {
+    min-height: 24px;
+  }
+  #nav button:active,
+  .insp-actions button:active,
+  .fin-actions button:active,
+  .intro-actions button:active,
+  #sound-invite button:active,
+  .pal-row:active {
+    background: rgba(118, 185, 0, 0.25);
+    color: var(--white);
+  }
+  a,
+  button,
+  input,
+  #rail .tick,
+  .label {
+    -webkit-tap-highlight-color: rgba(118, 185, 0, 0.18);
+  }
 }
