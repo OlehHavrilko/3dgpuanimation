@@ -66,16 +66,47 @@ test('3D labels (L) and the command palette (Ctrl+K)', async ({ page }) => {
   expectNoErrors(errors);
 });
 
-test('deep link opens a scale in a view mode', async ({ page }) => {
+test('deep link opens a scale at a point inside it, in a view mode', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  await page.goto('/?debug&quality=medium#l=5&v=Section');
+  await page.goto('/?debug&quality=medium#l=5&p=40&v=Section');
   await page.waitForFunction(() => (window as any).__teardown);
   await waitForLevel(page, 4);
   await expect
     .poll(() => page.evaluate(() => (window as any).__teardown.interaction.views.mode), { timeout: 60_000 })
     .toBe('Section');
-  await expect.poll(() => page.evaluate(() => location.hash)).toBe('#l=5&v=Section');
+  // The URL keeps the point inside the scale (5 % steps), so the frame can be shared back.
+  await expect
+    .poll(() => page.evaluate(() => location.hash), { timeout: 60_000 })
+    .toMatch(/^#l=5&p=(35|40|45)&v=Section$/);
+  expectNoErrors(errors);
+});
+
+test('Sources & glossary: G opens it, tabs switch, a term jumps to its scale', async ({ page }) => {
+  const errors = await openApp(page);
+  await page.keyboard.press('g');
+  await expect(page.locator('#reference')).toHaveClass(/on/);
+  await expect(page.locator('#ref-glossary dt')).toHaveCount(23);
+  // While open, scene keys do nothing: F must not start the Trace.
+  await page.keyboard.press('f');
+  expect(await bodyHas(page, 'following')).toBe(false);
+  await page.locator('#ref-tab-sources').click();
+  await expect(page.locator('#ref-sources')).toBeVisible();
+  await expect(page.locator('#ref-sources a')).toHaveCount(4);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#reference')).not.toHaveClass(/on/);
+  // The accuracy note links to the sources.
+  await page.locator('#accuracy-btn').click();
+  await page.locator('.acc-more').click();
+  await expect(page.locator('#ref-sources')).toBeVisible();
+  // "Show ▸" on a glossary term closes the panel and flies to that scale.
+  await page.locator('#ref-tab-glossary').click();
+  // (A neighbouring scale: under software rendering every level on the way costs seconds.)
+  await page.locator('#ref-glossary dt', { hasText: 'GDDR7' }).locator('.ref-go').click();
+  await expect(page.locator('#reference')).not.toHaveClass(/on/);
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__teardown.manager.currentIndex), { timeout: 120_000 })
+    .toBe(1);
   expectNoErrors(errors);
 });
 

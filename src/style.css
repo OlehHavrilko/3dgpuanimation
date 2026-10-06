@@ -1936,3 +1936,162 @@ body.keynum-on:not(.exploring) #ruler {
 #coda .fin-actions {
   justify-content: center;
 }
+
+/* Sources & glossary: one modal, two tabs. */
+#reference {
+  position: fixed;
+  inset: 0;
+  z-index: 12;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(2, 5, 4, 0.62);
+  backdrop-filter: blur(6px);
+}
+#reference.on {
+  display: flex;
+}
+.ref-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(640px, 100%);
+  max-height: min(78vh, 720px);
+  border: 1px solid rgba(118, 185, 0, 0.3);
+  background: rgba(5, 11, 7, 0.97);
+  box-shadow: 0 40px 120px rgba(0, 0, 0, 0.7);
+}
+.ref-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+}
+.ref-head h2 {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--green-soft);
+}
+.ref-close {
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(225, 240, 215, 0.16);
+  background: none;
+  color: var(--dim);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.ref-close:hover,
+.ref-close:focus-visible {
+  border-color: var(--green);
+  color: var(--white);
+}
+.ref-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 16px;
+  border-bottom: 1px solid rgba(225, 240, 215, 0.1);
+}
+.ref-tab {
+  padding: 8px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.ref-tab[aria-selected='true'] {
+  border-bottom-color: var(--green);
+  color: var(--white);
+}
+.ref-body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px 16px 18px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--dim);
+}
+.ref-body[hidden] {
+  display: none;
+}
+.ref-terms {
+  margin: 0;
+}
+.ref-terms dt {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+}
+.ref-term {
+  color: var(--white);
+  font-weight: 600;
+}
+.ref-go {
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--green-soft);
+  font-family: var(--mono);
+  font-size: 10px;
+  cursor: pointer;
+}
+.ref-go:hover,
+.ref-go:focus-visible {
+  color: var(--white);
+}
+.ref-terms dd {
+  margin: 2px 0 0;
+}
+.ref-intro {
+  margin: 10px 0 4px;
+}
+.ref-sources {
+  margin: 0;
+  padding-left: 20px;
+}
+.ref-sources li {
+  margin-top: 12px;
+}
+.ref-sources a {
+  color: var(--white);
+  text-decoration-color: rgba(166, 224, 90, 0.5);
+  text-underline-offset: 3px;
+}
+.ref-sources a:hover {
+  color: var(--green-soft);
+}
+.ref-pub,
+.ref-covers {
+  display: block;
+}
+.ref-pub {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--green-soft);
+}
+.acc-more {
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--green-soft);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.acc-more:hover {
+  color: var(--white);
+}

@@ -26,6 +26,7 @@ import { setupSound } from './app/sound';
 import { setupPalette } from './app/palette';
 import { setupDebugPanel } from './app/debugPanel';
 import { applyStaticText } from './app/staticText';
+import { setupReference } from './app/reference';
 import { createWarmup } from './app/warmup';
 
 gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
@@ -143,10 +144,10 @@ const scrollToProgress = (p: number) => window.scrollTo({ top: p * maxScroll(), 
  * Fly to another scale by scrolling there: going forward passes through each dive, so the
  * transition stays cinematic. Leaves Explore mode first (it locks the scroll).
  */
-function jumpToLevel(index: number) {
+function jumpToLevel(index: number, local?: number) {
   tour.stop(); // a manual jump always takes the wheel back from the tour
   interaction.exitExplore();
-  const p = manager.progressForLevel(index);
+  const p = manager.progressForLevel(index, local);
   if (settings.override) {
     gsap.to(settings, { progress: p, duration: 1.6, ease: 'power2.inOut' });
     return;
@@ -312,6 +313,8 @@ const story = new Story({
   getCanvas: () => canvas,
 });
 
+const reference = setupReference({ metas: LEVELS.map((l) => l.meta), jumpToLevel: (i) => jumpToLevel(i) });
+
 setupPalette({
   metas: LEVELS.map((l) => l.meta),
   manager,
@@ -319,12 +322,15 @@ setupPalette({
   labels,
   jumpToLevel,
   enabled: () => introDone,
+  openReference: (tab) => reference.toggle(tab, true),
 });
 
 // ---------------------------------------------------------------- deep links
-// `#l=5&v=Section` opens straight at a scale (and view mode); handy for sharing a frame.
+// `#l=5&p=40&v=Section` opens straight at a scale, a point inside it (percent) and a view mode:
+// handy for sharing a frame.
 const deepParams = new URLSearchParams(location.hash.replace(/^#/, ''));
 const deepLevel = Number(deepParams.get('l'));
+const deepLocal = deepParams.has('p') ? Math.min(99, Math.max(0, Number(deepParams.get('p')))) / 100 : NaN;
 const deepMode = deepParams.get('v') as ViewMode | null;
 let deepApplied = false;
 
@@ -336,15 +342,26 @@ function applyDeepLink(index: number) {
 }
 if (Number.isInteger(deepLevel) && deepLevel >= 1 && deepLevel <= LEVELS.length) {
   dismissIntro();
-  requestAnimationFrame(() => jumpToLevel(deepLevel - 1));
+  requestAnimationFrame(() => jumpToLevel(deepLevel - 1, Number.isFinite(deepLocal) ? deepLocal : undefined));
 }
 
 let lastHashKey = '';
-/** Keep the URL in step with the current scale + view mode (shareable deep links). */
-function syncHash() {
+let lastHashAt = 0;
+/** Keep the URL in step with the current scale, the point inside it and the view mode. */
+function hashFor(local: number) {
   const mode = interaction.views.mode;
   const l = manager.currentIndex + 1;
-  const h = mode && mode !== 'Normal' ? `#l=${l}&v=${mode}` : `#l=${l}`;
+  // 5 % steps: precise enough to land on the same frame, coarse enough to stay readable.
+  const p = Math.round((local * 100) / 5) * 5;
+  return `#l=${l}&p=${Math.min(95, p)}${mode && mode !== 'Normal' ? `&v=${mode}` : ''}`;
+}
+function syncHash(local: number) {
+  const now = performance.now();
+  const h = hashFor(local);
+  // Safari rejects more than 100 replaceState calls in 30 s; a fast scroll would hit that.
+  if (h === lastHashKey || now - lastHashAt < 400) return;
+  lastHashKey = h;
+  lastHashAt = now;
   if (location.hash !== h) history.replaceState(null, '', h);
 }
 
@@ -445,11 +462,7 @@ function frame(now: number) {
     labelTimer = 0.4;
     labels.refreshBoxes(level);
   }
-  const hashKey = `${manager.currentIndex}:${interaction.views.mode}`;
-  if (hashKey !== lastHashKey) {
-    lastHashKey = hashKey;
-    syncHash();
-  }
+  if (!reference.open) syncHash(state.local);
   const exploreFocus = interaction.getFocusOverride();
 
   overlay.setCaption(ctx.journey.follow && level.followCaption ? level.followCaption : level.caption);
