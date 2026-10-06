@@ -395,13 +395,14 @@ export class Story {
     const slug = this.hook
       .levelName(state.index)
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-');
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
     c.toBlob((blob) => {
       if (!blob) return;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `gpu-to-atom-${String(state.index + 1).padStart(2, '0')}-${slug}.png`;
+      a.download = `gpu-to-atom-${String(state.index + 1).padStart(2, '0')}${slug ? `-${slug}` : ''}.png`;
       a.click();
       window.setTimeout(() => URL.revokeObjectURL(url), 5000);
     }, 'image/png');

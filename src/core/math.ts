@@ -1,3 +1,5 @@
+import { content } from '../content';
+
 export const clamp = (v: number, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 export const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
@@ -41,16 +43,31 @@ export function formatMeters(m: number): string {
     [1e-10, 'Å'],
     [1e-12, 'pm'],
   ];
+  const { decimal, units: names } = content.ui.number;
+  const fmt = (v: number, u: string) =>
+    `${(v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFixed(1) : v.toFixed(2)).replace('.', decimal)} ${names[u as keyof typeof names]}`;
   for (const [f, u] of units) {
-    if (m >= f) {
-      const v = m / f;
-      return `${v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFixed(1) : v.toFixed(2)} ${u}`;
-    }
+    if (m >= f) return fmt(m / f, u);
   }
-  return `${(m / 1e-12).toFixed(2)} pm`;
+  return fmt(m / 1e-12, 'pm');
 }
 
-const UNIT: Record<string, number> = { m: 1, cm: 1e-2, mm: 1e-3, µm: 1e-6, nm: 1e-9, Å: 1e-10, pm: 1e-12 };
+const UNIT: Record<string, number> = {
+  m: 1,
+  cm: 1e-2,
+  mm: 1e-3,
+  µm: 1e-6,
+  nm: 1e-9,
+  Å: 1e-10,
+  pm: 1e-12,
+  // Russian labels ("30 см", "0,2 нм").
+  м: 1,
+  см: 1e-2,
+  мм: 1e-3,
+  мкм: 1e-6,
+  нм: 1e-9,
+  пм: 1e-12,
+};
 const SUP: Record<string, string> = {
   '-': '⁻',
   '0': '⁰',
@@ -68,9 +85,9 @@ const SUP: Record<string, string> = {
 /** "30 cm" -> "10⁻¹ m": order of magnitude of a scale label. */
 export function powerOfTen(label: string) {
   const [num, unit] = label.split(' ');
-  const meters = parseFloat(num) * (UNIT[unit] ?? 1);
+  const meters = parseFloat(num.replace(',', '.')) * (UNIT[unit] ?? 1);
   const e = Math.floor(Math.log10(meters) + 1e-9);
-  return `10${String(e).replace(/./g, (c) => SUP[c] ?? c)} m`;
+  return `10${String(e).replace(/./g, (c) => SUP[c] ?? c)} ${content.ui.number.units.m}`;
 }
 
 /** texts[k] where k is the number of thresholds t has passed (texts.length = thresholds.length + 1). */

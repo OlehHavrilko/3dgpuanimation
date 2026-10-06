@@ -23,7 +23,7 @@ export const transistor = {
     mode: 'Mode',
     manual: (vg: number) => `manual · Vg ${vg.toFixed(2)} V`,
     channel: 'Channel',
-    channelState: (on: number) =>
+    channelState: (on: number): string =>
       on > 0.85 ? 'strong inversion (ON)' : on > 0.08 ? 'near threshold' : 'depleted (OFF)',
     current: 'Drain current (rel.)',
     logic: 'Logic out',
