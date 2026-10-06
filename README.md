@@ -345,3 +345,7 @@ Everything is procedural: no external models or textures.
 ## Stack
 
 Vite, TypeScript, Three.js r186, GSAP ScrollTrigger, [postprocessing](https://github.com/pmndrs/postprocessing), lil-gui, the Web Audio API and hand-written GLSL (FXAA, the thin-film shader, per-instance glow). No model, texture or audio files ship with the project.
+
+## License
+
+[MIT](LICENSE) © 2026 Oleh Havrilko
