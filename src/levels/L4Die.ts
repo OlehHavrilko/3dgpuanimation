@@ -63,7 +63,7 @@ export class DieLevel extends BaseLevel {
     this.bloom = 1.15;
     this.bokeh = 1.3;
     this.sectionNormal = [1, 0, 0];
-    this.followCaption = C.follow;
+    this.followCaption = C.follow(1);
     // Dive into SM #3 of the third GPC in the top row.
     this.target = {
       position: smCenter(2, 1, 0, 3),
@@ -256,11 +256,20 @@ export class DieLevel extends BaseLevel {
     this.tracePath.visible = on;
     this.tracePacket.visible = on;
     if (!tr) return;
-    if (tr.chip !== this.traceChip) {
-      this.traceChip = tr.chip;
+    this.followCaption = C.follow(tr.chip + 1);
+    const follow = this.ctx.journey.follow;
+    const key = tr.chip + (follow ? 100 : 0);
+    if (key !== this.traceChip) {
+      this.traceChip = key;
       const w = this.traceWaypoints(tr.chip);
       // Plane-local (x, y) -> world (x, 0.06, -y); right-angle hops like on-die routing.
-      const pts = [w.mc, new THREE.Vector2(w.mc.x, 0), w.l2, new THREE.Vector2(w.gpc.x, 0), w.gpc, w.sm]
+      const route = [w.mc, new THREE.Vector2(w.mc.x, 0), w.l2, new THREE.Vector2(w.gpc.x, 0), w.gpc, w.sm];
+      // The Trace journey goes on to the SM the descent dives into (same column for the default chip).
+      if (follow) {
+        const p = this.target.position;
+        route.push(new THREE.Vector2(p.x, w.sm.y), new THREE.Vector2(p.x, -p.z));
+      }
+      const pts = route
         .filter((p, i, arr) => i === 0 || p.distanceTo(arr[i - 1]) > 1e-3)
         .map((p) => new THREE.Vector3(p.x, 0.06, -p.y));
       const path = new THREE.CurvePath<THREE.Vector3>();
@@ -291,6 +300,8 @@ export class DieLevel extends BaseLevel {
 
   /** Across the on-die power grid to the SM we are about to dive into. */
   followPoint(t: number, out: THREE.Vector3) {
+    // During the Trace journey the bit rides the lit on-die route.
+    if (this.ctx.journey.trace && this.traceCurve) return this.traceCurve.getPointAt(smoothstep(0.06, 0.98, t), out);
     const p = this.target.position;
     const path = (this.followCache ??= [
       [0, 0.08, 0],

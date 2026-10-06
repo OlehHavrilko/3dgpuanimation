@@ -12,7 +12,8 @@ describe('content dictionary', () => {
       expect(l.meta.name.length).toBeGreaterThan(0);
       expect(powerOfTen(l.meta.scale)).toMatch(/^10[⁻⁰¹²³⁴⁵⁶⁷⁸⁹]+ m$/);
       expect(l.meta.description.length).toBeGreaterThan(10);
-      expect(l.follow.length).toBeGreaterThan(10);
+      const follow = typeof l.follow === 'function' ? l.follow(11) : l.follow;
+      expect(follow.length).toBeGreaterThan(10);
     }
   });
 

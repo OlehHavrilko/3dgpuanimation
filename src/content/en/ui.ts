@@ -11,7 +11,7 @@ export const ui = {
   exploreHintPick: 'Hover anything to identify it, click to inspect. Drag to orbit, wheel to zoom.',
   exploreHintPlain: 'Drag to orbit, wheel to zoom.',
   traceStage: (i: number, n: number, kind: string) => `Trace ${i}/${n} · ${kind}`,
-  follow: 'Follow e⁻',
+  follow: 'Trace',
   /** Text that ships in index.html, re-applied from here so every language comes from one place. */
   static: {
     explore: 'Explore',
@@ -42,6 +42,8 @@ export const ui = {
     view: 'View',
     labels: 'Toggle 3D labels',
     fullscreen: 'Fullscreen',
+    glossary: 'Glossary',
+    sources: 'Sources',
   },
   /** Scale bar: a familiar object at least `min` metres long. */
   scaleAnchors: [

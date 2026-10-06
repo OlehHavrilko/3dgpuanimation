@@ -8,12 +8,13 @@ export const die = {
     scale: '1 cm',
     description: 'Blackwell, TSMC 4N, ~750 mm², 92.2 billion transistors.',
   },
-  follow: 'On the die: the power grid spreads current to all 170 active SMs; ours heads for one of them.',
+  follow: (chip: number) =>
+    `On the die: memory controller ${chip} hands the bit to the L2 cache, and the L2 to the one SM that asked for it.`,
   captions: {
     film: 'No paint, no dye — that colour is thin-film interference',
     gpc: 'Twelve clusters, each one a small factory',
     sm: (total: number, enabled: number) => `${total} streaming multiprocessors · ${enabled} alive on this one`,
-    l2: '128 MB of L2 cache sits in the middle of the die',
+    l2: '128 MB of L2 cache sits in the middle of the die (96 MB enabled on the RTX 5090)',
     mc: 'Sixteen memory controllers, 512 bits wide',
     outro: 'Down into a single SM',
   },

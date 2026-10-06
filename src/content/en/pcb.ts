@@ -9,8 +9,8 @@ export const pcb = {
     scale: '10 cm',
     description: 'GB202 GPU ringed by 16 GDDR7 chips (32 GB, 512-bit), with power stages on both edges.',
   },
-  follow:
-    'On the board: one of many parallel power phases chops 12 V down to the ~1 V core rail, and the current heads under the GPU package.',
+  follow: (chip: number) =>
+    `What the GPU works on lives in GDDR7: our bit leaves memory chip ${chip} on that chip's own 32-bit bus, at 28 Gbit/s per pin.`,
   captions: {
     intro: 'The board is a city: one GPU, sixteen memory chips, power everywhere',
     memoryOnline: (n: number) => `GDDR7 online: ${n} / 16 × 2 GB — 28 Gbps each`,

@@ -14,8 +14,9 @@ export function setupPalette(opts: {
   labels: Labels;
   jumpToLevel: (index: number) => void;
   enabled: () => boolean;
+  openReference: (tab: 'glossary' | 'sources') => void;
 }) {
-  const { metas, manager, interaction, labels, jumpToLevel, enabled } = opts;
+  const { metas, manager, interaction, labels, jumpToLevel, enabled, openReference } = opts;
   const T = content.ui.palette;
   const palette = new CommandPalette((): PaletteItem[] => {
     const items: PaletteItem[] = metas.map((m, i) => ({
@@ -38,6 +39,14 @@ export function setupPalette(opts: {
       }
     }
     items.push({ id: 'cmd-labels', kind: T.view, label: T.labels, hint: 'L', run: () => labels.setVisible(true) });
+    items.push({
+      id: 'cmd-glossary',
+      kind: T.view,
+      label: T.glossary,
+      hint: 'G',
+      run: () => openReference('glossary'),
+    });
+    items.push({ id: 'cmd-sources', kind: T.view, label: T.sources, run: () => openReference('sources') });
     items.push({
       id: 'cmd-fullscreen',
       kind: T.view,

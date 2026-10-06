@@ -155,6 +155,12 @@ export class Overlay {
       group.append(h, list);
       this.accuracyEl.appendChild(group);
     }
+    const more = document.createElement('button');
+    more.type = 'button';
+    more.className = 'acc-more';
+    more.dataset.reference = 'sources';
+    more.textContent = `${content.reference.open} ▸`;
+    this.accuracyEl.appendChild(more);
   }
 }
 
