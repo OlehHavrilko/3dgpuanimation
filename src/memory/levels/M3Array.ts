@@ -6,7 +6,7 @@ import { mulberry32, pickByT, range, smoothstep } from '../../core/math';
 import { content } from '../../content';
 import { QUALITY } from '../../core/quality';
 import { pickInstances, pickObject } from '../../interaction/pick';
-import { studioLights } from './common';
+import { deviceLights } from './common';
 
 /**
  * Memory branch 3 — the cell array inside one mat. Units: nanometres. Silicon surface at y = 0.
@@ -81,10 +81,7 @@ export class ArrayLevel extends BaseLevel {
 
   protected build() {
     const s = this.scene;
-    studioLights(s, 1200, 0x76b900);
-    const fill = new THREE.PointLight(0x7ac8ff, 2.2e5, 2400, 1.6);
-    fill.position.set(0, 500, 700);
-    s.add(fill);
+    deviceLights(s, 1200, 0.00045);
 
     const sizeX = COLS * BL_PITCH + 80;
     const sizeZ = ROWS * WL_PITCH + 80;
@@ -92,17 +89,17 @@ export class ArrayLevel extends BaseLevel {
     // Silicon: opaque body, translucent top layer so the buried wordlines show.
     const body = new THREE.Mesh(
       new THREE.BoxGeometry(sizeX, 220, sizeZ),
-      new THREE.MeshStandardMaterial({ color: 0x39424f, metalness: 0.3, roughness: 0.6 }),
+      new THREE.MeshStandardMaterial({ color: 0x0c0f13, metalness: 0.2, roughness: 0.6 }),
     );
     body.position.y = -60 - 110;
     s.add(body);
     const top = new THREE.Mesh(
       new THREE.BoxGeometry(sizeX, 60, sizeZ),
       new THREE.MeshPhysicalMaterial({
-        color: 0x6a7a8c,
+        color: 0x0d2130,
         roughness: 0.35,
         transparent: true,
-        opacity: 0.32,
+        opacity: 0.55,
         depthWrite: false,
       }),
     );
@@ -111,7 +108,7 @@ export class ArrayLevel extends BaseLevel {
     this.pickables.push(pickObject(top, content.memory.cell.entities.substrate, -1));
 
     // Buried wordlines (TiN), one per row.
-    this.wlMat = new THREE.MeshStandardMaterial({ color: 0x8a95a6, metalness: 0.8, roughness: 0.35 });
+    this.wlMat = new THREE.MeshStandardMaterial({ color: 0x566170, metalness: 0.8, roughness: 0.35 });
     const wls = new THREE.InstancedMesh(new THREE.BoxGeometry(sizeX - 20, 18, 13), this.wlMat, ROWS);
     const m = new THREE.Matrix4();
     for (let r = 0; r < ROWS; r++) wls.setMatrixAt(r, m.makeTranslation(0, -38, zOf(r)));
@@ -126,7 +123,7 @@ export class ArrayLevel extends BaseLevel {
 
     // Bitlines (tungsten), one per column, just above the surface.
     const blMat = makeInstanceGlow(
-      new THREE.MeshStandardMaterial({ color: 0xb4bcc8, metalness: 0.9, roughness: 0.3 }),
+      new THREE.MeshStandardMaterial({ color: 0x9ba3ae, metalness: 1, roughness: 0.4 }),
       0x6cd4ff,
     );
     const bls = new THREE.InstancedMesh(new THREE.BoxGeometry(14, 14, sizeZ - 30), blMat, COLS);
@@ -137,9 +134,9 @@ export class ArrayLevel extends BaseLevel {
 
     // Storage capacitors: tall TiN cylinders.
     const capMat = addRimLight(
-      makeInstanceGlow(new THREE.MeshStandardMaterial({ color: 0x9aa6b8, metalness: 0.85, roughness: 0.28 }), 0x9cff3a),
+      makeInstanceGlow(new THREE.MeshStandardMaterial({ color: 0x566170, metalness: 0.5, roughness: 0.3 }), 0x9cff3a),
       0x7ac8ff,
-      0.35,
+      0.3,
     );
     const capGeo = new THREE.CylinderGeometry(CAP_R, CAP_R, CAP_H, 14, 1, false);
     capGeo.translate(0, CAP_H / 2 + CAP_Y, 0);
@@ -153,7 +150,7 @@ export class ArrayLevel extends BaseLevel {
     // Landing pads under every capacitor.
     const pads = new THREE.InstancedMesh(
       new THREE.CylinderGeometry(CAP_R + 3, CAP_R + 3, 12, 12),
-      new THREE.MeshStandardMaterial({ color: 0x6d7684, metalness: 0.8, roughness: 0.4 }),
+      new THREE.MeshStandardMaterial({ color: 0x3c4450, metalness: 0.8, roughness: 0.4 }),
       COLS * ROWS,
     );
     for (let r = 0; r < ROWS; r++)
@@ -179,7 +176,7 @@ export class ArrayLevel extends BaseLevel {
     // Wordline goes high.
     const on = smoothstep(0.36, 0.42, t);
     const wl = this.activeWl.material as THREE.MeshStandardMaterial;
-    wl.emissiveIntensity = on * (1.4 + 0.3 * Math.sin(time * 8));
+    wl.emissiveIntensity = on * (1.0 + 0.25 * Math.sin(time * 8));
     wl.opacity = 0.2 + 0.8 * on;
 
     // Charge sharing: the row's charged cells flash and drain; the bitlines take a small signal.
@@ -188,9 +185,9 @@ export class ArrayLevel extends BaseLevel {
     for (let r = 0; r < ROWS; r++)
       for (let c = 0; c < COLS; c++) {
         const i = r * COLS + c;
-        const charged = this.bits[i] ? 0.1 : 0;
+        const charged = this.bits[i] ? 0.035 : 0;
         if (r === ACTIVE_ROW) {
-          const flash = this.bits[i] ? on * (1.4 * (1 - share) + 0.35 * share + 1.1 * restore) : 0;
+          const flash = this.bits[i] ? on * (0.9 * (1 - share) + 0.2 * share + 0.6 * restore) : 0;
           this.capGlow.setX(i, charged + flash);
         } else this.capGlow.setX(i, charged * 0.6);
       }
@@ -205,7 +202,7 @@ export class ArrayLevel extends BaseLevel {
     const latch = smoothstep(0.58, 0.66, t);
     for (let c = 0; c < COLS; c++) {
       const bit = this.bits[ACTIVE_ROW * COLS + c];
-      this.saGlow.setX(c, latch * (bit ? 1.1 : 0.25));
+      this.saGlow.setX(c, latch * (bit ? 0.8 : 0.12));
     }
     this.saGlow.needsUpdate = true;
 

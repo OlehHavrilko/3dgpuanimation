@@ -7,7 +7,7 @@ import { content } from '../../content';
 import { QUALITY } from '../../core/quality';
 import { pickObject } from '../../interaction/pick';
 import { pointScale } from '../../core/points';
-import { glowPointsMaterial, studioLights } from './common';
+import { deviceLights, glowPointsMaterial } from './common';
 
 /**
  * Memory branch 4 — one DRAM cell and its bit. Units: nanometres. Silicon surface at y = 0,
@@ -83,8 +83,8 @@ export class CellLevel extends BaseLevel {
   protected cameraKeys(): CameraKey[] {
     return [
       ...entry({ t: 0, pos: [150, 210, 330], look: [20, 90, 0] }, 0.3, 0.12),
-      { t: 0.3, pos: [90, 60, 230], look: [20, 0, 0] },
-      { t: 0.5, pos: [-70, 30, 210], look: [12, -10, 0] },
+      { t: 0.3, pos: [120, 50, 310], look: [20, -10, 0] },
+      { t: 0.5, pos: [-60, 20, 290], look: [15, -25, 0] },
       { t: 0.7, pos: [-40, 170, 260], look: [30, 70, 0] },
       { t: 0.86, pos: [120, 260, 260], look: [SN_X, 170, 0] },
       { t: 1, pos: [210, 230, 430], look: [10, 110, 0] },
@@ -93,10 +93,7 @@ export class CellLevel extends BaseLevel {
 
   protected build() {
     const s = this.scene;
-    studioLights(s, 400, 0x76b900);
-    const fill = new THREE.PointLight(0x7ac8ff, 4e4, 900, 1.6);
-    fill.position.set(60, 160, 240);
-    s.add(fill);
+    deviceLights(s, 500, 0.0012);
 
     const box = (w: number, h: number, d: number, x: number, y: number, z: number, mat: THREE.Material) => {
       const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
@@ -106,36 +103,36 @@ export class CellLevel extends BaseLevel {
     };
 
     // Silicon active region and the oxide isolation (STI) around it.
-    const si = new THREE.MeshStandardMaterial({ color: 0x4a5566, metalness: 0.25, roughness: 0.55 });
+    const si = new THREE.MeshStandardMaterial({ color: 0x1a2028, metalness: 0.3, roughness: 0.55 });
     const silicon = box(160, 160, D, 0, -80, 0, si);
     this.pickables.push(pickObject(silicon, C.entities.substrate, -1));
     const oxide = new THREE.MeshPhysicalMaterial({
-      color: 0x8fb6d8,
+      color: 0x0d2130,
       roughness: 0.2,
       transparent: true,
-      opacity: 0.22,
+      opacity: 0.5,
       depthWrite: false,
     });
     box(50, 160, D, -105, -80, 0, oxide);
     box(50, 160, D, 105, -80, 0, oxide);
 
     // n+ source (shared, centre) and drains, drawn on the cut face.
-    const nplus = new THREE.MeshStandardMaterial({ color: 0xc8604a, roughness: 0.5, emissive: 0x401008 });
+    const nplus = new THREE.MeshStandardMaterial({ color: 0x6a2a1e, roughness: 0.5, emissive: 0x3a0e06 });
     box(22, 34, 1, 0, -17, D / 2 + 0.6, nplus);
     box(26, 34, 1, -SN_X, -17, D / 2 + 0.6, nplus);
     box(26, 34, 1, SN_X, -17, D / 2 + 0.6, nplus);
 
     // Buried wordlines: TiN at the bottom of a trench, nitride cap above, thin gate oxide around.
     this.gateMat = new THREE.MeshStandardMaterial({
-      color: 0x8a95a6,
+      color: 0x566170,
       metalness: 0.85,
-      roughness: 0.3,
+      roughness: 0.35,
       emissive: 0x9cff3a,
       emissiveIntensity: 0,
     });
-    const otherGate = new THREE.MeshStandardMaterial({ color: 0x8a95a6, metalness: 0.85, roughness: 0.3 });
-    const capN = new THREE.MeshStandardMaterial({ color: 0x5e6f62, roughness: 0.6 });
-    const gox = new THREE.MeshStandardMaterial({ color: 0xa8d0f0, roughness: 0.3, transparent: true, opacity: 0.6 });
+    const otherGate = new THREE.MeshStandardMaterial({ color: 0x566170, metalness: 0.85, roughness: 0.35 });
+    const capN = new THREE.MeshStandardMaterial({ color: 0x161c23, roughness: 0.45 });
+    const gox = new THREE.MeshStandardMaterial({ color: 0x2f5a78, roughness: 0.3 });
     for (const sx of [-1, 1]) {
       const x = sx * TRENCH_X;
       box(18, 82, D + 2, x, -41, 0, gox);
@@ -163,47 +160,51 @@ export class CellLevel extends BaseLevel {
     this.pickables.push(pickObject(trans.children[0], C.entities.transistor, 0));
 
     // Bitline contact and the bitline itself, running along z out of the frame.
-    const tungsten = new THREE.MeshStandardMaterial({ color: 0xb4bcc8, metalness: 0.9, roughness: 0.28 });
+    const tungsten = addRimLight(
+      new THREE.MeshStandardMaterial({ color: 0x9ba3ae, metalness: 1, roughness: 0.4 }),
+      0x7ac8ff,
+      0.25,
+    );
     box(18, 40, 18, 0, 20, 0, tungsten);
     this.bitlineMat = new THREE.MeshStandardMaterial({
-      color: 0xb4bcc8,
-      metalness: 0.9,
-      roughness: 0.28,
+      color: 0x9ba3ae,
+      metalness: 1,
+      roughness: 0.4,
       emissive: 0x6cd4ff,
       emissiveIntensity: 0,
     });
-    const bitline = box(24, 22, 260, 0, 51, 0, this.bitlineMat);
-    box(24, 10, 260, 0, 67, 0, capN);
+    const bitline = box(24, 22, 200, 0, 51, D / 2 - 100, this.bitlineMat);
+    box(24, 10, 200, 0, 67, D / 2 - 100, capN);
     this.pickables.push(pickObject(bitline, C.entities.bitline, 1));
 
     // Storage-node contacts, landing pads and the two capacitors.
-    const padMat = new THREE.MeshStandardMaterial({ color: 0x7d8796, metalness: 0.85, roughness: 0.35 });
+    const padMat = new THREE.MeshStandardMaterial({ color: 0x3c4450, metalness: 0.85, roughness: 0.4 });
     const electrode = addRimLight(
       new THREE.MeshStandardMaterial({
-        color: 0xa6b2c4,
-        metalness: 0.7,
-        roughness: 0.3,
+        color: 0x566170,
+        metalness: 0.6,
+        roughness: 0.35,
         transparent: true,
-        opacity: 0.35,
+        opacity: 0.3,
         side: THREE.DoubleSide,
         depthWrite: false,
       }),
       0x7ac8ff,
-      0.6,
+      0.3,
     );
     const dielectric = new THREE.MeshPhysicalMaterial({
-      color: 0xffd27a,
+      color: 0xc89a3a,
       roughness: 0.2,
       transparent: true,
-      opacity: 0.16,
+      opacity: 0.1,
       depthWrite: false,
     });
     const plate = new THREE.MeshStandardMaterial({
-      color: 0x5f6b7c,
+      color: 0x2a313b,
       metalness: 0.6,
       roughness: 0.4,
       transparent: true,
-      opacity: 0.12,
+      opacity: 0.1,
       depthWrite: false,
     });
     for (const sx of [-1, 1]) {
@@ -243,20 +244,31 @@ export class CellLevel extends BaseLevel {
       const r = (CAP_R - 2) * Math.sqrt(0.35 + 0.65 * rng());
       const home: P = [SN_X + Math.cos(a) * r, CAP_Y + 6 + rng() * (CAP_H * 0.86), Math.sin(a) * r];
       const zr = (rng() - 0.5) * 220;
+      // Below the surface the path runs on the cut face, where the channel is drawn.
+      const face = D / 2 + 2;
+      const j = () => (rng() - 0.5) * 6;
       const read: P[] = [
         home,
         [SN_X, CAP_Y - 4, 0],
-        [SN_X, 2, (rng() - 0.5) * 10],
-        [TRENCH_X + 13, -40, (rng() - 0.5) * 20],
-        [TRENCH_X, -90, (rng() - 0.5) * 20],
-        [TRENCH_X - 13, -40, (rng() - 0.5) * 20],
-        [0, 4, 0],
-        [0, 51, zr * 0.2],
-        [(rng() - 0.5) * 16, 51, zr],
+        [SN_X, 4, 0],
+        [SN_X + j(), -12, face],
+        [TRENCH_X + 12 + j(), -45, face],
+        [TRENCH_X + j(), -88, face],
+        [TRENCH_X - 12 + j(), -45, face],
+        [j(), -12, face],
+        [0, 6, 0],
+        [0, 51, -10],
+        [(rng() - 0.5) * 16, 51, Math.min(zr, 0) - 30],
       ];
       const leak: P[] | null =
         rng() < LEAKY
-          ? [home, [SN_X, CAP_Y - 4, 0], [SN_X + 4, 2, 0], [SN_X + 10 + rng() * 20, -150, (rng() - 0.5) * 50]]
+          ? [
+              home,
+              [SN_X, CAP_Y - 4, 0],
+              [SN_X + 4, 4, 0],
+              [SN_X + 6, -10, D / 2 + 2],
+              [SN_X + 10 + rng() * 20, -150, D / 2 + 2],
+            ]
           : null;
       this.dots.push({ home, read, leak, delay: rng() * 0.5 });
       pos.set(home, i * 3);
@@ -270,7 +282,7 @@ export class CellLevel extends BaseLevel {
     geo.setAttribute('position', this.pos);
     geo.setAttribute('aAlpha', this.alpha);
     geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 100, 0), 600);
-    const { mat, uniforms } = glowPointsMaterial(0x6cd4ff, 5.5);
+    const { mat, uniforms } = glowPointsMaterial(0x3ab8ff, 4.5);
     this.pointUniforms = uniforms;
     this.points = new THREE.Points(geo, mat);
     this.points.renderOrder = 10;
@@ -283,8 +295,8 @@ export class CellLevel extends BaseLevel {
     const gate =
       smoothstep(0.32, 0.36, t) * (1 - smoothstep(0.68, 0.72, t)) +
       smoothstep(0.86, 0.88, t) * (1 - smoothstep(0.93, 0.95, t));
-    this.gateMat.emissiveIntensity = 1.3 * gate;
-    this.channelMat.emissiveIntensity = 1.2 * gate * (0.8 + 0.2 * Math.sin(time * 10));
+    this.gateMat.emissiveIntensity = 0.9 * gate;
+    this.channelMat.emissiveIntensity = 0.9 * gate * (0.8 + 0.2 * Math.sin(time * 10));
     const read = range(t, 0.36, 0.5);
     const restore = range(t, 0.54, 0.68);
     const leak = range(t, 0.72, 0.86);

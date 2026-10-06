@@ -119,11 +119,12 @@ export class DieLevel extends BaseLevel {
   protected build() {
     const s = this.scene;
     studioLights(s, 14, 0x76b900);
+    s.environmentIntensity = 0.6;
 
     // Silicon body.
     const body = new THREE.Mesh(
       new THREE.BoxGeometry(W, 0.4, D),
-      new THREE.MeshStandardMaterial({ color: 0x2a3038, metalness: 0.7, roughness: 0.35 }),
+      new THREE.MeshStandardMaterial({ color: 0x14181e, metalness: 0.6, roughness: 0.4 }),
     );
     body.position.y = -0.2;
     s.add(body);
@@ -136,11 +137,11 @@ export class DieLevel extends BaseLevel {
       const cell = w / MATS;
       for (let i = 0; i < MATS; i++)
         for (let j = 0; j < MATS; j++) {
-          const l = 34 + rng() * 10;
-          g.fillStyle = `hsl(${205 + rng() * 20}, 30%, ${l}%)`;
+          const l = 17 + rng() * 7;
+          g.fillStyle = `hsl(${210 + rng() * 25}, 34%, ${l}%)`;
           g.fillRect(i * cell + 4, j * cell + 4, cell - 8, cell - 8);
           // fine wordline hatch
-          g.strokeStyle = 'rgba(200, 220, 255, 0.12)';
+          g.strokeStyle = 'rgba(200, 220, 255, 0.08)';
           g.lineWidth = 1;
           for (let k = 6; k < cell - 6; k += 4) {
             g.beginPath();
@@ -150,11 +151,11 @@ export class DieLevel extends BaseLevel {
           }
         }
       // sense-amp stripes between mats
-      g.fillStyle = 'rgba(160, 190, 120, 0.55)';
+      g.fillStyle = 'rgba(120, 150, 90, 0.5)';
       for (let i = 0; i <= MATS; i++) g.fillRect(0, i * cell - 2, w, 4);
     });
     const bankMat = makeInstanceGlow(
-      new THREE.MeshStandardMaterial({ map: matTex, metalness: 0.4, roughness: 0.45 }),
+      new THREE.MeshStandardMaterial({ map: matTex, metalness: 0.35, roughness: 0.5 }),
       0x9cff3a,
     );
     const banks = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 0.02, 1), bankMat, this.banks.length);
@@ -175,10 +176,10 @@ export class DieLevel extends BaseLevel {
 
     // Central strip: I/O pads, PAM3 transceivers, command decoder, data path.
     const stripTex = canvasTexture(1024, 112, (g, w, h) => {
-      g.fillStyle = '#4b5562';
+      g.fillStyle = '#262c35';
       g.fillRect(0, 0, w, h);
       for (let i = 0; i < 60; i++) {
-        g.fillStyle = i % 5 === 0 ? '#c9a45c' : '#8994a3';
+        g.fillStyle = i % 5 === 0 ? '#a7843f' : '#5b6574';
         g.fillRect(12 + i * ((w - 24) / 60), h / 2 - 9, (w - 24) / 60 - 5, 18);
       }
       g.fillStyle = 'rgba(120, 200, 255, 0.35)';

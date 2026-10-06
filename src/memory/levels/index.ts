@@ -14,6 +14,6 @@ export const MEMORY_LEVELS: LevelEntry[] = [
 
 /**
  * Colour grade per branch scale, borrowed from the main descent's look-alike scales (Grade.ts is
- * indexed by main-descent level): package, die, FinFET, lattice.
+ * indexed by main-descent level): package, die, package (neutral), FinFET.
  */
-export const MEMORY_GRADE_INDEX = [2, 3, 5, 6];
+export const MEMORY_GRADE_INDEX = [2, 3, 2, 5];

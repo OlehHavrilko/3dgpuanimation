@@ -85,7 +85,7 @@ export class ChipLevel extends BaseLevel {
   protected build() {
     const s = this.scene;
     studioLights(s, 40);
-    const glow = new THREE.PointLight(0x9cff3a, 30, 40, 1.6);
+    const glow = new THREE.PointLight(0x9cff3a, 4, 40, 1.6);
     glow.position.set(0, 10, 4);
     s.add(glow);
 
@@ -219,9 +219,9 @@ export class ChipLevel extends BaseLevel {
 
     // DRAM die, with its centre strip drawn on top.
     const dieTex = canvasTexture(512, 372, (g, w, h) => {
-      g.fillStyle = '#3d4552';
+      g.fillStyle = '#1b2029';
       g.fillRect(0, 0, w, h);
-      g.fillStyle = '#56606f';
+      g.fillStyle = '#2a3446';
       const strip = h * 0.16;
       for (let i = 0; i < 2; i++) {
         const y0 = i ? (h + strip) / 2 : 0;
@@ -234,15 +234,15 @@ export class ChipLevel extends BaseLevel {
               (h - strip) / 4 - 9,
             );
       }
-      g.fillStyle = '#a7b0bc';
+      g.fillStyle = '#4c5563';
       g.fillRect(0, (h - strip) / 2, w, strip);
       g.fillStyle = '#d9b46a';
       for (let i = 0; i < 40; i++) g.fillRect(14 + i * ((w - 28) / 40), h / 2 - 4, 6, 8);
     });
     this.dieGlow = new THREE.MeshStandardMaterial({
       map: dieTex,
-      metalness: 0.6,
-      roughness: 0.3,
+      metalness: 0.5,
+      roughness: 0.35,
       emissive: 0x9cff3a,
       emissiveIntensity: 0,
     });
@@ -253,10 +253,10 @@ export class ChipLevel extends BaseLevel {
 
     // Mould: black, turns see-through for the X-ray beat. Marking on top.
     this.mouldMat = new THREE.MeshPhysicalMaterial({
-      color: 0x111316,
-      roughness: 0.45,
-      metalness: 0.1,
-      clearcoat: 0.3,
+      color: 0x0a0b0d,
+      roughness: 0.62,
+      metalness: 0.05,
+      clearcoat: 0.08,
       transparent: true,
       opacity: 1,
     });
@@ -290,7 +290,7 @@ export class ChipLevel extends BaseLevel {
     // Data keeps flowing; it calms down once we are inside the package.
     this.pulses.uniforms.uTime.value = time;
     this.pulses.uniforms.uSpeed.value = 6;
-    this.pulses.uniforms.uOn.value = 1 - 0.7 * smoothstep(0.6, 0.8, t);
+    this.pulses.uniforms.uOn.value = 1 - 0.85 * smoothstep(0.6, 0.8, t);
 
     // Channels: the balls take their channel colour while the chip is lifted.
     const ch = smoothstep(0.4, 0.52, t) * (1 - smoothstep(0.7, 0.8, t));

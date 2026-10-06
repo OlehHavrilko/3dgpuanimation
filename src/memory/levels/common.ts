@@ -15,6 +15,26 @@ export function studioLights(scene: THREE.Scene, scale: number, rimColor: THREE.
 }
 
 /**
+ * Device-scale lighting, as on the FinFET level: dim sky, white key, blue fill, green rim, a
+ * dark background with a little fog and a quieter environment, so glows carry the frame.
+ */
+export function deviceLights(scene: THREE.Scene, scale: number, fogDensity: number) {
+  scene.background = new THREE.Color(0x020405);
+  scene.fog = new THREE.FogExp2(0x020405, fogDensity);
+  scene.environmentIntensity = 0.35;
+  scene.add(new THREE.HemisphereLight(0xdfe9ff, 0x050806, 0.18));
+  const key = new THREE.DirectionalLight(0xffffff, 2.1);
+  key.position.set(0.6 * scale, 1 * scale, 0.9 * scale);
+  scene.add(key);
+  const fill = new THREE.DirectionalLight(0x4a78ff, 0.9);
+  fill.position.set(-1 * scale, 0.15 * scale, 0.3 * scale);
+  scene.add(fill);
+  const rim = new THREE.DirectionalLight(0x76b900, 0.8);
+  rim.position.set(-0.6 * scale, 0.4 * scale, -0.9 * scale);
+  scene.add(rim);
+}
+
+/**
  * Glowing data pulses along straight lines, for an InstancedMesh of unit boxes stretched along
  * +z. Each line carries a stream of PAM3 symbols (three colours) that scrolls with uTime.
  */
