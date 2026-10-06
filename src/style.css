@@ -73,6 +73,47 @@ body {
   color: var(--green);
 }
 
+.top-right {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+/* ------------------------------------------------------------ language switch (HUD + landing) */
+.lang-switch {
+  display: inline-flex;
+  pointer-events: auto;
+}
+.lang-switch button {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--dim);
+  background: none;
+  border: 1px solid rgba(225, 240, 215, 0.16);
+  padding: 3px 7px;
+  cursor: pointer;
+  transition:
+    color 0.2s,
+    border-color 0.2s;
+}
+.lang-switch button + button {
+  border-left: 0;
+}
+.lang-switch button:hover {
+  color: var(--white);
+  border-color: var(--green);
+}
+.lang-switch button[aria-pressed='true'] {
+  color: #071000;
+  background: var(--green);
+  border-color: var(--green);
+  cursor: default;
+}
+#intro .lang-switch {
+  margin-top: 16px;
+}
+
 .hud-main {
   align-self: end;
   max-width: min(520px, 80vw);

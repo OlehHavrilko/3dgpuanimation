@@ -1,3 +1,4 @@
+import { content } from '../content';
 import type { EntityInfo, LevelControl, LevelMeta } from '../core/types';
 
 export interface InspectorAction {
@@ -200,7 +201,7 @@ export class Hud {
         const buttons = c.options.map((o) => {
           const b = document.createElement('button');
           b.type = 'button';
-          b.textContent = o;
+          b.textContent = content.ui.options[o] ?? o;
           b.classList.toggle('on', o === c.value);
           b.addEventListener('click', () => {
             c.value = o;

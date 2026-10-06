@@ -348,7 +348,10 @@ export class TransistorLevel extends BaseLevel {
       {
         kind: 'readout',
         label: C.readouts.mode,
-        get: () => (this.gateMode === 'MANUAL' ? C.readouts.manual(this.vg) : this.gateMode),
+        get: () =>
+          this.gateMode === 'MANUAL'
+            ? C.readouts.manual(this.vg)
+            : (content.ui.options[this.gateMode] ?? this.gateMode),
       },
       {
         kind: 'readout',

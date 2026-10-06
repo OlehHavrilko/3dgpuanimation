@@ -1,3 +1,5 @@
+import { content } from '../content';
+
 /** Numbers the closing line is built from, kept in one place so they can be checked. */
 const AVOGADRO = 6.02214076e23;
 const SILICON_DENSITY_G_CM3 = 2.329;
@@ -15,7 +17,7 @@ export const GB202_ATOMS = siliconAtoms(750, 0.78);
 /** 2.9 × 10²², with real superscript digits. */
 export function scientific(n: number, digits = 1) {
   const e = Math.floor(Math.log10(n));
-  const m = (n / 10 ** e).toFixed(digits);
+  const m = (n / 10 ** e).toFixed(digits).replace('.', content.ui.number.decimal);
   const sup: Record<string, string> = {
     '-': '⁻',
     '0': '⁰',
