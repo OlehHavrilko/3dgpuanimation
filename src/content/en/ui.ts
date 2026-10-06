@@ -11,7 +11,7 @@ export const ui = {
   exploreHintPick: 'Hover anything to identify it, click to inspect. Drag to orbit, wheel to zoom.',
   exploreHintPlain: 'Drag to orbit, wheel to zoom.',
   traceStage: (i: number, n: number, kind: string) => `Trace ${i}/${n} · ${kind}`,
-  follow: 'Follow e⁻',
+  follow: 'Trace',
   /** Text that ships in index.html, re-applied from here so every language comes from one place. */
   static: {
     explore: 'Explore',

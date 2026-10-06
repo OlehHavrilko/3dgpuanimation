@@ -11,7 +11,7 @@ export const metal = {
     description: '~15 copper layers wire 92 billion transistors together. Wires get thinner the deeper you go.',
   },
   follow:
-    'Down through ~15 metal layers: via after via, from wires 10 µm wide to wires 28 nm apart, then into a contact.',
+    'Down through ~15 metal layers: via after via, from wires 10 µm wide to wires 28 nm apart, to one transistor.',
   /** Top (aluminium pad) to bottom (M1). */
   layerNames: [
     'AP (Al pad)',

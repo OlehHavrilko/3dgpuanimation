@@ -8,7 +8,8 @@ export const die = {
     scale: '1 cm',
     description: 'Blackwell, TSMC 4N, ~750 mm², 92.2 billion transistors.',
   },
-  follow: 'On the die: the power grid spreads current to all 170 active SMs; ours heads for one of them.',
+  follow: (chip: number) =>
+    `On the die: memory controller ${chip} hands the bit to the L2 cache, and the L2 to the one SM that asked for it.`,
   captions: {
     film: 'No paint, no dye — that colour is thin-film interference',
     gpc: 'Twelve clusters, each one a small factory',

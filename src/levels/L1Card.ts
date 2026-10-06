@@ -512,12 +512,12 @@ export class CardLevel extends BaseLevel {
   }
 
   /** Followed electron: from the PSU cable, through the 12V-2x6 connector and VRM, into the GPU. */
+  /** Trace: in at the PCIe fingers, across the flex cable, to the GPU. */
   private readonly followPath: [number, number, number][] = [
-    [3.5, 3.5, 10],
-    [1.5, 0.3, 5.6],
-    [-1.0, -0.12, 5.3],
-    [-4.6, -0.12, 4.8],
-    [-2.0, -0.12, 2.2],
+    [-2.6, -0.6, -10.5],
+    [-2.6, -0.35, -7.1],
+    [-1.5, -0.25, -5.2],
+    [-0.4, -0.12, -2.6],
     [0, -0.08, 0],
   ];
 

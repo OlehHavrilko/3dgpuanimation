@@ -20,7 +20,10 @@ export interface LevelContext {
 export interface Journey {
   /** Signal trace in progress: which GDDR7 chip (0..15) the data comes from. */
   trace: { chip: number } | null;
-  /** Guided "follow the electron" tour is running. */
+  /**
+   * The Trace journey is running: one bit from the PCIe slot down to an atom. While it runs,
+   * `trace` names the memory chip the bit is read from, so the per-level trace visuals light up.
+   */
   follow: boolean;
 }
 

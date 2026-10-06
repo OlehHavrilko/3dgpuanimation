@@ -139,10 +139,13 @@ test('transistor gate controls', async ({ page }) => {
   expectNoErrors(errors);
 });
 
-test('follow the electron: tour runs, tracer is visible, F stops it', async ({ page }) => {
+test('Trace journey: one route from chip 11, tracer is visible, F stops it', async ({ page }) => {
   const errors = await openApp(page);
+  const journey = () => page.evaluate(() => (window as any).__teardown.ctx.journey);
   await page.locator('#nav-follow').click();
   await expect.poll(() => bodyHas(page, 'following')).toBe(true);
+  // The journey carries the signal trace with it: the default chip's bus and die route light up.
+  expect(await journey()).toEqual({ follow: true, trace: { chip: 10 } });
   await expect
     .poll(() => page.evaluate(() => (window as any).__teardown.interaction.tracer.points.visible), { timeout: 60_000 })
     .toBe(true);
@@ -152,6 +155,8 @@ test('follow the electron: tour runs, tracer is visible, F stops it', async ({ p
     .toBeGreaterThan(0.005);
   await page.keyboard.press('f');
   await expect.poll(() => bodyHas(page, 'following')).toBe(false);
+  expect(await journey()).toEqual({ follow: false, trace: null });
+  await expect(page.locator('#nav-follow')).toHaveText('Trace');
   expectNoErrors(errors);
 });
 

@@ -1,14 +1,29 @@
 # GPU → Atom
 
-![The descent, from the graphics card to a single silicon atom](docs/media/descent.gif)
+**An interactive WebGL dive from a GeForce RTX 5090 down to a single silicon atom.** Eight scales, from 30 cm to 0.2 nm, in one continuous camera move. Every part is modelled procedurally and rendered live in the browser: no 3D models, textures or video.
 
-**[Live demo](https://olehhavrilko.github.io/3dgpuanimation/)** · runs in the browser, WebGL 2
+**[▶ Open the live demo](https://olehhavrilko.github.io/3dgpuanimation/)** · works in any modern desktop or mobile browser · [skip the intro](https://olehhavrilko.github.io/3dgpuanimation/?nointro)
 
-A scroll-driven 3D teardown of a **GeForce RTX 5090 Founders Edition**, from the whole card down to a single silicon atom. Eight scales in **three acts**, one continuous dive — every part modelled procedurally and rendered live, with a **guided tour**, a seamless descent (each scale opens inside the previous one), X-Ray / section / thermal views and a command palette.
+[![GPU → Atom: the descent from the graphics card to a single silicon atom](docs/media/descent.gif)](https://olehhavrilko.github.io/3dgpuanimation/)
 
-The eight scales are a chronology; the **narrative layer** gives them a shape. The landing shows a live attract loop, the descent is framed as _I — The Machine_ (GPU → PCB → package), _II — The Computation_ (die → metal → transistor) and _III — The Matter_ (lattice → atom), three anchor numbers land where they mean something, one dive runs chrome-free for a breath, and the journey ends on a finale instead of simply stopping.
+**Stack:** TypeScript · Three.js · hand-written GLSL · GSAP ScrollTrigger · postprocessing · Web Audio API · Vite · Vitest · Playwright · GitHub Actions / Pages
 
-**Быстрый старт:** `npm install`, then `npm run dev`, then open the URL Vite prints. Click **Start the descent** or scroll. Add `?debug` for a timeline scrubber, `?nointro` to skip the landing card, or `?quality=low|high` to force a tier.
+## What I built
+
+- **Eight procedural scenes** (card, PCB, package, die, metal stack, FinFET, lattice, atom), about 13k lines of TypeScript, with physically grounded data: real RTX 5090 / GB202 specs, the silicon lattice built from its lattice constant, the electron cloud sampled from hydrogen-like orbitals.
+- **A seamless descent:** each scale opens inside the previous one through a camera mapping between scenes (`core/seam.ts`), with a level cache that keeps only the current scale and its neighbours in GPU memory.
+- **Custom shaders:** thin-film interference on the die, per-instance glow, an asset-free FXAA pass and a per-scale colour grade.
+- **Interaction design:** a guided tour, an Explore mode with hover/inspect on thousands of instanced parts, X-Ray / Section / Thermal views, a command palette, deep links and touch gestures.
+- **Storytelling layer:** three acts, three anchor numbers, a logarithmic scale ruler and a finale that renders a shareable 1200×630 frame.
+- **Performance and quality:** adaptive resolution and quality tiers, a per-level profiler and benchmark, unit tests, and Playwright end-to-end tests that run the whole descent in headless Chromium without a GPU on every push.
+
+## Run locally
+
+`npm install`, then `npm run dev`, then open the URL Vite prints. Click **Start the descent** or scroll. Add `?debug` for a timeline scrubber, `?nointro` to skip the landing card, or `?quality=low|high` to force a tier.
+
+## The eight scales
+
+A scroll-driven teardown of a **GeForce RTX 5090 Founders Edition** in **three acts**: _I — The Machine_ (GPU → PCB → package), _II — The Computation_ (die → metal → transistor) and _III — The Matter_ (lattice → atom). The landing shows a live attract loop, three anchor numbers land where they mean something, one dive runs chrome-free for a breath, and the journey ends on a finale instead of simply stopping.
 
 | #   | Level               | Scale  | What happens                                                                                                                                                                                      |
 | --- | ------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -21,9 +36,9 @@ The eight scales are a chronology; the **narrative layer** gives them a shape. T
 | 7   | Silicon lattice     | 2 nm   | Diamond cubic built from the lattice maths (a = 5.431 Å, bonds found at a·√3/4). Shows a unit cell, glowing bond pairs, and P and B dopants.                                                      |
 | 8   | Silicon atom        | 0.2 nm | A nucleus of 14 p⁺ + 14 n⁰ packed by relaxation. The electron cloud (~86k points) is sampled from hydrogen-like 1s/2s/2p/3s/3p orbitals with Clementi–Raimondi Z_eff, and pulses slowly.          |
 
-## Gallery
+### Gallery
 
-Every frame below is rendered live in the browser. Retake them with `node scripts/capture-media.mjs` (see [Media](#media)).
+Every frame is rendered live in the browser; [`scripts/capture-media.mjs`](#media) retakes them.
 
 |                                                                                      |                                                                               |
 | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
@@ -53,7 +68,7 @@ The page has two modes:
 | `M`                         | Toggle ambient sound (off by default)                                    |
 | `X` `C` `T` `N`             | X-Ray / Section / Thermal / Normal view (in Explore)                     |
 | `Ctrl`/`Cmd` + `K`          | Command palette: jump to a scale or a part                               |
-| `F`                         | Follow the electron (start / stop)                                       |
+| `F`                         | Trace one bit, card to atom (start / stop)                               |
 | `Shift` + `F`               | Fullscreen                                                               |
 | `Esc`                       | Deselect, then leave Explore                                             |
 | Breadcrumb, scale rail, ◀ ▶ | Jump to any scale                                                        |
@@ -135,13 +150,13 @@ Click any GDDR7 chip → **Trace signal**. The chip's own 32-bit bus lights up w
 
 Gate drive has four settings: OFF, ON, CLOCK, or MANUAL with a gate-voltage slider (threshold about 0.3 V). Live readouts show the channel state, the relative drain current and a rolling logic trace (`0 1 0 1 …`).
 
-### Follow the electron
+### Trace: one bit, card to atom
 
-Press the **Follow e⁻** button or `F`. The page scrolls itself through all eight scales while a glowing electron with a tail follows one physical path:
+Press **Trace** or `F`. The page scrolls itself through all eight scales while a glowing packet with a tail follows one bit of data along a single route:
 
-12V-2x6 connector → VRM → PCB → solder ball and substrate → on-die power grid → down the via stack → contact → source → channel → through the silicon crystal → a 3p orbital.
+PCIe 5.0 x16 fingers → flex cable → GPU · GDDR7 chip 11 → its own 32-bit bus → GPU package · solder ball → substrate → C4 bump · memory controller 11 → L2 → GPC → SM · down the via stack → contact → source → channel · through the silicon crystal → a 3p orbital.
 
-Each level shows its own narration. The tour pauses while you explore and stops on a second press or with `Esc`.
+The signal-trace visuals come along: on the board the chip's bus lights up while the others fade, and on the die the route glows from the memory controller to the SM the descent dives into. Each level shows its own narration. The journey pauses while you explore and stops on a second press or with `Esc`. If you traced a chip by hand first, the journey reads from that chip instead.
 
 The interaction layer lives in `src/interaction/` and is shared by every level:
 
@@ -152,7 +167,7 @@ The interaction layer lives in `src/interaction/` and is shared by every level:
 - `CommandPalette.ts` is the `Ctrl/Cmd+K` jump-to-anything dialog.
 - `entities.ts` resolves a level's pickables into titled entities without a pointer.
 - `pick.ts` holds the helpers levels use to declare what is pickable.
-- `FollowTracer.ts` draws the followed electron.
+- `FollowTracer.ts` draws the traced packet.
 
 Levels only describe _what_ can be picked (`pickables`, with `EntityInfo` metadata) and _which_ controls they offer (`controls`). They never handle input themselves.
 
@@ -178,7 +193,7 @@ npm run test:e2e       # build + Playwright smoke tests (tests/e2e/smoke.spec.ts
 npm run bench          # build + level activation benchmark → bench/<label>.{json,md}
 ```
 
-The smoke suite runs every level and every feature (Explore, hover/inspect, X-Ray / Section / Thermal, signal trace, transistor gate, Follow the electron, the guided tour, acts and finale, Share frame, labels, the command palette and deep links) in headless Chromium with SwiftShader, so it needs no GPU. It also checks that the level cache stays at current ± 1 and that renderer memory counters return to their starting values after a full 1 → 8 → 1 cycle. CI (`.github/workflows/ci.yml`) runs all of the above except the benchmark.
+The smoke suite runs every level and every feature (Explore, hover/inspect, X-Ray / Section / Thermal, signal trace, transistor gate, the Trace journey, the guided tour, acts and finale, Share frame, labels, the command palette and deep links) in headless Chromium with SwiftShader, so it needs no GPU. It also checks that the level cache stays at current ± 1 and that renderer memory counters return to their starting values after a full 1 → 8 → 1 cycle. CI (`.github/workflows/ci.yml`) runs all of the above except the benchmark.
 
 `BENCH=<label> npm run bench` walks 1 → 8 → 1 and records, per activation: build, warmup, first frame (program compile + upload), transition, programs compiled, geometries, textures, estimated GPU MB and JS heap. `BENCH=baseline BENCH_QUERY='&cache=0' npm run bench`, `BENCH=after npm run bench`, then `npm run bench:compare` writes `bench/comparison.md` (before/after for the level cache; `?cache=0` turns the cache off). SwiftShader numbers are CPU-bound: compare runs with each other, not with a real GPU.
 
@@ -189,7 +204,7 @@ npm run build && npx vite preview --port 4173 &
 node scripts/capture-media.mjs   # → docs/media/*.png and docs/media/descent.gif (needs ffmpeg)
 ```
 
-The script drives the production build in headless Chromium with SwiftShader, like the e2e suite. Stills are 1280×720 at the high tier with the act cards and anchor numbers hidden; the GIF steps the timeline from the card to the atom at the medium tier. Existing stills are kept, so delete one to retake it. Software rendering is slow: a full run takes tens of minutes.
+The script drives the production build in headless Chromium with SwiftShader, like the e2e suite. Stills are 1280×720 at the high tier with the act cards and anchor numbers hidden; the GIF steps the timeline from the card to the atom at the medium tier. Existing stills are kept, so delete one to retake it. Software rendering is slow: a full run takes about an hour.
 
 ### Debug mode
 
@@ -208,7 +223,7 @@ In debug mode, `window.__teardown` exposes `{ settings, manager, renderer, ctx, 
 ```
 src/
   main.ts               wiring: renderer, levels, scroll, tour + intro, deep links, frame loop
-  app/                  settings, adaptive resolution, level warmup, Follow e⁻, sound, palette,
+  app/                  settings, adaptive resolution, level warmup, Trace, sound, palette,
                         debug GUI, static text
   content/              every user-facing string (en/); add a language = add a dictionary
   core/
