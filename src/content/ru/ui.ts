@@ -58,6 +58,9 @@ export const ui: typeof en = {
     finAtomWidth: 'поперёк атома',
     replay: 'Ещё раз',
     shareFrame: 'Сохранить кадр',
+    shareLink: 'Поделиться',
+    shareLinkCopied: 'Ссылка скопирована',
+    starGithub: '\u2605 Звезда на GitHub',
     sourcesGlossary: 'Источники и глоссарий',
     sourceCredits: 'Код и авторы',
     introTitle1: 'Один спуск.',
@@ -66,7 +69,7 @@ export const ui: typeof en = {
       'От 30-сантиметровой видеокарты до атома кремния в её сердце — смоделировано и отрисовано прямо в браузере. Без видео и скачанных моделей.',
     introStart: 'Начать спуск',
     introScroll: 'Листать самому',
-    introKeys: 'пробел пуск / пауза  ·  e исследовать  ·  f полный экран',
+    introKeys: 'пробел пуск / пауза  ·  e исследовать  ·  shift+f полный экран',
   },
   number: {
     decimal: ',',

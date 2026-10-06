@@ -16,6 +16,7 @@ export class Ambience {
   private humFilter: BiquadFilterNode | null = null;
   private noiseBuffer: AudioBuffer | null = null;
   private oscillators: OscillatorNode[] = [];
+  private suspendTimer = 0;
 
   /** Target level (0..1) of the air bed, ramped on each scene change. */
   private airTarget = 0.4;
@@ -88,17 +89,28 @@ export class Ambience {
   private start() {
     this.ensure();
     if (!this.ac || !this.master) return;
+    // A quick off/on must not let the pending suspend() land after this start.
+    window.clearTimeout(this.suspendTimer);
     void this.ac.resume();
-    this.master.gain.cancelScheduledValues(this.ac.currentTime);
-    this.master.gain.linearRampToValueAtTime(0.5, this.ac.currentTime + 1.2);
+    this.rampMaster(0.5, 1.2);
   }
 
   private suspend() {
     if (!this.ac || !this.master) return;
-    const t = this.ac.currentTime;
-    this.master.gain.cancelScheduledValues(t);
-    this.master.gain.linearRampToValueAtTime(0, t + 0.4);
-    window.setTimeout(() => void this.ac?.suspend(), 500);
+    this.rampMaster(0, 0.4);
+    window.clearTimeout(this.suspendTimer);
+    this.suspendTimer = window.setTimeout(() => {
+      if (!this.enabled) void this.ac?.suspend();
+    }, 500);
+  }
+
+  /** Ramp the master gain from wherever it is now (an interrupted ramp would otherwise jump). */
+  private rampMaster(value: number, seconds: number) {
+    const gain = this.master!.gain;
+    const t = this.ac!.currentTime;
+    gain.cancelScheduledValues(t);
+    gain.setValueAtTime(gain.value, t);
+    gain.linearRampToValueAtTime(value, t + seconds);
   }
 
   /** Follow the level: deeper scales get a higher, thinner drone and more air. */

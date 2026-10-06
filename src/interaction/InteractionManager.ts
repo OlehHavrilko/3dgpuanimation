@@ -195,6 +195,8 @@ export class InteractionManager {
         this.onSound?.();
         break;
       case 'Space':
+        // A control with keyboard focus gets Space natively (press the button), not play / pause.
+        if (t?.closest('button, a, select, [role="button"]') && t.matches(':focus-visible')) return;
         e.preventDefault();
         this.onSpace?.();
         break;

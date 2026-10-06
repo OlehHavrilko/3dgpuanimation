@@ -57,6 +57,9 @@ export const ui = {
     finAtomWidth: 'across an atom',
     replay: 'Replay',
     shareFrame: 'Share frame',
+    shareLink: 'Share link',
+    shareLinkCopied: 'Link copied',
+    starGithub: '\u2605 Star on GitHub',
     sourcesGlossary: 'Sources & glossary',
     sourceCredits: 'Source & credits',
     introTitle1: 'One descent.',
@@ -65,7 +68,7 @@ export const ui = {
       'From a 30 cm graphics card to the silicon atom at its heart — modelled and rendered live in your browser. No video, no downloaded assets.',
     introStart: 'Start the descent',
     introScroll: 'Scroll it yourself',
-    introKeys: 'space play / pause \u00a0·\u00a0 e explore \u00a0·\u00a0 f fullscreen',
+    introKeys: 'space play / pause \u00a0·\u00a0 e explore \u00a0·\u00a0 shift+f fullscreen',
   },
   /** Length units and the decimal mark for live readouts (scale bar, field of view). */
   number: {
