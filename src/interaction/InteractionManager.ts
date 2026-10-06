@@ -171,7 +171,7 @@ export class InteractionManager {
 
   private onKey(e: KeyboardEvent) {
     const t = e.target as HTMLElement | null;
-    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
     if (document.body.classList.contains('palette')) return;
     // `e.code` is layout-independent, so the shortcuts work on Russian/Cyrillic keyboards too.
     switch (e.code) {

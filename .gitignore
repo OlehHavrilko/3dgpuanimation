@@ -7,3 +7,6 @@ playwright-report
 
 # Local UX-recording harness (Playwright browsers, sysroot) — machine-specific, ~1.8 GB
 .ux-harness/
+
+# Local review/audit harness (screenshots, JSON reports) — not app code
+.review/
