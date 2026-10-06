@@ -42,10 +42,12 @@ const CACHE = 'gpu-atom-${version}';
 const PRECACHE = ${JSON.stringify(['./', ...files.map((f) => `./${f}`)])};
 
 self.addEventListener('install', (event) => {
+  // cache: 'reload' skips the HTTP cache, so a stale index.html from the previous deploy (GitHub
+  // Pages serves max-age=600) never gets precached next to this deploy's assets.
   event.waitUntil(
     caches
       .open(CACHE)
-      .then((cache) => cache.addAll(PRECACHE))
+      .then((cache) => cache.addAll(PRECACHE.map((url) => new Request(url, { cache: 'reload' }))))
       .then(() => self.skipWaiting()),
   );
 });
