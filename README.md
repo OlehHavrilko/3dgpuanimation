@@ -1,5 +1,9 @@
 # GPU → Atom
 
+![The descent, from the graphics card to a single silicon atom](docs/media/descent.gif)
+
+**[Live demo](https://olehhavrilko.github.io/3dgpuanimation/)** · runs in the browser, WebGL 2
+
 A scroll-driven 3D teardown of a **GeForce RTX 5090 Founders Edition**, from the whole card down to a single silicon atom. Eight scales in **three acts**, one continuous dive — every part modelled procedurally and rendered live, with a **guided tour**, a seamless descent (each scale opens inside the previous one), X-Ray / section / thermal views and a command palette.
 
 The eight scales are a chronology; the **narrative layer** gives them a shape. The landing shows a live attract loop, the descent is framed as _I — The Machine_ (GPU → PCB → package), _II — The Computation_ (die → metal → transistor) and _III — The Matter_ (lattice → atom), three anchor numbers land where they mean something, one dive runs chrome-free for a breath, and the journey ends on a finale instead of simply stopping.
@@ -16,6 +20,18 @@ The eight scales are a chronology; the **narrative layer** gives them a shape. T
 | 6   | FinFET transistors  | 50 nm  | A FinFET array. One gate fades out so you can see the high-k dielectric and the electrons, which drift source → drain when the gate pulses.                                                       |
 | 7   | Silicon lattice     | 2 nm   | Diamond cubic built from the lattice maths (a = 5.431 Å, bonds found at a·√3/4). Shows a unit cell, glowing bond pairs, and P and B dopants.                                                      |
 | 8   | Silicon atom        | 0.2 nm | A nucleus of 14 p⁺ + 14 n⁰ packed by relaxation. The electron cloud (~86k points) is sampled from hydrogen-like 1s/2s/2p/3s/3p orbitals with Clementi–Raimondi Z_eff, and pulses slowly.          |
+
+## Gallery
+
+Every frame below is rendered live in the browser. Retake them with `node scripts/capture-media.mjs` (see [Media](#media)).
+
+|                                                                                      |                                                                               |
+| ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| ![Landing card](docs/media/00-landing.png) Landing                                   | ![Graphics card, 30 cm](docs/media/01-gpu.png) 1 · GeForce RTX 5090, 30 cm    |
+| ![Main PCB, 10 cm](docs/media/02-pcb.png) 2 · Main PCB, 10 cm                        | ![GB202 package, 5 cm](docs/media/03-package.png) 3 · GB202 package, 5 cm     |
+| ![GB202 die, 1 cm](docs/media/04-die.png) 4 · GB202 die, 1 cm                        | ![Metal stack, 10 µm](docs/media/05-metal.png) 5 · Metal stack, 10 µm         |
+| ![FinFET transistors, 50 nm](docs/media/06-finfet.png) 6 · FinFET transistors, 50 nm | ![Silicon lattice, 2 nm](docs/media/07-lattice.png) 7 · Silicon lattice, 2 nm |
+| ![Silicon atom, 0.2 nm](docs/media/08-atom.png) 8 · Silicon atom, 0.2 nm             | ![Finale](docs/media/09-finale.png) Finale                                    |
 
 ## Interaction
 
@@ -165,6 +181,15 @@ npm run bench          # build + level activation benchmark → bench/<label>.{j
 The smoke suite runs every level and every feature (Explore, hover/inspect, X-Ray / Section / Thermal, signal trace, transistor gate, Follow the electron, the guided tour, acts and finale, Share frame, labels, the command palette and deep links) in headless Chromium with SwiftShader, so it needs no GPU. It also checks that the level cache stays at current ± 1 and that renderer memory counters return to their starting values after a full 1 → 8 → 1 cycle. CI (`.github/workflows/ci.yml`) runs all of the above except the benchmark.
 
 `BENCH=<label> npm run bench` walks 1 → 8 → 1 and records, per activation: build, warmup, first frame (program compile + upload), transition, programs compiled, geometries, textures, estimated GPU MB and JS heap. `BENCH=baseline BENCH_QUERY='&cache=0' npm run bench`, `BENCH=after npm run bench`, then `npm run bench:compare` writes `bench/comparison.md` (before/after for the level cache; `?cache=0` turns the cache off). SwiftShader numbers are CPU-bound: compare runs with each other, not with a real GPU.
+
+### Media
+
+```bash
+npm run build && npx vite preview --port 4173 &
+node scripts/capture-media.mjs   # → docs/media/*.png and docs/media/descent.gif (needs ffmpeg)
+```
+
+The script drives the production build in headless Chromium with SwiftShader, like the e2e suite. Stills are 1280×720 at the high tier with the act cards and anchor numbers hidden; the GIF steps the timeline from the card to the atom at the medium tier. Existing stills are kept, so delete one to retake it. Software rendering is slow: a full run takes tens of minutes.
 
 ### Debug mode
 
