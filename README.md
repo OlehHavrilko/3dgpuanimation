@@ -15,7 +15,7 @@
 - **Custom shaders:** thin-film interference on the die, per-instance glow, an asset-free FXAA pass and a per-scale colour grade.
 - **Interaction design:** a guided tour, an Explore mode with hover/inspect on thousands of instanced parts, X-Ray / Section / Thermal views, a command palette, deep links and touch gestures.
 - **Storytelling layer:** three acts, three anchor numbers, a logarithmic scale ruler and a finale that renders a shareable 1200×630 frame.
-- **Performance and quality:** adaptive resolution and quality tiers, a per-level profiler and benchmark, unit tests, and Playwright end-to-end tests that run the whole descent in headless Chromium without a GPU on every push.
+- **Performance and quality:** adaptive resolution and quality tiers, a per-level profiler and benchmark, unit tests, Playwright end-to-end, accessibility (axe) and pixel-level visual regression tests that run the whole descent in headless Chromium without a GPU on every push, and a bundle size budget.
 
 ## Run locally
 
@@ -214,11 +214,19 @@ npm run lint           # ESLint (flat config, typescript-eslint + prettier)
 npm run format:check   # Prettier
 npm run typecheck      # tsc --noEmit
 npm test               # Vitest unit tests (tests/unit)
-npm run test:e2e       # build + Playwright smoke tests (tests/e2e/smoke.spec.ts)
+npm run test:e2e       # build + Playwright smoke, tour, descent, i18n, PWA and accessibility tests
+npm run test:visual    # build + visual regression: one deterministic frame per scale, compared with baselines
+npm run size           # size budget for dist/ (gzip), limits in size-budget.json; run after a build
 npm run bench          # build + level activation benchmark → bench/<label>.{json,md}
 ```
 
 The smoke suite runs every level and every feature (Explore, hover/inspect, X-Ray / Section / Thermal, signal trace, transistor gate, the Trace journey, the guided tour, acts and finale, Share frame, labels, the command palette and deep links) in headless Chromium with SwiftShader, so it needs no GPU. It also checks that the level cache stays at current ± 1 and that renderer memory counters return to their starting values after a full 1 → 8 → 1 cycle. CI (`.github/workflows/ci.yml`) runs all of the above except the benchmark.
+
+**Accessibility.** `tests/e2e/a11y.spec.ts` runs axe-core (WCAG 2.1 A and AA rules) over the landing card, the HUD in both languages, Explore with the inspector open, the command palette, the sources sheet and the finale. Any violation fails the build, and the log lists each failing element.
+
+**Visual regression.** `tests/e2e/visual.spec.ts` pauses the render loop (`__teardown.clock`), builds each scale fresh and advances exactly 40 frames at a fixed step with film grain off, so a given build always draws the same pixels. It compares the eight scales, a seam (the metal stack revealed inside the die) and the X-Ray and Section views with the PNGs in `tests/e2e/visual.spec.ts-snapshots/`. After an intended visual change, run the **Update visual snapshots** workflow on the branch (Actions → Run workflow): it re-renders on the CI runner image and commits the new baselines. SwiftShader output depends on the platform, so baselines are Linux-only. When a frame moves, CI uploads the expected, actual and diff images as the `visual-diffs` artifact.
+
+**Size budget.** `scripts/check-size.mjs` gzips every file in `dist/` and fails CI when the JavaScript, CSS, HTML or the whole site grows past `size-budget.json`. Raise a limit on purpose, in the same PR as the change that needs it.
 
 `BENCH=<label> npm run bench` walks 1 → 8 → 1 and records, per activation: build, warmup, first frame (program compile + upload), transition, programs compiled, geometries, textures, estimated GPU MB and JS heap. `BENCH=baseline BENCH_QUERY='&cache=0' npm run bench`, `BENCH=after npm run bench`, then `npm run bench:compare` writes `bench/comparison.md` (before/after for the level cache; `?cache=0` turns the cache off). SwiftShader numbers are CPU-bound: compare runs with each other, not with a real GPU.
 
@@ -241,7 +249,7 @@ Open `http://localhost:5173/?debug` to get a lil-gui panel with:
 - jump buttons for every level
 - bloom, depth-of-field, grain and chromatic-aberration controls
 
-In debug mode, `window.__teardown` exposes `{ settings, manager, renderer, ctx, interaction, profiler, post, tour, story, labels }` for console scripting and tests, and every level activation is logged as `[level] {…timings}`. `?cache=0` turns the level cache off (A/B benchmarks).
+In debug mode, `window.__teardown` exposes `{ settings, manager, renderer, ctx, interaction, profiler, post, tour, story, labels, gsap, clock }` for console scripting and tests, and every level activation is logged as `[level] {…timings}`. `?cache=0` turns the level cache off (A/B benchmarks).
 
 ## Architecture
 

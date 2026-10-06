@@ -58,6 +58,8 @@ export class TransistorLevel extends BaseLevel {
   private ePos!: THREE.BufferAttribute;
   private head = new Float32Array(ELECTRONS * 3);
   private eVel = new Float32Array(ELECTRONS);
+  /** Respawn jitter: seeded, so a given frame sequence always draws the same electrons. */
+  private eRng = mulberry32(61);
   private gateOn = 0;
   /** Explore controls: gate mode and clock speed. */
   private gateMode: 'OFF' | 'ON' | 'CLOCK' | 'MANUAL' = 'CLOCK';
@@ -522,8 +524,8 @@ export class TransistorLevel extends BaseLevel {
       const j = i * 3;
       const speed = 55 * this.eVel[i] * (0.3 + 0.7 * v);
       let nx = h[j] + speed * dt;
-      if (v < 0.5 && h[j] <= barrier && nx > barrier) nx = barrier - Math.random() * 3;
-      if (nx > x1) nx = x0 + Math.random() * 4;
+      if (v < 0.5 && h[j] <= barrier && nx > barrier) nx = barrier - this.eRng() * 3;
+      if (nx > x1) nx = x0 + this.eRng() * 4;
       h[j] = nx;
       const jitter = Math.sin(time * 11 + i * 1.7) * 0.25;
       const trail = speed * 0.035;
