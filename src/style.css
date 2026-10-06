@@ -638,13 +638,16 @@ body.idle:not(.exploring) #crumbs {
   backdrop-filter: blur(8px);
   transform: translate(24px, -50%);
   opacity: 0;
+  visibility: hidden; /* out of the tab order while hidden */
   pointer-events: none;
   transition:
     opacity 0.3s,
-    transform 0.3s;
+    transform 0.3s,
+    visibility 0.3s;
 }
 #inspector.on {
   opacity: 1;
+  visibility: visible;
   transform: translate(0, -50%);
   pointer-events: auto;
 }
@@ -1040,16 +1043,19 @@ body.following #lvl-caption {
   padding: 10px 12px;
   transform: translate(-50%, 18px);
   opacity: 0;
+  visibility: hidden; /* out of the tab order while hidden */
   pointer-events: none;
   background: linear-gradient(180deg, rgba(4, 10, 6, 0.86), rgba(4, 10, 6, 0.72));
   border: 1px solid rgba(118, 185, 0, 0.28);
   backdrop-filter: blur(10px);
   transition:
     opacity 0.35s ease,
-    transform 0.35s ease;
+    transform 0.35s ease,
+    visibility 0.35s ease;
 }
 #tour.on {
   opacity: 1;
+  visibility: visible;
   transform: translate(-50%, 0);
   pointer-events: auto;
 }
@@ -1473,6 +1479,7 @@ body.touring .hud-bottom {
   padding: 11px 14px;
   transform: translate(-50%, 14px);
   opacity: 0;
+  visibility: hidden; /* out of the tab order while hidden */
   pointer-events: none;
   font-family: var(--mono);
   font-size: 11.5px;
@@ -1482,10 +1489,12 @@ body.touring .hud-bottom {
   backdrop-filter: blur(8px);
   transition:
     opacity 0.4s ease,
-    transform 0.4s ease;
+    transform 0.4s ease,
+    visibility 0.4s ease;
 }
 #sound-invite.on {
   opacity: 1;
+  visibility: visible;
   transform: translate(-50%, 0);
   pointer-events: auto;
 }

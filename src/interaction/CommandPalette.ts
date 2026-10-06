@@ -53,6 +53,7 @@ export class CommandPalette {
     this.isOpen = true;
     this.items = this.provider();
     this.root.classList.add('on');
+    this.root.setAttribute('aria-hidden', 'false');
     document.body.classList.add('palette');
     this.input.value = '';
     this.active = 0;
@@ -63,6 +64,7 @@ export class CommandPalette {
   close() {
     this.isOpen = false;
     this.root.classList.remove('on');
+    this.root.setAttribute('aria-hidden', 'true');
     document.body.classList.remove('palette');
     this.input.blur();
   }

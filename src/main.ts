@@ -38,12 +38,22 @@ const debug = new URLSearchParams(location.search).has('debug');
 const settings = createSettings(QUALITY);
 
 const canvas = document.getElementById('gl') as HTMLCanvasElement;
-const renderer = new THREE.WebGLRenderer({
-  canvas,
-  antialias: false,
-  stencil: false,
-  powerPreference: 'high-performance',
-});
+/** No WebGL (blocked, disabled or no GPU): show the static fallback instead of a black page. */
+function createRenderer() {
+  try {
+    return new THREE.WebGLRenderer({
+      canvas,
+      antialias: false,
+      stencil: false,
+      powerPreference: 'high-performance',
+    });
+  } catch (err) {
+    document.getElementById('intro')?.remove();
+    document.getElementById('fallback')!.hidden = false;
+    throw err;
+  }
+}
+const renderer = createRenderer();
 const maxPixelRatio = () => Math.min(Math.max(window.devicePixelRatio, QUALITY.supersample), QUALITY.maxPixelRatio);
 // Never drop far below native: a 0.6x frame reads as soap, so the floor stays near 1 CSS pixel.
 const resolution = new AdaptiveResolution(maxPixelRatio(), maxPixelRatio, QUALITY.adaptive, 0.85);
@@ -84,7 +94,8 @@ const manager = new LevelManager(ctx, LEVELS, {
   prepare: QUALITY.levelCache > 0 ? createWarmup(renderer, camera, post.composer) : undefined,
 });
 post.seam.camera = manager.seamCamera;
-const profiler = new LevelProfiler(renderer);
+// The profiler stalls the GPU (readPixels) on every swap: debug builds only.
+const profiler = debug ? new LevelProfiler(renderer) : null;
 manager.profiler = profiler;
 const overlay = new Overlay(
   LEVELS.map((l) => l.meta),
@@ -126,6 +137,7 @@ interaction.onSelect = (hit) => {
 };
 const labelsBtn = document.getElementById('nav-labels') as HTMLButtonElement;
 interaction.onLabels = () => labelsBtn.classList.toggle('on', labels.toggle());
+labelsBtn.addEventListener('click', () => interaction.onLabels?.());
 
 // ---------------------------------------------------------------- scroll
 const totalWeight = LEVELS.reduce((s, l) => s + l.meta.weight, 0);
@@ -236,16 +248,21 @@ const attract = new Attract();
 const intro = document.getElementById('intro')!;
 let introDone = false;
 let firstFrameRendered = false;
-function dismissIntro() {
+function dismissIntro(fromScroll = false) {
   if (introDone) return;
   introDone = true;
   intro.classList.add('hide');
+  // Don't leave keyboard focus on a button that is fading out.
+  if (document.activeElement instanceof HTMLElement && intro.contains(document.activeElement)) {
+    document.activeElement.blur();
+  }
   // Hand the attract drift over to the scrollbar so the landing settles where it was.
   if (attract.active) {
     attract.stop();
     scrollState.p = settings.progress;
     settings.override = false;
-    scrollToProgress(settings.progress);
+    // A scrollbar drag has already moved the page: keep it rather than snapping back.
+    if (!fromScroll) scrollToProgress(settings.progress);
   }
 }
 function startTourFromIntro() {
@@ -254,19 +271,27 @@ function startTourFromIntro() {
   sound.offer();
 }
 document.getElementById('intro-tour')!.addEventListener('click', startTourFromIntro);
-document.getElementById('intro-explore')!.addEventListener('click', dismissIntro);
+document.getElementById('intro-explore')!.addEventListener('click', () => dismissIntro());
+// Scrolling is the other way in: a wheel, a swipe or a scrollbar drag closes the card.
+window.addEventListener('wheel', () => dismissIntro(), { passive: true });
+window.addEventListener('touchmove', () => dismissIntro(), { passive: true });
+window.addEventListener('scroll', () => dismissIntro(true), { passive: true });
 window.addEventListener(
   'keydown',
   (e) => {
     if (introDone) return;
-    if (e.code === 'Enter' || e.code === 'Space') {
+    // A focused intro button handles Enter / Space itself.
+    const onControl = e.target instanceof Element && !!e.target.closest('button, a');
+    if ((e.code === 'Enter' || e.code === 'Space') && !onControl) {
       e.preventDefault();
-      // Stop the interaction layer from also handling Space (would toggle the tour back off).
-      e.stopPropagation();
       startTourFromIntro();
     } else if (e.code === 'Escape') {
       dismissIntro();
+    } else if (e.code === 'Tab' || e.metaKey || e.ctrlKey || e.altKey || (e.shiftKey && e.code === 'KeyF')) {
+      return; // focus moves, browser shortcuts and fullscreen still work behind the card
     }
+    // Scene shortcuts (E, F, L, M, G, 1-8, arrows) stay off until the card is gone.
+    e.stopImmediatePropagation();
   },
   { capture: true },
 );
@@ -504,7 +529,7 @@ function frame(now: number) {
   dofPass.enabled = settings.dof && !interaction.exploring;
 
   renderer.info.reset();
-  if (profiler.measuring) {
+  if (profiler?.measuring) {
     const rec = profiler.measure(() => post.render(rawDt), level.scene);
     if (rec && debug) console.info('[level]', JSON.stringify(rec));
   } else {

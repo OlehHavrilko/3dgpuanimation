@@ -12,7 +12,8 @@
 export class FrameDissolve {
   private ctx2d: CanvasRenderingContext2D | null;
   private hasFrame = false;
-  private fading = false;
+  private fadeFrame = 0;
+  private fadeTimer = 0;
   /** Longest edge of the captured frame, in pixels: memory over absolute sharpness. */
   private readonly maxEdge = 1920;
 
@@ -45,6 +46,7 @@ export class FrameDissolve {
   /** Show the frozen frame instantly (no transition), covering the render below. */
   reveal() {
     if (!this.hasFrame) return;
+    this.cancelFade(); // an older fade must not hide this frame half-way
     this.el.style.transition = 'none';
     this.el.style.transform = 'none';
     this.el.style.opacity = '1';
@@ -52,9 +54,10 @@ export class FrameDissolve {
 
   /** Fade the frozen frame out. Runs one frame after `reveal()` so the transition applies. */
   play() {
-    if (!this.hasFrame || this.fading) return;
-    this.fading = true;
-    requestAnimationFrame(() => {
+    if (!this.hasFrame) return;
+    // A fast scroll can cross a second boundary mid-fade: restart, don't let the old timer cut it.
+    this.cancelFade();
+    this.fadeFrame = requestAnimationFrame(() => {
       this.el.style.transition = `opacity ${this.duration}ms cubic-bezier(.22,.61,.36,1), transform ${this.duration}ms cubic-bezier(.22,.61,.36,1)`;
       this.el.style.opacity = '0';
       // A slight push-in keeps the camera feeling like it is still travelling.
@@ -62,12 +65,17 @@ export class FrameDissolve {
     });
     // Drop the frame when the fade is done: a very fast flick that skips the dive would
     // otherwise reuse the previous transition's image.
-    window.setTimeout(() => this.reset(), this.duration + 90);
+    this.fadeTimer = window.setTimeout(() => this.reset(), this.duration + 90);
+  }
+
+  private cancelFade() {
+    cancelAnimationFrame(this.fadeFrame);
+    window.clearTimeout(this.fadeTimer);
   }
 
   /** Called on transitionend / level change: drop the frame so stale pixels never flash. */
   reset() {
-    this.fading = false;
+    this.cancelFade();
     this.hasFrame = false;
     this.el.style.transition = 'none';
     this.el.style.opacity = '0';

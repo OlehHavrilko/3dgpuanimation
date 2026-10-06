@@ -33,6 +33,42 @@
       content="From a graphics card down to a single silicon atom. Eight scales, one continuous WebGL dive."
     />
     <meta name="twitter:image" content="https://olehhavrilko.github.io/3dgpuanimation/og.jpg" />
+    <!-- Inline so the no-JS / no-WebGL fallback is styled even before the bundle loads. -->
+    <style>
+      #fallback {
+        position: fixed;
+        inset: 0;
+        z-index: 30;
+        place-items: center;
+        padding: 24px;
+        text-align: center;
+        background: #020504;
+        color: #d8e2dc;
+        font:
+          16px/1.6 system-ui,
+          sans-serif;
+      }
+      #fallback:not([hidden]) {
+        display: grid;
+      }
+      #fallback > div {
+        max-width: 560px;
+      }
+      #fallback h1 {
+        margin: 0 0 12px;
+        font-size: 28px;
+      }
+      #fallback a {
+        color: #76b900;
+      }
+    </style>
+    <noscript
+      ><style>
+        #fallback {
+          display: grid;
+        }
+      </style></noscript
+    >
   </head>
   <body>
     <canvas id="gl"></canvas>
@@ -127,7 +163,7 @@
       <div class="insp-controls"></div>
     </aside>
 
-    <div id="tour" aria-hidden="true">
+    <div id="tour">
       <button id="tour-play" type="button">Play</button>
       <div class="tour-body">
         <div class="tour-meta">
@@ -227,11 +263,27 @@
           <button id="intro-tour" type="button" class="primary">Start the descent</button>
           <button id="intro-explore" type="button">Scroll it yourself</button>
         </div>
-        <div class="intro-keys">space play / pause &nbsp;·&nbsp; e explore &nbsp;·&nbsp; f fullscreen</div>
+        <div class="intro-keys">space play / pause &nbsp;·&nbsp; e explore &nbsp;·&nbsp; shift+f fullscreen</div>
         <div class="intro-load"><div id="intro-load-fill"></div></div>
       </div>
     </div>
 
+    <!-- Shown when JavaScript is off (noscript) or WebGL can't start (main.ts). -->
+    <div id="fallback" hidden>
+      <div>
+        <h1>GPU &#9656; Atom</h1>
+        <p>
+          A live 3D descent from a graphics card to a single silicon atom. It renders in your browser and needs
+          JavaScript and WebGL, which aren't available here. Try a current Chrome, Firefox, Safari or Edge with hardware
+          acceleration turned on.
+        </p>
+        <p>
+          <a href="https://github.com/OlehHavrilko/3dgpuanimation"
+            >See the recording, screenshots and source on GitHub</a
+          >
+        </p>
+      </div>
+    </div>
     <div id="scroll-space"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
