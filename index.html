@@ -3,6 +3,32 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      A cached index.html from an older deploy points at hashed assets that no longer exist, and the
+      page renders as bare unstyled HTML (seen in in-app browsers such as Telegram's). If a bundle
+      file fails to load, reload once with a cache-busting query to fetch the current page.
+    -->
+    <script>
+      window.addEventListener(
+        'error',
+        function (e) {
+          var el = e.target;
+          var url = el && (el.src || el.href);
+          if (!url || url.indexOf('/assets/') < 0) return;
+          var u = new URL(location.href);
+          if (u.searchParams.has('_r')) return;
+          u.searchParams.set('_r', Date.now().toString(36));
+          location.replace(u.href);
+        },
+        true,
+      );
+      window.addEventListener('load', function () {
+        var u = new URL(location.href);
+        if (!u.searchParams.has('_r')) return;
+        u.searchParams.delete('_r');
+        history.replaceState(history.state, '', u.href);
+      });
+    </script>
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <title>GPU to Atom</title>
     <meta
