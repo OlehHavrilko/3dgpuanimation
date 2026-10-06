@@ -11,8 +11,10 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:e2e": "vite build && playwright test smoke guided descent i18n pwa",
+    "test:e2e": "vite build && playwright test smoke guided descent i18n pwa a11y",
+    "test:visual": "vite build && playwright test visual",
     "bench": "vite build && BENCH=${BENCH:-local} playwright test bench",
+    "size": "node scripts/check-size.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -25,6 +27,7 @@
     "three": "^0.186.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.56.1",
     "@types/three": "^0.186.0",

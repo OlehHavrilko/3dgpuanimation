@@ -450,13 +450,28 @@ let fpsAcc = 0;
 let fpsFrames = 0;
 let labelTimer = 0;
 
+/**
+ * Debug clock for deterministic frames (visual tests): pause the loop, set the simulation
+ * time, then advance an exact number of frames at a fixed step. Same steps, same pixels.
+ */
+const clock = {
+  paused: false,
+  reset(time = 0) {
+    simTime = time;
+  },
+  step(frames = 1, dt = 1 / 60) {
+    for (let i = 0; i < frames; i++) renderFrame(dt);
+  },
+};
+if (debug) Object.assign((window as unknown as { __teardown: object }).__teardown, { clock });
+
 function frame(now: number) {
   timer.update(now);
-  if (contextLost) {
-    requestAnimationFrame(frame);
-    return;
-  }
-  const rawDt = Math.min(timer.getDelta(), 0.1);
+  if (!contextLost && !clock.paused) renderFrame(Math.min(timer.getDelta(), 0.1));
+  requestAnimationFrame(frame);
+}
+
+function renderFrame(rawDt: number) {
   const dt = rawDt * settings.timeScale;
   simTime += dt;
 
@@ -562,7 +577,6 @@ function frame(now: number) {
     fpsAcc = 0;
     fpsFrames = 0;
   }
-  requestAnimationFrame(frame);
 }
 
 requestAnimationFrame(frame);
