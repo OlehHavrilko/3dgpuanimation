@@ -11,11 +11,13 @@ import { nucleus } from './nucleus';
 import { story } from './story';
 import { accuracy } from './accuracy';
 import { reference } from './reference';
+import { memory } from './memory';
 
 export const en = {
   ui,
   story,
   accuracy,
   reference,
+  memory,
   levels: { card, pcb, package: pkg, die, metal, transistor, lattice, atom, nucleus },
 };

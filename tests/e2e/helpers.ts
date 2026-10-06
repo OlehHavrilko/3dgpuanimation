@@ -3,15 +3,15 @@ import { expect, type Page } from '@playwright/test';
 /**
  * Open the app with the debug handle (window.__teardown) and collect JS errors.
  * Defaults: no landing card (its attract drift owns the timeline) and a fixed quality tier,
- * so the run doesn't depend on the machine's core count.
+ * so the run doesn't depend on the machine's core count. `path` opens another page (memory.html).
  */
-export async function openApp(page: Page, query = '&nointro&quality=medium') {
+export async function openApp(page: Page, query = '&nointro&quality=medium', path = '/') {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
   page.on('console', (m) => {
     if (m.type() === 'error') errors.push(`console.error: ${m.text()}`);
   });
-  await page.goto(`/?debug${query}`);
+  await page.goto(`${path}?debug${query}`);
   await page.waitForFunction(() => (window as any).__teardown);
   // The lil-gui panel overlaps the inspector in screenshots; tests never need it.
   await page.evaluate(() => document.querySelector('.lil-gui')?.remove());

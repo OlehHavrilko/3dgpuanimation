@@ -65,6 +65,7 @@ export const ui = {
     starGithub: '\u2605 Star on GitHub',
     sourcesGlossary: 'Sources & glossary',
     sourceCredits: 'Source & credits',
+    memoryBranch: 'Side branch: memory ▸',
     introTitle1: 'One descent.',
     introTitle2: 'Fourteen orders of magnitude.',
     introLede:

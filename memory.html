@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <title>GPU → Memory → Bit</title>
+    <meta
+      name="description"
+      content="A side branch of the GPU → Atom descent: from one GDDR7 chip of the RTX 5090 to the capacitor that holds a single bit."
+    />
+    <meta name="theme-color" content="#000000" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="canonical" href="https://olehhavrilko.github.io/3dgpuanimation/memory.html" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="GPU to Atom" />
+    <meta property="og:title" content="GPU → Memory → Bit: inside a GDDR7 chip" />
+    <meta
+      property="og:description"
+      content="From one GDDR7 chip of an RTX 5090 down to the capacitor that holds a single bit. Rendered live, procedurally."
+    />
+    <meta property="og:url" content="https://olehhavrilko.github.io/3dgpuanimation/memory.html" />
+    <meta property="og:image" content="https://olehhavrilko.github.io/3dgpuanimation/og.jpg" />
+    <style>
+      #fallback {
+        position: fixed;
+        inset: 0;
+        z-index: 30;
+        place-items: center;
+        padding: 24px;
+        text-align: center;
+        background: #020504;
+        color: #d8e2dc;
+        font:
+          16px/1.6 system-ui,
+          sans-serif;
+      }
+      #fallback:not([hidden]) {
+        display: grid;
+      }
+      #fallback a {
+        color: #76b900;
+      }
+    </style>
+    <noscript
+      ><style>
+        #fallback {
+          display: grid;
+        }
+      </style></noscript
+    >
+  </head>
+  <body class="memory-branch">
+    <canvas id="gl"></canvas>
+    <canvas id="dissolve" aria-hidden="true"></canvas>
+    <div id="spot"></div>
+    <svg id="leader" aria-hidden="true">
+      <polyline points="" />
+      <circle r="3" />
+    </svg>
+    <div id="labels"></div>
+    <div id="reference" aria-hidden="true"></div>
+    <div id="tip" role="tooltip">
+      <div class="tip-kind"></div>
+      <div class="tip-title"></div>
+      <div class="tip-specs"></div>
+      <div class="tip-hint" data-i18n="tipHint">click to inspect</div>
+    </div>
+
+    <div id="hud">
+      <header class="hud-top">
+        <div class="top-left">
+          <span class="brand">GPU <span class="arrow">&#9656;</span> <span data-mem="brand">MEMORY</span></span>
+          <nav id="crumbs" data-i18n-aria="crumbs" aria-label="Scale breadcrumb"></nav>
+        </div>
+        <div class="top-right">
+          <a id="mem-back" class="mem-back" href="./#l=2&amp;p=45" data-mem="back" data-mem-title="backTitle"
+            >&#9666; Back to the main descent</a
+          >
+          <div class="lang-switch" role="group" data-i18n-aria="language" aria-label="Language"></div>
+          <span id="lvl-index">01 / 04</span>
+        </div>
+      </header>
+
+      <section class="hud-main">
+        <div class="mem-tag" data-mem="branchTag">Side branch · memory</div>
+        <div id="lvl-scale">2 cm</div>
+        <div id="lvl-name">GDDR7 chip</div>
+        <div id="lvl-desc"></div>
+        <button id="accuracy-btn" type="button" aria-expanded="false" aria-controls="accuracy">
+          How accurate is this?
+        </button>
+        <div id="accuracy" hidden></div>
+        <div id="lvl-caption"></div>
+      </section>
+
+      <nav id="rail"></nav>
+      <div id="ruler" role="img"></div>
+
+      <footer class="hud-bottom">
+        <div class="fov">
+          <span class="fov-label" data-i18n="fovLabel">field of view</span>
+          <span id="fov-value">&mdash;</span>
+          <div id="scalebar">
+            <div class="scalebar-track"><div id="scalebar-fill"></div></div>
+            <div class="scalebar-meta">
+              <span id="scalebar-label">&mdash;</span>
+              <span id="scalebar-anchor"></span>
+            </div>
+          </div>
+        </div>
+        <div id="nav">
+          <button id="nav-prev" type="button" data-i18n-title="prevTitle" title="Previous scale (&larr;)">
+            &#9664;
+          </button>
+          <button id="mem-play" type="button" data-mem="play" data-mem-title="playTitle" title="Play (Space)">
+            Play
+          </button>
+          <button
+            id="nav-explore"
+            type="button"
+            data-i18n="explore"
+            data-i18n-title="exploreTitle"
+            title="Explore mode (E)"
+          >
+            Explore
+          </button>
+          <button id="nav-labels" type="button" data-i18n="labels" data-i18n-title="labelsTitle" title="3D labels (L)">
+            Labels
+          </button>
+          <button id="nav-next" type="button" data-i18n-title="nextTitle" title="Next scale (&rarr;)">&#9654;</button>
+        </div>
+        <div id="scroll-hint"><span data-i18n="scrollHint">scroll to descend</span> <span>&darr;</span></div>
+      </footer>
+      <div id="explore-hint">
+        <span class="mouse" data-i18n="exploreHintMouse"
+          >drag&nbsp;· orbit &nbsp; wheel&nbsp;· zoom &nbsp; right-drag&nbsp;· pan &nbsp; click&nbsp;· inspect &nbsp;
+          esc&nbsp;· exit</span
+        >
+        <span class="touch" data-i18n="exploreHintTouch"
+          >1 finger&nbsp;· orbit &nbsp; pinch&nbsp;· zoom &nbsp; 2 fingers&nbsp;· pan &nbsp; tap&nbsp;· inspect</span
+        >
+      </div>
+    </div>
+
+    <div id="thermal-legend" aria-hidden="true">
+      <span class="tl-title">&deg;C</span>
+      <div class="tl-bar"></div>
+      <div class="tl-ticks"><span>105</span><span>80</span><span>55</span><span>25</span></div>
+    </div>
+
+    <aside id="inspector" aria-live="polite">
+      <div class="insp-grip" data-i18n-title="collapse" title="Collapse"></div>
+      <button class="insp-close" type="button" data-i18n-title="closeEsc" title="Close (Esc)">&times;</button>
+      <div class="insp-kind"></div>
+      <h2 class="insp-title"></h2>
+      <dl class="insp-specs"></dl>
+      <p class="insp-note"></p>
+      <div class="insp-actions"></div>
+      <div class="insp-controls"></div>
+    </aside>
+
+    <!-- End of the branch: one line and the way back. -->
+    <div id="mem-end" aria-hidden="true">
+      <p data-mem="end">That was one bit. The main descent goes on into the GPU itself.</p>
+      <div class="fin-actions">
+        <a id="mem-end-back" class="primary" href="./#l=3&amp;p=5" data-mem="endBack">Back to the GPU</a>
+        <button type="button" data-reference="sources" data-i18n="sourcesGlossary">Sources &amp; glossary</button>
+      </div>
+    </div>
+
+    <div id="fallback" hidden>
+      <div>
+        <h1>GPU &#9656; Memory</h1>
+        <p>
+          A live 3D descent from a GDDR7 memory chip to a single bit. It needs JavaScript and WebGL, which aren't
+          available here.
+        </p>
+        <p><a href="https://github.com/OlehHavrilko/3dgpuanimation">See the source on GitHub</a></p>
+      </div>
+    </div>
+    <div id="scroll-space"></div>
+    <script type="module" src="/src/memory/main.ts"></script>
+  </body>
+</html>

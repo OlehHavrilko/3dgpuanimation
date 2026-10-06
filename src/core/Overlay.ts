@@ -3,6 +3,8 @@ import { formatMeters, powerOfTen } from './math';
 import { content } from '../content';
 import { ScaleRuler } from './ScaleRuler';
 
+type AccuracyNote = (typeof content.accuracy.levels)[number];
+
 /** Minimal HUD: level name + scale label, contextual caption, scale rail, live field of view. */
 export class Overlay {
   private scaleEl = document.getElementById('lvl-scale')!;
@@ -27,6 +29,8 @@ export class Overlay {
   constructor(
     private metas: LevelMeta[],
     onJump: (index: number) => void,
+    /** Accuracy notes in level order (the memory branch passes its own). */
+    private accuracyNotes: readonly AccuracyNote[] = content.accuracy.levels,
   ) {
     this.accuracyBtn.textContent = content.accuracy.button;
     this.accuracyBtn.addEventListener('click', () => this.toggleAccuracy());
@@ -136,7 +140,7 @@ export class Overlay {
 
   private fillAccuracy(index: number) {
     const A = content.accuracy;
-    const notes = A.levels[index];
+    const notes = this.accuracyNotes[index];
     this.accuracyEl.replaceChildren();
     if (!notes) return;
     for (const kind of ['spec', 'representative', 'notToScale'] as const) {

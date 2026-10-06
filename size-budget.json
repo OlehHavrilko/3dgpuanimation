@@ -3,6 +3,7 @@
     { "name": "JavaScript (all chunks)", "match": "^assets/.*\\.js$", "maxGzipKB": 280 },
     { "name": "CSS", "match": "^assets/.*\\.css$", "maxGzipKB": 9 },
     { "name": "HTML", "match": "^index\\.html$", "maxGzipKB": 6 },
+    { "name": "Memory branch (own page + code)", "match": "^(memory\\.html|assets/memory-.*)$", "maxGzipKB": 18 },
     { "name": "Everything in dist", "match": ".", "maxGzipKB": 520 }
   ]
 }
