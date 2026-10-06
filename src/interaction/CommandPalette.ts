@@ -26,14 +26,24 @@ export class CommandPalette {
       <div class="pal-panel" role="dialog" aria-modal="true">
         <div class="pal-search">
           <span class="pal-glyph">&#8984;K</span>
-          <input type="text" autocomplete="off" spellcheck="false" />
+          <input
+            type="text"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded="true"
+            aria-controls="pal-list"
+            autocomplete="off"
+            spellcheck="false"
+          />
         </div>
-        <div class="pal-list" role="listbox"></div>
+        <div class="pal-list" id="pal-list" role="listbox"></div>
         <div class="pal-foot"></div>
       </div>`;
     const T = content.story.palette;
     this.root.querySelector('.pal-panel')!.setAttribute('aria-label', T.label);
     this.root.querySelector('input')!.placeholder = T.placeholder;
+    this.root.querySelector('input')!.setAttribute('aria-label', T.placeholder);
+    this.root.querySelector('.pal-list')!.setAttribute('aria-label', T.results);
     this.root.querySelector('.pal-foot')!.textContent = T.foot;
     this.input = this.root.querySelector('input')!;
     this.list = this.root.querySelector('.pal-list')!;
@@ -108,14 +118,21 @@ export class CommandPalette {
     if (!this.shown.length) {
       const empty = document.createElement('div');
       empty.className = 'pal-empty';
+      // A listbox must own options; the "nothing matches" line is a disabled one.
+      empty.setAttribute('role', 'option');
+      empty.setAttribute('aria-disabled', 'true');
       empty.textContent = content.story.palette.empty;
       this.list.appendChild(empty);
+      this.input.removeAttribute('aria-activedescendant');
       return;
     }
     this.shown.forEach((item, i) => {
       const row = document.createElement('button');
       row.type = 'button';
       row.className = 'pal-row';
+      row.id = `pal-opt-${i}`;
+      row.setAttribute('role', 'option');
+      row.tabIndex = -1;
       row.innerHTML = '<span class="pal-kind"></span><span class="pal-label"></span><span class="pal-hint"></span>';
       (row.querySelector('.pal-kind') as HTMLElement).textContent = item.kind;
       (row.querySelector('.pal-label') as HTMLElement).textContent = item.label;
@@ -124,13 +141,17 @@ export class CommandPalette {
         this.close();
         item.run();
       });
-      if (i === this.active) row.classList.add('active');
       this.list.appendChild(row);
     });
+    this.paintActive();
   }
 
   private paintActive() {
-    [...this.list.children].forEach((el, i) => el.classList.toggle('active', i === this.active));
+    [...this.list.children].forEach((el, i) => {
+      el.classList.toggle('active', i === this.active);
+      el.setAttribute('aria-selected', String(i === this.active));
+    });
+    this.input.setAttribute('aria-activedescendant', `pal-opt-${this.active}`);
     this.list.children[this.active]?.scrollIntoView({ block: 'nearest' });
   }
 }

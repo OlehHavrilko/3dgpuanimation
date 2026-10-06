@@ -33,5 +33,6 @@ export const story = {
     placeholder: 'Jump to a scale or a part…',
     foot: '↑↓ navigate  ·  ↵ open  ·  esc close',
     empty: 'nothing matches',
+    results: 'Matching scales and parts',
   },
 };
