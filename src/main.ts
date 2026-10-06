@@ -28,9 +28,11 @@ import { setupDebugPanel } from './app/debugPanel';
 import { applyStaticText } from './app/staticText';
 import { setupReference } from './app/reference';
 import { createWarmup } from './app/warmup';
+import { registerServiceWorker } from './app/pwa';
 
 gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 applyStaticText();
+registerServiceWorker();
 
 // ---------------------------------------------------------------- renderer + post
 // Device-tiered quality: ?quality=low|high forces a preset, otherwise it is probed.
