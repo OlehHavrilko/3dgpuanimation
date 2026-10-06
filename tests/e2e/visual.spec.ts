@@ -51,6 +51,8 @@ const settle = () => (window as any).__teardown.manager.whenIdle();
 
 for (const shot of SHOTS) {
   test(`frame: ${shot.name}`, async ({ page }) => {
+    // Two level builds and 40 software-rendered frames; the heavy scales take minutes.
+    test.setTimeout(600_000);
     const errors = await openApp(page);
     await page.evaluate(() => {
       const t = (window as any).__teardown;
@@ -77,11 +79,14 @@ for (const shot of SHOTS) {
 
     // Read the drawing buffer in the same task as the last render (it is not preserved), so
     // the PNG is exactly the frame, with no compositor or HUD in it.
-    const png = await page.evaluate(([dt]) => {
-      const t = (window as any).__teardown;
-      t.clock.step(1, dt);
-      return t.renderer.domElement.toDataURL('image/png') as string;
-    }, [STEP] as const);
+    const png = await page.evaluate(
+      ([dt]) => {
+        const t = (window as any).__teardown;
+        t.clock.step(1, dt);
+        return t.renderer.domElement.toDataURL('image/png') as string;
+      },
+      [STEP] as const,
+    );
     expect(Buffer.from(png.split(',')[1], 'base64')).toMatchSnapshot(`${shot.name}.png`, SNAPSHOT);
     expectNoErrors(errors);
   });
