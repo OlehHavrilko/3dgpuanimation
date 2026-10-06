@@ -86,13 +86,13 @@ test('Sources & glossary: G opens it, tabs switch, a term jumps to its scale', a
   const errors = await openApp(page);
   await page.keyboard.press('g');
   await expect(page.locator('#reference')).toHaveClass(/on/);
-  await expect(page.locator('#ref-glossary dt')).toHaveCount(23);
+  await expect(page.locator('#ref-glossary dt')).toHaveCount(28);
   // While open, scene keys do nothing: F must not start the Trace.
   await page.keyboard.press('f');
   expect(await bodyHas(page, 'following')).toBe(false);
   await page.locator('#ref-tab-sources').click();
   await expect(page.locator('#ref-sources')).toBeVisible();
-  await expect(page.locator('#ref-sources a')).toHaveCount(4);
+  await expect(page.locator('#ref-sources a')).toHaveCount(10);
   await page.keyboard.press('Escape');
   await expect(page.locator('#reference')).not.toHaveClass(/on/);
   // The accuracy note links to the sources.
