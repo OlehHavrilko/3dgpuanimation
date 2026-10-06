@@ -8,7 +8,7 @@ export interface PaletteItem {
 }
 
 /**
- * Ctrl/Cmd+K command palette: jump to any of the eight scales or straight to a named
+ * Ctrl/Cmd+K command palette: jump to any of the nine scales or straight to a named
  * part of the current one. Levels are always listed; entities come from the level's own
  * pickables, so every level gets the feature for free.
  */

@@ -36,6 +36,42 @@ export const reference = {
       url: 'https://en.wikipedia.org/wiki/Silicon',
       covers: 'Diamond-cubic crystal, lattice constant 543.1 pm, 14 electrons',
     },
+    {
+      title: 'Review of Particle Physics',
+      publisher: 'Particle Data Group',
+      url: 'https://pdg.lbl.gov/',
+      covers: 'Up and down quark masses (≈2.2 and ≈4.7 MeV), proton and neutron masses, the neutron lifetime',
+    },
+    {
+      title: 'CODATA value: proton rms charge radius',
+      publisher: 'NIST',
+      url: 'https://physics.nist.gov/cgi-bin/cuu/Value?rp',
+      covers: 'Proton charge radius 0.8414 fm',
+    },
+    {
+      title: 'Table of experimental nuclear ground state charge radii: An update',
+      publisher: 'Angeli & Marinova, Atomic Data and Nuclear Data Tables 99 (2013) 69',
+      url: 'https://doi.org/10.1016/j.adt.2011.12.006',
+      covers: '²⁸Si nuclear charge radius 3.12 fm',
+    },
+    {
+      title: 'Gluon flux-tube distribution and linear confinement in baryons',
+      publisher: 'Bissey et al., Physical Review D 76 (2007) 114512',
+      url: 'https://doi.org/10.1103/PhysRevD.76.114512',
+      covers: 'The Y-shaped flux tube between three quarks, from lattice QCD',
+    },
+    {
+      title: 'Proton Mass Decomposition from the QCD Energy Momentum Tensor',
+      publisher: 'Yang et al., Physical Review Letters 121 (2018) 212001',
+      url: 'https://doi.org/10.1103/PhysRevLett.121.212001',
+      covers: 'Where the proton’s mass comes from: quark masses are a small part of it',
+    },
+    {
+      title: 'Limits on the effective quark radius from inclusive ep scattering at HERA',
+      publisher: 'ZEUS Collaboration, Physics Letters B 757 (2016) 468',
+      url: 'https://doi.org/10.1016/j.physletb.2016.04.007',
+      covers: 'Quarks show no size down to about 0.4 × 10⁻¹⁸ m',
+    },
   ],
   glossary: [
     {
@@ -136,6 +172,31 @@ export const reference = {
       term: 'Valence electron',
       level: 7,
       def: 'An electron in the outer shell. Silicon has four, and they make the bonds.',
+    },
+    {
+      term: 'Nucleon',
+      level: 8,
+      def: 'A proton or a neutron: the particles a nucleus is built from. Silicon-28 has 14 of each.',
+    },
+    {
+      term: 'Quark',
+      level: 8,
+      def: 'The building block of protons and neutrons. A proton is two up quarks and one down; no quark has ever been seen on its own.',
+    },
+    {
+      term: 'Gluon',
+      level: 8,
+      def: 'The carrier of the strong force between quarks. Gluons carry colour charge themselves, which squeezes the field into tubes.',
+    },
+    {
+      term: 'Colour charge',
+      level: 8,
+      def: 'The charge of the strong force, in three kinds named red, green and blue. Nothing to do with light; a proton is always colour-neutral.',
+    },
+    {
+      term: 'Confinement',
+      level: 8,
+      def: 'Quarks are always bound in groups: pulling one out stretches the gluon tube until it snaps into a new quark–antiquark pair.',
     },
   ],
 };

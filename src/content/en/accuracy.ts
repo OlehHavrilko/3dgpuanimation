@@ -78,5 +78,21 @@ export const accuracy = {
         'The cloud is sampled probability, not particles',
       ],
     },
+    {
+      spec: [
+        '²⁸Si nucleus: 14 protons + 14 neutrons, charge radius 3.12 fm',
+        'Proton = uud, neutron = udd; proton charge radius 0.84 fm',
+        'Quark masses ≈2.2 MeV (up) and ≈4.7 MeV (down): about 1% of the proton’s 938 MeV',
+      ],
+      representative: [
+        'Nucleons as touching spheres: real ones overlap and have no sharp edge',
+        'Y-shaped flux tube: the lattice-QCD picture for three static quarks',
+      ],
+      notToScale: [
+        'Quarks drawn as glowing beads: they have no measured size (under 10⁻¹⁸ m) and no fixed position',
+        '“Colour” is a kind of charge, not a colour; red, green and blue are a naming convention',
+        'Gluon exchanges and sea pairs slowed down and thinned out enormously',
+      ],
+    },
   ],
 };

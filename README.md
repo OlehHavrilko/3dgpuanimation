@@ -1,6 +1,6 @@
 # GPU → Atom
 
-**An interactive WebGL dive from a GeForce RTX 5090 down to a single silicon atom.** Eight scales, from 30 cm to 0.2 nm, in one continuous camera move. Every part is modelled procedurally and rendered live in the browser: no 3D models, textures or video.
+**An interactive WebGL dive from a GeForce RTX 5090 down to a single silicon atom, and on into the quarks of its nucleus.** Nine scales, from 30 cm to 1 fm, in one continuous camera move. Every part is modelled procedurally and rendered live in the browser: no 3D models, textures or video.
 
 **[▶ Open the live demo](https://olehhavrilko.github.io/3dgpuanimation/)** · works in any modern desktop or mobile browser · [skip the intro](https://olehhavrilko.github.io/3dgpuanimation/?nointro)
 
@@ -10,7 +10,7 @@
 
 ## What I built
 
-- **Eight procedural scenes** (card, PCB, package, die, metal stack, FinFET, lattice, atom), about 13k lines of TypeScript, with physically grounded data: real RTX 5090 / GB202 specs, the silicon lattice built from its lattice constant, the electron cloud sampled from hydrogen-like orbitals.
+- **Nine procedural scenes** (card, PCB, package, die, metal stack, FinFET, lattice, atom, nucleus), about 14k lines of TypeScript, with physically grounded data: real RTX 5090 / GB202 specs, the silicon lattice built from its lattice constant, the electron cloud sampled from hydrogen-like orbitals, the nucleus and the proton at their measured charge radii.
 - **A seamless descent:** each scale opens inside the previous one through a camera mapping between scenes (`core/seam.ts`), with a level cache that keeps only the current scale and its neighbours in GPU memory.
 - **Custom shaders:** thin-film interference on the die, per-instance glow, an asset-free FXAA pass and a per-scale colour grade.
 - **Interaction design:** a guided tour, an Explore mode with hover/inspect on thousands of instanced parts, X-Ray / Section / Thermal views, a command palette, deep links and touch gestures.
@@ -21,20 +21,21 @@
 
 `npm install`, then `npm run dev`, then open the URL Vite prints. Click **Start the descent** or scroll. Add `?debug` for a timeline scrubber, `?nointro` to skip the landing card, or `?quality=low|high` to force a tier.
 
-## The eight scales
+## The nine scales
 
-A scroll-driven teardown of a **GeForce RTX 5090 Founders Edition** in **three acts**: _I — The Machine_ (GPU → PCB → package), _II — The Computation_ (die → metal → transistor) and _III — The Matter_ (lattice → atom). The landing shows a live attract loop, three anchor numbers land where they mean something, one dive runs chrome-free for a breath, and the journey ends on a finale instead of simply stopping.
+A scroll-driven teardown of a **GeForce RTX 5090 Founders Edition** in **three acts**: _I — The Machine_ (GPU → PCB → package), _II — The Computation_ (die → metal → transistor) and _III — The Matter_ (lattice → atom → nucleus). The landing shows a live attract loop, three anchor numbers land where they mean something, one dive runs chrome-free for a breath, and the journey ends on a finale instead of simply stopping.
 
-| #   | Level               | Scale  | What happens                                                                                                                                                                                      |
-| --- | ------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | GeForce RTX 5090 FE | 30 cm  | 304 × 137 mm dual-slot card. Both fans spin, then stop. Exploded view: shroud, fans, two flow-through fin stacks, 3D vapor chamber, heat pipes, main PCB, PCIe and display boards.                |
-| 2   | Main PCB            | 10 cm  | GB202 ringed by 16 GDDR7 chips (32 GB, 512-bit). Chips light up in sequence while data pulses run along the memory bus traces. Power stages, MLCC field, 12V-2x6 connector, PCIe 5.0 x16 fingers. |
-| 3   | GB202 package       | 5 cm   | Flip-chip BGA. The substrate peels apart layer by layer (solder mask, copper, ABF, glass-fibre core). About 5,000 BGA balls and 3,000 C4 bumps, all instanced.                                    |
-| 4   | GB202 die           | 1 cm   | Thin-film interference shader. The floorplan highlights 12 GPCs, then 192 SMs (170 enabled, 22 fused off), then the L2 and the 16 × 32-bit memory controllers.                                    |
-| 5   | Metal stack         | 10 µm  | SEM-style cross-section of about 15 interconnect layers, from the aluminium pad down to 28 nm pitch. The camera descends and zooms with the pitch.                                                |
-| 6   | FinFET transistors  | 50 nm  | A FinFET array. One gate fades out so you can see the high-k dielectric and the electrons, which drift source → drain when the gate pulses.                                                       |
-| 7   | Silicon lattice     | 2 nm   | Diamond cubic built from the lattice maths (a = 5.431 Å, bonds found at a·√3/4). Shows a unit cell, glowing bond pairs, and P and B dopants.                                                      |
-| 8   | Silicon atom        | 0.2 nm | A nucleus of 14 p⁺ + 14 n⁰ packed by relaxation. The electron cloud (~86k points) is sampled from hydrogen-like 1s/2s/2p/3s/3p orbitals with Clementi–Raimondi Z_eff, and pulses slowly.          |
+| #   | Level               | Scale  | What happens                                                                                                                                                                                                                                                    |
+| --- | ------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | GeForce RTX 5090 FE | 30 cm  | 304 × 137 mm dual-slot card. Both fans spin, then stop. Exploded view: shroud, fans, two flow-through fin stacks, 3D vapor chamber, heat pipes, main PCB, PCIe and display boards.                                                                              |
+| 2   | Main PCB            | 10 cm  | GB202 ringed by 16 GDDR7 chips (32 GB, 512-bit). Chips light up in sequence while data pulses run along the memory bus traces. Power stages, MLCC field, 12V-2x6 connector, PCIe 5.0 x16 fingers.                                                               |
+| 3   | GB202 package       | 5 cm   | Flip-chip BGA. The substrate peels apart layer by layer (solder mask, copper, ABF, glass-fibre core). About 5,000 BGA balls and 3,000 C4 bumps, all instanced.                                                                                                  |
+| 4   | GB202 die           | 1 cm   | Thin-film interference shader. The floorplan highlights 12 GPCs, then 192 SMs (170 enabled, 22 fused off), then the L2 and the 16 × 32-bit memory controllers.                                                                                                  |
+| 5   | Metal stack         | 10 µm  | SEM-style cross-section of about 15 interconnect layers, from the aluminium pad down to 28 nm pitch. The camera descends and zooms with the pitch.                                                                                                              |
+| 6   | FinFET transistors  | 50 nm  | A FinFET array. One gate fades out so you can see the high-k dielectric and the electrons, which drift source → drain when the gate pulses.                                                                                                                     |
+| 7   | Silicon lattice     | 2 nm   | Diamond cubic built from the lattice maths (a = 5.431 Å, bonds found at a·√3/4). Shows a unit cell, glowing bond pairs, and P and B dopants.                                                                                                                    |
+| 8   | Silicon atom        | 0.2 nm | A nucleus of 14 p⁺ + 14 n⁰ packed by relaxation. The electron cloud (~86k points) is sampled from hydrogen-like 1s/2s/2p/3s/3p orbitals with Clementi–Raimondi Z_eff, and pulses slowly.                                                                        |
+| 9   | Nucleus & quarks    | 1 fm   | The same ²⁸Si nucleus at true size (the atom shrinks it back from ×10⁴ during the dive). One proton turns see-through: three valence quarks (u u d) swap colour charge through a Y-shaped gluon flux tube, inside a gluon haze with flickering sea-quark pairs. |
 
 ### Gallery
 
@@ -148,6 +149,7 @@ Per-level controls appear in the inspector in Explore mode:
 | 6 · FinFET  | Gate voltage OFF / ON / CLOCK; clock speed                                                                                            |
 | 7 · Lattice | Doping Mixed / Intrinsic / N-type (free electrons) / P-type (holes)                                                                   |
 | 8 · Atom    | Orbitals All / 1s / 2s / 2p / 3s / 3p; hover a shell                                                                                  |
+| 9 · Nucleus | Show All / Valence quarks / Gluon field / Sea quarks; hover a nucleon, a quark or the flux tube                                       |
 
 On touch screens, a first tap identifies a part (tooltip) and a second tap on it inspects, so swiping through the story never drops you into Explore by accident. In Explore, one finger orbits, a pinch zooms and two fingers pan. The inspector becomes a bottom sheet that collapses to its title (tap the grip). While it is open, the view slides so the subject stays clear of the panel.
 
@@ -177,9 +179,9 @@ Gate drive has four settings: OFF, ON, CLOCK, or MANUAL with a gate-voltage slid
 
 ### Trace: one bit, card to atom
 
-Press **Trace** or `F`. The page scrolls itself through all eight scales while a glowing packet with a tail follows one bit of data along a single route:
+Press **Trace** or `F`. The page scrolls itself through all nine scales while a glowing packet with a tail follows one bit of data along a single route:
 
-PCIe 5.0 x16 fingers → flex cable → GPU · GDDR7 chip 11 → its own 32-bit bus → GPU package · solder ball → substrate → C4 bump · memory controller 11 → L2 → GPC → SM · down the via stack → contact → source → channel · through the silicon crystal → a 3p orbital.
+PCIe 5.0 x16 fingers → flex cable → GPU · GDDR7 chip 11 → its own 32-bit bus → GPU package · solder ball → substrate → C4 bump · memory controller 11 → L2 → GPC → SM · down the via stack → contact → source → channel · through the silicon crystal → a 3p orbital, then on into the nucleus that holds it.
 
 The signal-trace visuals come along: on the board the chip's bus lights up while the others fade, and on the die the route glows from the memory controller to the SM the descent dives into. Each level shows its own narration. The journey pauses while you explore and stops on a second press or with `Esc`. If you traced a chip by hand first, the journey reads from that chip instead.
 
@@ -220,15 +222,15 @@ npm run size           # size budget for dist/ (gzip), limits in size-budget.jso
 npm run bench          # build + level activation benchmark → bench/<label>.{json,md}
 ```
 
-The smoke suite runs every level and every feature (Explore, hover/inspect, X-Ray / Section / Thermal, signal trace, transistor gate, the Trace journey, the guided tour, acts and finale, Share frame, labels, the command palette and deep links) in headless Chromium with SwiftShader, so it needs no GPU. It also checks that the level cache stays at current ± 1 and that renderer memory counters return to their starting values after a full 1 → 8 → 1 cycle. CI (`.github/workflows/ci.yml`) runs all of the above except the benchmark.
+The smoke suite runs every level and every feature (Explore, hover/inspect, X-Ray / Section / Thermal, signal trace, transistor gate, the Trace journey, the guided tour, acts and finale, Share frame, labels, the command palette and deep links) in headless Chromium with SwiftShader, so it needs no GPU. It also checks that the level cache stays at current ± 1 and that renderer memory counters return to their starting values after a full 1 → 9 → 1 cycle. CI (`.github/workflows/ci.yml`) runs all of the above except the benchmark.
 
 **Accessibility.** `tests/e2e/a11y.spec.ts` runs axe-core (WCAG 2.1 A and AA rules) over the landing card, the HUD in both languages, Explore with the inspector open, the command palette, the sources sheet and the finale. Any violation fails the build, and the log lists each failing element.
 
-**Visual regression.** `tests/e2e/visual.spec.ts` pauses the render loop (`__teardown.clock`), builds each scale fresh and advances exactly 40 frames at a fixed step with film grain off, so a given build always draws the same pixels. It compares the eight scales, a seam (the metal stack revealed inside the die) and the X-Ray and Section views with the PNGs in `tests/e2e/visual.spec.ts-snapshots/`. After an intended visual change, run the **Update visual snapshots** workflow on the branch (Actions → Run workflow): it re-renders on the CI runner image and commits the new baselines. SwiftShader output depends on the platform, so baselines are Linux-only. When a frame moves, CI uploads the expected, actual and diff images as the `visual-diffs` artifact.
+**Visual regression.** `tests/e2e/visual.spec.ts` pauses the render loop (`__teardown.clock`), builds each scale fresh and advances exactly 40 frames at a fixed step with film grain off, so a given build always draws the same pixels. It compares the nine scales, two seams (the metal stack revealed inside the die, the true-size nucleus inside the atom) and the X-Ray and Section views with the PNGs in `tests/e2e/visual.spec.ts-snapshots/`. After an intended visual change, run the **Update visual snapshots** workflow on the branch (Actions → Run workflow): it re-renders on the CI runner image and commits the new baselines. SwiftShader output depends on the platform, so baselines are Linux-only. When a frame moves, CI uploads the expected, actual and diff images as the `visual-diffs` artifact.
 
 **Size budget.** `scripts/check-size.mjs` gzips every file in `dist/` and fails CI when the JavaScript, CSS, HTML or the whole site grows past `size-budget.json`. Raise a limit on purpose, in the same PR as the change that needs it.
 
-`BENCH=<label> npm run bench` walks 1 → 8 → 1 and records, per activation: build, warmup, first frame (program compile + upload), transition, programs compiled, geometries, textures, estimated GPU MB and JS heap. `BENCH=baseline BENCH_QUERY='&cache=0' npm run bench`, `BENCH=after npm run bench`, then `npm run bench:compare` writes `bench/comparison.md` (before/after for the level cache; `?cache=0` turns the cache off). SwiftShader numbers are CPU-bound: compare runs with each other, not with a real GPU.
+`BENCH=<label> npm run bench` walks 1 → 9 → 1 and records, per activation: build, warmup, first frame (program compile + upload), transition, programs compiled, geometries, textures, estimated GPU MB and JS heap. `BENCH=baseline BENCH_QUERY='&cache=0' npm run bench`, `BENCH=after npm run bench`, then `npm run bench:compare` writes `bench/comparison.md` (before/after for the level cache; `?cache=0` turns the cache off). SwiftShader numbers are CPU-bound: compare runs with each other, not with a real GPU.
 
 ### Media
 
@@ -289,10 +291,11 @@ src/
     entities.ts            pickables → titled entities without a ray
     pick.ts                pickObject / pickInstances / pickInstancedGroup helpers
   levels/
-    L1Card.ts … L8Atom.ts, index.ts (ordered registry)
+    L1Card.ts … L9Nucleus.ts, index.ts (ordered registry)
+    nucleus/               the ²⁸Si nucleus layout and hand-over constants shared by L8 and L9
 ```
 
-**Powers of Ten without float problems.** Each level is its own `THREE.Scene` in its own local units: cm, mm, µm, nm, Å, and stylised pm for the atom. `LevelManager` maps scroll progress (0..1) onto weighted segments. All levels share one camera, and each level sets its near and far planes for its own units.
+**Powers of Ten without float problems.** Each level is its own `THREE.Scene` in its own local units: cm, mm, µm, nm, Å, stylised pm for the atom and 0.1 fm for the nucleus. `LevelManager` maps scroll progress (0..1) onto weighted segments. All levels share one camera, and each level sets its near and far planes for its own units.
 
 **Level cache + warmup.** The current level and its two neighbours stay built (`QUALITY.levelCache`; off on the low tier and with `?cache=0`). In idle time `LevelManager` builds the next level, then the previous one, and `app/warmup.ts` prepares each: `compileAsync` against a 32×32 clone of the composer's input buffer (same colour space, format and MSAA, so the compiled programs are the ones the composer will use), then one tiny render with frustum culling off to upload every buffer and texture. Crossing a boundary is then a scene swap with no build and no shader compile; levels that leave the window are disposed. `bench/comparison.md` has the before/after numbers.
 
@@ -308,13 +311,13 @@ There is no cut and no flash between scales; the next level exists _inside_ the 
 - **How it is revealed.** From 45% of the dive, `SeamEffect` renders the next level (built and warmed up by the level cache) into its own buffer and blends it in: first inside the target's on-screen disc, then everywhere. At the end of the dive the frame _is_ the next level's first frame, so the swap changes nothing on screen. Colour grade, bloom and the scale readout blend with it; depth of field fades out during the reveal and back in once the new level has settled.
 - **Both directions.** Everything is a function of scroll progress, so scrolling back up crosses the same seam in reverse. A scrub that jumps over the seam in one frame is the only case still covered by `FrameDissolve`.
 
-`tests/e2e/descent.spec.ts` walks the whole route GPU → Atom and checks every boundary: the reveal, the matching frame, the shrinking field of view and a cover-free swap.
+`tests/e2e/descent.spec.ts` walks the whole route GPU → Nucleus and checks every boundary: the reveal, the matching frame, the shrinking field of view and a cover-free swap.
 
 **Visual grade.** `PostFX` runs DOF → bloom → chromatic aberration → brightness/contrast → hue/saturation → vignette → ACES tone mapping → film grain, with a per-level look from `Grade.ts` (the SEM level goes near-monochrome and grainy, the die goes saturated, the atom goes dark and bloomy). Low-tier devices get asset-free FXAA instead of MSAA.
 
 **Section caps.** Filled cut faces without a stencil buffer: every closed opaque mesh gets a back-face twin (`SectionCaps` in `ViewModes.ts`) that intersects the view ray with the cut plane and colours that point, with an optional layer stack from `mesh.userData.section` (`core/sectionStack.ts`).
 
-**Scale ruler and the way back up.** A continuous logarithmic ruler (10⁰ to 10⁻¹¹ m, `core/ScaleRuler.ts`) carries a marker that rides it with the live field of view, with familiar sizes along it (a person, a fingernail, a hair, a blood cell, a virus, DNA, an atom). At the finale, **Zoom back out** flies up through every scale in 20 s (the seams work in both directions; any wheel, touch or Esc ends it) and lands on the closing line, "You were looking at one": the die holds about 2.9 × 10²² silicon atoms (`core/facts.ts`, assuming a ~0.78 mm die), and the last scale showed one of them.
+**Scale ruler and the way back up.** A continuous logarithmic ruler (10⁰ to 10⁻¹⁵ m, `core/ScaleRuler.ts`) carries a marker that rides it with the live field of view, with familiar sizes along it (a person, a fingernail, a hair, a blood cell, a virus, DNA, an atom, a nucleus). At the finale, **Zoom back out** flies up through every scale in 20 s (the seams work in both directions; any wheel, touch or Esc ends it) and lands on the closing line, "You were looking at one": the die holds about 2.9 × 10²² silicon atoms (`core/facts.ts`, assuming a ~0.78 mm die), and you just went inside one of them.
 
 **Content.** Every user-facing string (captions, entity info, control labels, acts, key numbers, UI) lives in `src/content/en/` (Russian in `src/content/ru/`, typed against the English shape) behind one `content` export; levels and UI read it. The language is picked once at load (`?lang=`, then the stored choice, then the browser language). The fixed text in `index.html` is the English fallback; `data-i18n` attributes name the dictionary key `app/staticText.ts` fills in.
 
@@ -361,7 +364,8 @@ These parts are representative rather than exact:
 
 - **Package and die floorplan:** the physical placement is schematic. It follows the published block diagram, not a die shot.
 - **Metal stack and FinFET dimensions:** 5/4 nm-class values (fin pitch ~28 nm, gate pitch ~51 nm), because TSMC does not publish exact 4N figures.
-- **Exaggerated or compressed geometry:** substrate layer thicknesses are drawn ×5. In the atom, radii are compressed (r^0.62) so 1s and 3p fit in one frame, and the nucleus is drawn ~10⁴× too large.
+- **Exaggerated or compressed geometry:** substrate layer thicknesses are drawn ×5. In the atom, radii are compressed (r^0.62) so 1s and 3p fit in one frame, and the nucleus is drawn ~10⁴× too large; diving in, it shrinks back to true size.
+- **Nucleus and quarks:** the ²⁸Si charge radius (3.12 fm), proton radius (0.84 fm) and quark masses are measured values (PDG, CODATA, Angeli & Marinova 2013). Quarks are drawn as beads only to be visible: they have no measured size and no fixed position. "Colour" is a charge, the Y-shaped flux tube is the lattice-QCD picture for static quarks (Bissey et al. 2007), and gluon exchanges and sea pairs are slowed and thinned out enormously.
 
 Everything is procedural: no external models or textures.
 

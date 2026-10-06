@@ -7,6 +7,7 @@ import { metal } from './metal';
 import { transistor } from './transistor';
 import { lattice } from './lattice';
 import { atom } from './atom';
+import { nucleus } from './nucleus';
 import { story } from './story';
 import { accuracy } from './accuracy';
 import { reference } from './reference';
@@ -16,5 +17,5 @@ export const en = {
   story,
   accuracy,
   reference,
-  levels: { card, pcb, package: pkg, die, metal, transistor, lattice, atom },
+  levels: { card, pcb, package: pkg, die, metal, transistor, lattice, atom, nucleus },
 };

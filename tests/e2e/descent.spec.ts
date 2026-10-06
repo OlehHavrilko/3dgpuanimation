@@ -2,11 +2,11 @@ import { expect, test } from '@playwright/test';
 import { expectNoErrors, goToLevel, openApp, waitForLevel } from './helpers';
 
 /**
- * Phase C: the whole route GPU → Atom as one continuous descent. For every boundary the dive
+ * Phase C: the whole route GPU → Atom → Nucleus as one continuous descent. For every boundary the dive
  * must reveal the next level, end on exactly the next level's first frame (same physical field
  * of view), and the swap itself must need no cover (no dissolve, no flash).
  */
-test('seamless descent: every boundary from the card to the atom', async ({ page }) => {
+test('seamless descent: every boundary from the card to the nucleus', async ({ page }) => {
   test.setTimeout(900_000);
   const errors = await openApp(page);
   const frames = async (n: number) => {
@@ -39,7 +39,7 @@ test('seamless descent: every boundary from the card to the atom', async ({ page
   const dive = (d: number) => 0.84 + 0.16 * d;
 
   let prevFov = Infinity;
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < 8; i++) {
     const start = await at(i, dive(0.2));
     expect(start.seam).toBe(0);
     const mid = await at(i, dive(0.75));
@@ -59,8 +59,8 @@ test('seamless descent: every boundary from the card to the atom', async ({ page
   }
 
   // Scrolling back up crosses the same seam the other way.
-  await at(7, 0.001);
-  const back = await at(6, dive(0.995));
+  await at(8, 0.001);
+  const back = await at(7, dive(0.995));
   expect(back.continuous).toBe(true);
   expect(back.revealing).toBe(true);
   expectNoErrors(errors);
@@ -73,14 +73,14 @@ test('log ruler follows the view; reverse zoom ends on "You were looking at one.
     page.evaluate(() => parseFloat((document.querySelector('.ruler-marker') as HTMLElement).style.top));
   await goToLevel(page, 0, 0.5);
   const top = await marker();
-  await goToLevel(page, 7, 0.5);
+  await goToLevel(page, 8, 0.5);
   const bottom = await marker();
-  // From the card (tens of cm) to the atom: the marker rides down the ruler.
-  expect(bottom).toBeGreaterThan(top + 50);
-  await expect(page.locator('.ruler-mark')).toHaveCount(7);
+  // From the card (tens of cm) to the nucleus: the marker rides down the ruler.
+  expect(bottom).toBeGreaterThan(top + 60);
+  await expect(page.locator('.ruler-mark')).toHaveCount(8);
 
   // Finale → Zoom back out → closing line.
-  await goToLevel(page, 7, 0.99);
+  await goToLevel(page, 8, 0.99);
   await expect.poll(() => page.evaluate(() => (window as any).__teardown.story.finaleVisible)).toBe(true);
   // The 20 s fly-up is wall-clock; software rendering runs at a frame every few seconds, so
   // let gsap use real elapsed time and run the timeline fast.

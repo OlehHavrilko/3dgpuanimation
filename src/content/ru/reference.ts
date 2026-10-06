@@ -34,6 +34,42 @@ export const reference: typeof en = {
       url: 'https://ru.wikipedia.org/wiki/Кремний',
       covers: 'Кристалл со структурой алмаза, постоянная решётки 543,1 пм, 14 электронов',
     },
+    {
+      title: 'Review of Particle Physics',
+      publisher: 'Particle Data Group (англ.)',
+      url: 'https://pdg.lbl.gov/',
+      covers: 'Массы u- и d-кварков (≈2,2 и ≈4,7 МэВ), массы протона и нейтрона, время жизни нейтрона',
+    },
+    {
+      title: 'CODATA: зарядовый радиус протона',
+      publisher: 'NIST (англ.)',
+      url: 'https://physics.nist.gov/cgi-bin/cuu/Value?rp',
+      covers: 'Зарядовый радиус протона 0,8414 фм',
+    },
+    {
+      title: 'Table of experimental nuclear ground state charge radii: An update',
+      publisher: 'Angeli & Marinova, Atomic Data and Nuclear Data Tables 99 (2013) 69',
+      url: 'https://doi.org/10.1016/j.adt.2011.12.006',
+      covers: 'Зарядовый радиус ядра ²⁸Si 3,12 фм',
+    },
+    {
+      title: 'Gluon flux-tube distribution and linear confinement in baryons',
+      publisher: 'Bissey et al., Physical Review D 76 (2007) 114512',
+      url: 'https://doi.org/10.1103/PhysRevD.76.114512',
+      covers: 'Трубка в форме Y между тремя кварками по расчётам решёточной КХД',
+    },
+    {
+      title: 'Proton Mass Decomposition from the QCD Energy Momentum Tensor',
+      publisher: 'Yang et al., Physical Review Letters 121 (2018) 212001',
+      url: 'https://doi.org/10.1103/PhysRevLett.121.212001',
+      covers: 'Откуда берётся масса протона: массы кварков — малая её часть',
+    },
+    {
+      title: 'Limits on the effective quark radius from inclusive ep scattering at HERA',
+      publisher: 'ZEUS Collaboration, Physics Letters B 757 (2016) 468',
+      url: 'https://doi.org/10.1016/j.physletb.2016.04.007',
+      covers: 'У кварков не видно размера вплоть до ~0,4 × 10⁻¹⁸ м',
+    },
   ],
   glossary: [
     {
@@ -142,6 +178,31 @@ export const reference: typeof en = {
       term: 'Валентный электрон',
       level: 7,
       def: 'Электрон на внешней оболочке. У кремния их четыре, и они образуют связи.',
+    },
+    {
+      term: 'Нуклон',
+      level: 8,
+      def: 'Протон или нейтрон — частицы, из которых состоит ядро. У кремния-28 их по 14.',
+    },
+    {
+      term: 'Кварк',
+      level: 8,
+      def: 'Строительный блок протонов и нейтронов. Протон — это два u-кварка и один d-кварк; по отдельности кварк никто никогда не видел.',
+    },
+    {
+      term: 'Глюон',
+      level: 8,
+      def: 'Переносчик сильного взаимодействия между кварками. Глюоны сами несут цветовой заряд, поэтому поле сжимается в трубки.',
+    },
+    {
+      term: 'Цветовой заряд',
+      level: 8,
+      def: 'Заряд сильного взаимодействия трёх видов, условно красный, зелёный и синий. К свету отношения не имеет; протон всегда бесцветен.',
+    },
+    {
+      term: 'Конфайнмент',
+      level: 8,
+      def: 'Кварки всегда связаны в группы: если тянуть один, глюонная трубка растягивается и рвётся, рождая новую пару кварк–антикварк.',
     },
   ],
 };

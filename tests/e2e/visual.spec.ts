@@ -27,8 +27,11 @@ const SHOTS: { name: string; level: number; local: number; mode?: string }[] = [
   { name: '6-finfet', level: 5, local: 0.5 },
   { name: '7-lattice', level: 6, local: 0.5 },
   { name: '8-atom', level: 7, local: 0.5 },
+  { name: '9-nucleus', level: 8, local: 0.7 },
   // The next scale revealed inside the die (SeamEffect, blended grade).
   { name: 'seam-die-metal', level: 3, local: 0.96 },
+  // The atom's nucleus shrinking to true size as the nucleus scale takes over.
+  { name: 'seam-atom-nucleus', level: 7, local: 0.96 },
   { name: 'xray-gpu', level: 0, local: 0.3, mode: 'X-Ray' },
   { name: 'section-gpu', level: 0, local: 0.3, mode: 'Section' },
 ];

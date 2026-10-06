@@ -7,8 +7,9 @@ import * as L5 from './L5Metal';
 import * as L6 from './L6Transistor';
 import * as L7 from './L7Lattice';
 import * as L8 from './L8Atom';
+import * as L9 from './L9Nucleus';
 
-/** Ordered from largest to smallest scale: RTX 5090 -> one silicon atom. */
+/** Ordered from largest to smallest scale: RTX 5090 -> one silicon atom -> its nucleus and quarks. */
 export const LEVELS: LevelEntry[] = [
   { meta: L1.meta, create: (ctx) => new L1.CardLevel(ctx) },
   { meta: L2.meta, create: (ctx) => new L2.PcbLevel(ctx) },
@@ -18,4 +19,5 @@ export const LEVELS: LevelEntry[] = [
   { meta: L6.meta, create: (ctx) => new L6.TransistorLevel(ctx) },
   { meta: L7.meta, create: (ctx) => new L7.LatticeLevel(ctx) },
   { meta: L8.meta, create: (ctx) => new L8.AtomLevel(ctx) },
+  { meta: L9.meta, create: (ctx) => new L9.NucleusLevel(ctx) },
 ];

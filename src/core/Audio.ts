@@ -117,7 +117,7 @@ export class Ambience {
   setScene(index: number) {
     if (!this.ac || !this.humFilter || !this.airGain) return;
     const t = this.ac.currentTime;
-    const k = index / 7;
+    const k = Math.min(index / 7, 1.15);
     this.humFilter.frequency.linearRampToValueAtTime(220 + k * 1400, t + 1.5);
     this.oscillators[0]?.frequency.linearRampToValueAtTime(54 - k * 18, t + 1.5);
     this.airTarget = 0.25 + k * 0.5;
