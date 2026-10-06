@@ -112,6 +112,12 @@ The URL tracks the current scale, the point inside it (in 5 % steps) and the vie
 (`#l=5&p=40&v=Section`), so a frame can be shared or bookmarked. `#ref=sources` or
 `#ref=glossary` opens the Sources & glossary panel.
 
+## Languages
+
+English and Russian. The page opens in the browser's language, the EN / RU switch (top right,
+and on the landing card) changes it and is remembered, and `?lang=ru` / `?lang=en` forces one.
+Switching reloads at the same place in the descent.
+
 ## Sources & glossary
 
 `G`, the command palette, the finale and every "How accurate is this?" note open one panel:
@@ -235,7 +241,7 @@ src/
   main.ts               wiring: renderer, levels, scroll, tour + intro, deep links, frame loop
   app/                  settings, adaptive resolution, level warmup, Trace, sound, palette,
                         debug GUI, static text
-  content/              every user-facing string (en/); add a language = add a dictionary
+  content/              every user-facing string (en/, ru/); add a language = add a dictionary
   core/
     LevelManager.ts     timeline → level segments, current/next/previous cache, dive + seam
     seam.ts             SeamMap: the camera mapping between two scales; sphere → screen disc
@@ -293,7 +299,7 @@ There is no cut and no flash between scales; the next level exists _inside_ the 
 
 **Scale ruler and the way back up.** A continuous logarithmic ruler (10⁰ to 10⁻¹¹ m, `core/ScaleRuler.ts`) carries a marker that rides it with the live field of view, with familiar sizes along it (a person, a fingernail, a hair, a blood cell, a virus, DNA, an atom). At the finale, **Zoom back out** flies up through every scale in 20 s (the seams work in both directions; any wheel, touch or Esc ends it) and lands on the closing line, "You were looking at one": the die holds about 2.9 × 10²² silicon atoms (`core/facts.ts`, assuming a ~0.78 mm die), and the last scale showed one of them.
 
-**Content.** Every user-facing string (captions, entity info, control labels, acts, key numbers, UI) lives in `src/content/en/` behind one `content` export; levels and UI read it, so a second language is a new dictionary. The fixed text in `index.html` is the English fallback, partly filled in from the dictionary by `app/staticText.ts`.
+**Content.** Every user-facing string (captions, entity info, control labels, acts, key numbers, UI) lives in `src/content/en/` (Russian in `src/content/ru/`, typed against the English shape) behind one `content` export; levels and UI read it. The language is picked once at load (`?lang=`, then the stored choice, then the browser language). The fixed text in `index.html` is the English fallback; `data-i18n` attributes name the dictionary key `app/staticText.ts` fills in.
 
 **Narrative layer.** `Story.ts` is deliberately separate from the renderer: it reads the per-frame `FrameState` (level index, local progress, dive) and drives its own DOM, and the only thing it hands back is a `pullback` amount that `main.ts` applies to the camera for the finale. That keeps a scene-agnostic story controller out of the per-level code. `Attract.ts` is the same idea for the landing — a slow ping-pong through the first scale's content that writes to the timeline while the card is up and hands the progress over on dismissal, so _Start_ and _Scroll it yourself_ both continue from wherever the drift had reached.
 

@@ -85,16 +85,19 @@
       <div class="tip-kind"></div>
       <div class="tip-title"></div>
       <div class="tip-specs"></div>
-      <div class="tip-hint">click to inspect</div>
+      <div class="tip-hint" data-i18n="tipHint">click to inspect</div>
     </div>
 
     <div id="hud">
       <header class="hud-top">
         <div class="top-left">
-          <span class="brand">GPU <span class="arrow">&#9656;</span> ATOM</span>
-          <nav id="crumbs" aria-label="Scale breadcrumb"></nav>
+          <span class="brand">GPU <span class="arrow">&#9656;</span> <span data-i18n="brand">ATOM</span></span>
+          <nav id="crumbs" data-i18n-aria="crumbs" aria-label="Scale breadcrumb"></nav>
         </div>
-        <span id="lvl-index">01 / 08</span>
+        <div class="top-right">
+          <div class="lang-switch" role="group" data-i18n-aria="language" aria-label="Language"></div>
+          <span id="lvl-index">01 / 08</span>
+        </div>
       </header>
 
       <section class="hud-main">
@@ -113,7 +116,7 @@
 
       <footer class="hud-bottom">
         <div class="fov">
-          <span class="fov-label">field of view</span>
+          <span class="fov-label" data-i18n="fovLabel">field of view</span>
           <span id="fov-value">&mdash;</span>
           <div id="scalebar">
             <div class="scalebar-track"><div id="scalebar-fill"></div></div>
@@ -124,23 +127,40 @@
           </div>
         </div>
         <div id="nav">
-          <button id="nav-prev" type="button" title="Previous scale (&larr;)">&#9664;</button>
-          <button id="nav-explore" type="button" title="Explore mode (E)">Explore</button>
-          <button id="nav-follow" type="button" title="Trace one bit from the PCIe slot down to a single atom (F)">
+          <button id="nav-prev" type="button" data-i18n-title="prevTitle" title="Previous scale (&larr;)">
+            &#9664;
+          </button>
+          <button
+            id="nav-explore"
+            type="button"
+            data-i18n="explore"
+            data-i18n-title="exploreTitle"
+            title="Explore mode (E)"
+          >
+            Explore
+          </button>
+          <button
+            id="nav-follow"
+            type="button"
+            data-i18n-title="followTitle"
+            title="Trace one bit from the PCIe slot down to a single atom (F)"
+          >
             Trace
           </button>
-          <button id="nav-labels" type="button" title="3D labels (L)">Labels</button>
-          <button id="nav-sound" type="button" title="Ambient sound (M)">Sound</button>
-          <button id="nav-next" type="button" title="Next scale (&rarr;)">&#9654;</button>
+          <button id="nav-labels" type="button" data-i18n="labels" data-i18n-title="labelsTitle" title="3D labels (L)">
+            Labels
+          </button>
+          <button id="nav-sound" type="button" data-i18n-title="soundTitle" title="Ambient sound (M)">Sound</button>
+          <button id="nav-next" type="button" data-i18n-title="nextTitle" title="Next scale (&rarr;)">&#9654;</button>
         </div>
-        <div id="scroll-hint">scroll to descend <span>&darr;</span></div>
+        <div id="scroll-hint"><span data-i18n="scrollHint">scroll to descend</span> <span>&darr;</span></div>
       </footer>
       <div id="explore-hint">
-        <span class="mouse"
+        <span class="mouse" data-i18n="exploreHintMouse"
           >drag&nbsp;· orbit &nbsp; wheel&nbsp;· zoom &nbsp; right-drag&nbsp;· pan &nbsp; click&nbsp;· inspect &nbsp;
           esc&nbsp;· exit</span
         >
-        <span class="touch"
+        <span class="touch" data-i18n="exploreHintTouch"
           >1 finger&nbsp;· orbit &nbsp; pinch&nbsp;· zoom &nbsp; 2 fingers&nbsp;· pan &nbsp; tap&nbsp;· inspect</span
         >
       </div>
@@ -153,8 +173,8 @@
     </div>
 
     <aside id="inspector" aria-live="polite">
-      <div class="insp-grip" title="Collapse"></div>
-      <button class="insp-close" type="button" title="Close (Esc)">&times;</button>
+      <div class="insp-grip" data-i18n-title="collapse" title="Collapse"></div>
+      <button class="insp-close" type="button" data-i18n-title="closeEsc" title="Close (Esc)">&times;</button>
       <div class="insp-kind"></div>
       <h2 class="insp-title"></h2>
       <dl class="insp-specs"></dl>
@@ -175,14 +195,16 @@
           <div id="tour-head"></div>
         </div>
       </div>
-      <button id="tour-close" type="button" title="End tour">&times;</button>
+      <button id="tour-close" type="button" data-i18n-title="endTour" title="End tour">&times;</button>
     </div>
 
-    <div id="sound-invite" role="dialog" aria-label="Ambient sound" aria-hidden="true">
+    <div id="sound-invite" role="dialog" data-i18n-aria="soundTitle" aria-label="Ambient sound" aria-hidden="true">
       <span class="si-glyph">&#9835;</span>
-      <span class="si-text">This descent has a sound. Ambient, procedural, off by default.</span>
-      <button id="si-on" type="button" class="primary">Turn it on</button>
-      <button id="si-off" type="button">No thanks</button>
+      <span class="si-text" data-i18n="soundInvite"
+        >This descent has a sound. Ambient, procedural, off by default.</span
+      >
+      <button id="si-on" type="button" class="primary" data-i18n="soundOn">Turn it on</button>
+      <button id="si-off" type="button" data-i18n="soundNo">No thanks</button>
     </div>
 
     <!-- Act title card: two seconds of stillness at each act boundary. -->
@@ -216,39 +238,47 @@
 
     <div id="finale" aria-hidden="true">
       <div class="fin-inner">
-        <div class="fin-tag">End of the descent</div>
-        <h2 class="fin-title">You reached the bottom.</h2>
-        <p class="fin-sub">Nine orders of magnitude. One object, all the way down.</p>
+        <div class="fin-tag" data-i18n="finTag">End of the descent</div>
+        <h2 class="fin-title" data-i18n="finTitle">You reached the bottom.</h2>
+        <p class="fin-sub" data-i18n="finSub">Nine orders of magnitude. One object, all the way down.</p>
         <div class="fin-chain">
-          <div class="fin-node"><b>GPU</b><span>30 cm</span></div>
+          <div class="fin-node"><b data-i18n="finGpu">GPU</b><span data-i18n="fin30cm">30 cm</span></div>
           <span class="fin-arrow">&rarr;</span>
-          <div class="fin-node"><b>Transistor</b><span>50 nm</span></div>
+          <div class="fin-node"><b data-i18n="finTransistor">Transistor</b><span data-i18n="fin50nm">50 nm</span></div>
           <span class="fin-arrow">&rarr;</span>
-          <div class="fin-node"><b>Silicon</b><span>2 nm</span></div>
+          <div class="fin-node"><b data-i18n="finSilicon">Silicon</b><span data-i18n="fin2nm">2 nm</span></div>
           <span class="fin-arrow">&rarr;</span>
-          <div class="fin-node"><b>Atom</b><span>0.2 nm</span></div>
+          <div class="fin-node"><b data-i18n="finAtom">Atom</b><span data-i18n="fin02nm">0.2 nm</span></div>
         </div>
         <div class="fin-stats">
-          <div><b>92.2 B</b><span>transistors</span></div>
-          <div><b>15</b><span>metal layers</span></div>
-          <div><b>&asymp;0.1 nm</b><span>across an atom</span></div>
+          <div><b data-i18n="finTransistorsValue">92.2 B</b><span data-i18n="finTransistors">transistors</span></div>
+          <div><b>15</b><span data-i18n="finMetal">metal layers</span></div>
+          <div><b data-i18n="finAtomValue">&asymp;0.1 nm</b><span data-i18n="finAtomWidth">across an atom</span></div>
         </div>
         <div class="fin-actions">
-          <button id="fin-replay" type="button" class="primary">Replay</button>
+          <button id="fin-replay" type="button" class="primary" data-i18n="replay">Replay</button>
           <button id="fin-zoomout" type="button">Zoom back out</button>
-          <button id="fin-explore" type="button">Explore</button>
-          <button id="fin-share" type="button">Share frame</button>
-          <button id="fin-link" type="button">Share link</button>
-          <button id="fin-reference" type="button" data-reference="sources">Sources &amp; glossary</button>
+          <button id="fin-explore" type="button" data-i18n="explore">Explore</button>
+          <button id="fin-share" type="button" data-i18n="shareFrame">Share frame</button>
+          <button id="fin-link" type="button" data-i18n="shareLink">Share link</button>
+          <button id="fin-reference" type="button" data-reference="sources" data-i18n="sourcesGlossary">
+            Sources &amp; glossary
+          </button>
           <a
             id="fin-star"
             class="fin-star"
+            data-i18n="starGithub"
             href="https://github.com/OlehHavrilko/3dgpuanimation"
             target="_blank"
             rel="noopener"
             >&#9733; Star on GitHub</a
           >
-          <a id="fin-source" href="https://github.com/OlehHavrilko/3dgpuanimation" target="_blank" rel="noopener"
+          <a
+            id="fin-source"
+            data-i18n="sourceCredits"
+            href="https://github.com/OlehHavrilko/3dgpuanimation"
+            target="_blank"
+            rel="noopener"
             >Source &amp; credits</a
           >
         </div>
@@ -257,22 +287,29 @@
 
     <div id="intro">
       <div class="intro-card">
-        <div class="intro-tag">GPU <span class="arrow">&#9656;</span> ATOM</div>
-        <h1>One descent.<br />Nine orders of magnitude.</h1>
-        <p class="intro-lede">
+        <div class="intro-tag">GPU <span class="arrow">&#9656;</span> <span data-i18n="brand">ATOM</span></div>
+        <h1>
+          <span data-i18n="introTitle1">One descent.</span><br /><span data-i18n="introTitle2"
+            >Nine orders of magnitude.</span
+          >
+        </h1>
+        <p class="intro-lede" data-i18n="introLede">
           From a 30 cm graphics card to the silicon atom at its heart — modelled and rendered live in your browser. No
           video, no downloaded assets.
         </p>
         <ol class="intro-acts">
-          <li><b>I</b> The Machine</li>
-          <li><b>II</b> The Computation</li>
-          <li><b>III</b> The Matter</li>
+          <li><b>I</b> <span data-i18n-act="0">The Machine</span></li>
+          <li><b>II</b> <span data-i18n-act="1">The Computation</span></li>
+          <li><b>III</b> <span data-i18n-act="2">The Matter</span></li>
         </ol>
         <div class="intro-actions">
-          <button id="intro-tour" type="button" class="primary">Start the descent</button>
-          <button id="intro-explore" type="button">Scroll it yourself</button>
+          <button id="intro-tour" type="button" class="primary" data-i18n="introStart">Start the descent</button>
+          <button id="intro-explore" type="button" data-i18n="introScroll">Scroll it yourself</button>
         </div>
-        <div class="intro-keys">space play / pause &nbsp;·&nbsp; e explore &nbsp;·&nbsp; shift+f fullscreen</div>
+        <div class="intro-keys" data-i18n="introKeys">
+          space play / pause &nbsp;·&nbsp; e explore &nbsp;·&nbsp; shift+f fullscreen
+        </div>
+        <div class="lang-switch" role="group" data-i18n-aria="language" aria-label="Language"></div>
         <div class="intro-load"><div id="intro-load-fill"></div></div>
       </div>
     </div>

@@ -399,13 +399,14 @@ export class Story {
     const slug = this.hook
       .levelName(state.index)
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-');
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
     c.toBlob((blob) => {
       if (!blob) return;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `gpu-to-atom-${String(state.index + 1).padStart(2, '0')}-${slug}.png`;
+      a.download = `gpu-to-atom-${String(state.index + 1).padStart(2, '0')}${slug ? `-${slug}` : ''}.png`;
       a.click();
       window.setTimeout(() => URL.revokeObjectURL(url), 5000);
     }, 'image/png');
@@ -416,11 +417,8 @@ export class Story {
 async function shareLink(button: HTMLButtonElement) {
   // A fresh visitor should land on the intro, not on the atom: drop the deep-link hash.
   const url = location.origin + location.pathname;
-  const data = {
-    title: document.title,
-    text: 'From a graphics card down to a single silicon atom, live in WebGL.',
-    url,
-  };
+  const t = content.ui.static;
+  const data = { title: t.docTitle, text: t.docDescription, url };
   if (navigator.share && navigator.canShare?.(data) !== false) {
     try {
       await navigator.share(data);
@@ -432,9 +430,9 @@ async function shareLink(button: HTMLButtonElement) {
   const label = button.textContent;
   try {
     await navigator.clipboard.writeText(url);
-    button.textContent = 'Link copied';
+    button.textContent = t.shareLinkCopied;
   } catch {
-    window.prompt('Copy this link', url);
+    window.prompt(t.shareLink, url);
     return;
   }
   window.setTimeout(() => (button.textContent = label), 1800);
