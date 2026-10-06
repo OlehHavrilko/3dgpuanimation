@@ -124,9 +124,13 @@ export class Story {
     byId('fin-share').addEventListener('click', () => {
       this.captureRequested = true;
     });
-    // Keep the source link honest if the page is served from a fork.
-    const src = document.getElementById('fin-source') as HTMLAnchorElement | null;
-    if (src) src.href = SOURCE_URL;
+    const link = byId('fin-link');
+    link.addEventListener('click', () => void shareLink(link));
+    // Keep the source links honest if the page is served from a fork.
+    for (const id of ['fin-source', 'fin-star']) {
+      const a = document.getElementById(id) as HTMLAnchorElement | null;
+      if (a) a.href = SOURCE_URL;
+    }
   }
 
   /** Called once per frame, after the level manager has ticked. */
@@ -406,6 +410,34 @@ export class Story {
       window.setTimeout(() => URL.revokeObjectURL(url), 5000);
     }, 'image/png');
   }
+}
+
+/** Share the page itself (not the current frame): native share sheet, else copy the link. */
+async function shareLink(button: HTMLButtonElement) {
+  // A fresh visitor should land on the intro, not on the atom: drop the deep-link hash.
+  const url = location.origin + location.pathname;
+  const data = {
+    title: document.title,
+    text: 'From a graphics card down to a single silicon atom, live in WebGL.',
+    url,
+  };
+  if (navigator.share && navigator.canShare?.(data) !== false) {
+    try {
+      await navigator.share(data);
+      return;
+    } catch (err) {
+      if ((err as DOMException).name === 'AbortError') return; // the visitor closed the sheet
+    }
+  }
+  const label = button.textContent;
+  try {
+    await navigator.clipboard.writeText(url);
+    button.textContent = 'Link copied';
+  } catch {
+    window.prompt('Copy this link', url);
+    return;
+  }
+  window.setTimeout(() => (button.textContent = label), 1800);
 }
 
 function truncate(text: string, max: number) {

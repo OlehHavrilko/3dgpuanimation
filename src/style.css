@@ -1465,6 +1465,19 @@ body.touring .hud-bottom {
   color: var(--white);
   border-color: var(--green);
 }
+/* Star reads as a button: it is the one ask the page makes of a visitor. */
+.fin-actions a.fin-star {
+  padding: 12px 18px;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: var(--green);
+  border: 1px solid rgba(118, 185, 0, 0.5);
+}
+.fin-actions a.fin-star:hover {
+  color: #061000;
+  background: var(--green);
+  border-color: var(--green);
+}
 
 /* ------------------------------------------------------------ sound invitation */
 #sound-invite {
