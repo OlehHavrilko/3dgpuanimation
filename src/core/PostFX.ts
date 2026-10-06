@@ -17,6 +17,7 @@ import {
 import { QUALITY } from './quality';
 import { FxaaEffect } from './FxaaEffect';
 import { SeamEffect } from './SeamEffect';
+import { SanitizeEffect } from './SanitizeEffect';
 import { GRADE_BASE, hueRadians, lerpGrade, resolveGrade, type Grade } from './Grade';
 
 /** Fully-resolved grade, as applied to the effect uniforms. */
@@ -25,7 +26,7 @@ export type ResolvedGrade = Required<Grade>;
 /**
  * The whole post chain, isolated from the render loop:
  *
- *   render → seam (next scale revealed during a dive) → [FXAA] → depth of field → grade pass (bloom → chromatic → contrast →
+ *   render → seam (next scale revealed during a dive) + sanitize (no NaN/Inf) → [FXAA] → depth of field → grade pass (bloom → chromatic → contrast →
  *   hue/sat → vignette → ACES → film grain)
  *
  * Tone mapping is deliberately near the end so grain lands in display space, like film.
@@ -93,8 +94,8 @@ export class PostFX {
 
     this.composer.addPass(this.renderPass);
     this.seam = new SeamEffect(QUALITY.msaaSamples);
-    this.seamPass = new EffectPass(camera, this.seam);
-    this.seamPass.enabled = false;
+    // Always on: the sanitize half must run every frame, the seam half is a no-op at mix 0.
+    this.seamPass = new EffectPass(camera, this.seam, new SanitizeEffect());
     this.composer.addPass(this.seamPass);
     // FXAA is the MSAA replacement on devices where multisampling is too costly.
     if (QUALITY.fxaa) {
@@ -102,18 +103,17 @@ export class PostFX {
     }
     this.dofPass = new EffectPass(camera, this.dof);
     this.composer.addPass(this.dofPass);
-    this.composer.addPass(
-      new EffectPass(
-        camera,
-        this.bloom,
-        this.chromatic,
-        this.brightnessContrast,
-        this.hueSaturation,
-        this.vignette,
-        toneMapping,
-        this.grain,
-      ),
-    );
+    // Phones skip chromatic aberration (QUALITY.chromatic = 0): it only smears fine detail there.
+    const grade = [
+      this.bloom,
+      ...(QUALITY.chromatic > 0 ? [this.chromatic] : []),
+      this.brightnessContrast,
+      this.hueSaturation,
+      this.vignette,
+      toneMapping,
+      this.grain,
+    ];
+    this.composer.addPass(new EffectPass(camera, ...grade));
     this.applyGrade();
   }
 
