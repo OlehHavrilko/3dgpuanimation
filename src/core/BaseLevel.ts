@@ -142,7 +142,8 @@ export function addRimLight<T extends THREE.MeshStandardMaterial>(
       shader.fragmentShader.replace(
         '#include <emissivemap_fragment>',
         `#include <emissivemap_fragment>
-  float rimF = 1.0 - abs(dot(normal, normalize(vViewPosition)));
+  // clamp: |dot| can round past 1 at mediump, and pow() of a negative base is NaN.
+  float rimF = clamp(1.0 - abs(dot(normal, normalize(vViewPosition))), 0.0, 1.0);
   totalEmissiveRadiance += uRimColor * uRim * pow(rimF, ${power.toFixed(1)});`,
       );
   };

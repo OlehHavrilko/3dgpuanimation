@@ -57,8 +57,9 @@ function createRenderer() {
 }
 const renderer = createRenderer();
 const maxPixelRatio = () => Math.min(Math.max(window.devicePixelRatio, QUALITY.supersample), QUALITY.maxPixelRatio);
-// Never drop far below native: a 0.6x frame reads as soap, so the floor stays near 1 CSS pixel.
-const resolution = new AdaptiveResolution(maxPixelRatio(), maxPixelRatio, QUALITY.adaptive, 0.85);
+// Never drop far below native: a 0.6x frame reads as soap, so the floor stays near 1 CSS pixel
+// (above it on phones, whose 3x screens make anything under ~1.25x visibly blocky).
+const resolution = new AdaptiveResolution(maxPixelRatio(), maxPixelRatio, QUALITY.adaptive, QUALITY.minPixelRatio);
 renderer.setPixelRatio(resolution.pixelRatio);
 renderer.info.autoReset = false; // the composer renders several passes per frame
 renderer.toneMapping = THREE.NoToneMapping; // tone mapping happens in the effect chain
@@ -524,7 +525,7 @@ function renderFrame(rawDt: number) {
   // Seamless descent: while the next scale is revealed, its look blends in with it.
   const next = manager.seamLevel;
   post.seam.scene = next?.scene ?? null;
-  post.seamPass.enabled = !!next;
+  if (!next) post.seam.mix = 0;
   post.setGradeBlend(state.index, next ? state.index + 1 : state.index, next ? state.seam : 0);
   if (next) {
     post.seam.mix = state.seam;
