@@ -1,9 +1,6 @@
 import './style.css';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
 import { LevelManager } from './core/LevelManager';
 import { LevelProfiler } from './core/LevelProfiler';
 import { Attract } from './core/Attract';
@@ -13,6 +10,7 @@ import { PostFX } from './core/PostFX';
 import { Story } from './core/Story';
 import { Tour, type TourSegment } from './core/Tour';
 import { projectSphere } from './core/seam';
+import { ease, scrubScroll, tweens, type Tween } from './core/tween';
 import { QUALITY } from './core/quality';
 import type { LevelContext } from './core/types';
 import { LEVELS } from './levels';
@@ -30,7 +28,6 @@ import { setupReference } from './app/reference';
 import { createWarmup } from './app/warmup';
 import { registerServiceWorker } from './app/pwa';
 
-gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 applyStaticText();
 registerServiceWorker();
 
@@ -146,11 +143,8 @@ const totalWeight = LEVELS.reduce((s, l) => s + l.meta.weight, 0);
 const scrollSpace = document.getElementById('scroll-space')!;
 scrollSpace.style.height = `${totalWeight * 150}vh`;
 const scrollState = { p: 0 };
-gsap.to(scrollState, {
-  p: 1,
-  ease: 'none',
-  scrollTrigger: { trigger: scrollSpace, start: 'top top', end: 'bottom bottom', scrub: 0.9 },
-});
+// Page scroll across the scroll space → 0..1, trailing the scrollbar by 0.9 s.
+scrubScroll(scrollSpace, scrollState, 0.9);
 const maxScroll = () => document.documentElement.scrollHeight - window.innerHeight;
 const scrollToProgress = (p: number) => window.scrollTo({ top: p * maxScroll(), behavior: 'instant' });
 
@@ -163,14 +157,14 @@ function jumpToLevel(index: number, local?: number) {
   interaction.exitExplore();
   const p = manager.progressForLevel(index, local);
   if (settings.override) {
-    gsap.to(settings, { progress: p, duration: 1.6, ease: 'power2.inOut' });
+    tweens.to(settings, { progress: p }, { duration: 1.6, ease: ease.power2InOut });
     return;
   }
   const hops = Math.abs(index - manager.currentIndex);
-  gsap.to(window, {
-    scrollTo: { y: p * maxScroll(), autoKill: true },
+  tweens.scrollTo(p * maxScroll(), {
+    autoKill: true,
     duration: Math.min(1.4 + 0.7 * hops, 4.5),
-    ease: 'power2.inOut',
+    ease: ease.power2InOut,
   });
 }
 
@@ -224,7 +218,7 @@ interaction.onSpace = () => {
   if (tour.playing) sound.offer();
 };
 // The reverse zoom owns the timeline like the tour does; any deliberate input ends it.
-let zoomTween: gsap.core.Tween | null = null;
+let zoomTween: Tween | null = null;
 function releaseZoom() {
   zoomTween = null;
   scrollState.p = settings.progress;
@@ -326,15 +320,18 @@ const story = new Story({
     // Same path as scrolling back up, just fast: the seams work in both directions. Slow
     // at the atom, quickest through the middle, easing into the card.
     zoomTween?.kill();
-    zoomTween = gsap.to(settings, {
-      progress: 0,
-      duration: 20,
-      ease: 'power2.inOut',
-      onComplete: () => {
-        releaseZoom();
-        done();
+    zoomTween = tweens.to(
+      settings,
+      { progress: 0 },
+      {
+        duration: 20,
+        ease: ease.power2InOut,
+        onComplete: () => {
+          releaseZoom();
+          done();
+        },
       },
-    });
+    );
   },
   enterExplore: () => interaction.enterExplore(),
   getCanvas: () => canvas,
@@ -405,7 +402,7 @@ if (debug) {
     tour,
     story,
     labels,
-    gsap,
+    tweens,
   };
   setupDebugPanel({ settings, manager, metas: LEVELS.map((l) => l.meta), post, scrollToProgress });
 }

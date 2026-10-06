@@ -21,7 +21,6 @@
     "bench:compare": "node scripts/compare-bench.mjs bench/baseline.json bench/after.json > bench/comparison.md"
   },
   "dependencies": {
-    "gsap": "^3.15.0",
     "lil-gui": "^0.21.0",
     "postprocessing": "^6.39.5",
     "three": "^0.186.1"

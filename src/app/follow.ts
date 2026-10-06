@@ -1,8 +1,8 @@
-import gsap from 'gsap';
 import type { LevelContext } from '../core/types';
 import type { InteractionManager } from '../interaction/InteractionManager';
 import type { Settings } from './settings';
 import { content } from '../content';
+import { tweens, type Tween } from '../core/tween';
 
 /** Memory chip the Trace reads from: #11 sits on the bus that feeds the SM the descent dives into. */
 export const TRACE_CHIP = 10;
@@ -26,7 +26,7 @@ export function setupFollow(opts: {
 }) {
   const { ctx, interaction, settings, maxScroll, duration, onStart } = opts;
   const button = document.getElementById('nav-follow')!;
-  let tour: gsap.core.Tween | null = null;
+  let tour: Tween | null = null;
 
   function start() {
     // A chip the visitor already traced keeps its route; otherwise the default one.
@@ -39,11 +39,11 @@ export function setupFollow(opts: {
     tour?.kill();
     if (settings.override) {
       settings.progress = 0;
-      tour = gsap.to(settings, { progress: 1, duration, ease: 'none' });
+      tour = tweens.to(settings, { progress: 1 }, { duration });
       return;
     }
     window.scrollTo({ top: 0, behavior: 'instant' });
-    tour = gsap.to(window, { scrollTo: { y: maxScroll(), autoKill: true }, duration, ease: 'none', delay: 0.6 });
+    tour = tweens.scrollTo(maxScroll(), { autoKill: true, duration, delay: 0.6 });
   }
 
   function stop() {
