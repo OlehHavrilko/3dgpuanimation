@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:4173';
-const OUT = 'docs/media';
+const OUT = process.env.OUT ?? 'docs/media';
 const NAMES = ['gpu', 'pcb', 'package', 'die', 'metal', 'finfet', 'lattice', 'atom'];
 // Where in each level the shot is taken: past the intro, before the dive.
 const SHOT_AT = [0.3, 0.45, 0.45, 0.5, 0.5, 0.5, 0.5, 0.5];
