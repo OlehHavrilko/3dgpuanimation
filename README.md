@@ -118,6 +118,15 @@ English and Russian. The page opens in the browser's language, the EN / RU switc
 and on the landing card) changes it and is remembered, and `?lang=ru` / `?lang=en` forces one.
 Switching reloads at the same place in the descent.
 
+## Install and offline
+
+The site is a PWA: it can be installed from the browser (Add to Home Screen / Install app) and
+opens full screen with its own icon. Everything is procedural, so the whole experience is the
+build itself (~1.5 MB); after the first visit a service worker serves it with no network. The
+worker is generated at build time by `scripts/pwa-plugin.ts` with the list of built files, and
+its cache name is a hash of the build, so each deploy replaces the old cache. Icons:
+`node scripts/make-icons.mjs`.
+
 ## Sources & glossary
 
 `G`, the command palette, the finale and every "How accurate is this?" note open one panel:
