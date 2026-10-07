@@ -6,8 +6,13 @@ import { content } from '../content';
  * command palette, `G`, or `#ref=sources` / `#ref=glossary` in the URL. A glossary term can
  * jump to the scale where the thing is on screen.
  */
-export function setupReference(opts: { metas: LevelMeta[]; jumpToLevel: (index: number) => void }) {
-  const R = content.reference;
+export function setupReference(opts: {
+  metas: LevelMeta[];
+  jumpToLevel: (index: number) => void;
+  /** Sources and glossary to list (the memory branch passes its own). */
+  data?: Pick<typeof content.reference, 'sourcesIntro' | 'sources' | 'glossary'>;
+}) {
+  const R = { ...content.reference, ...opts.data };
   const root = document.getElementById('reference')!;
   let open = false;
   let lastFocus: HTMLElement | null = null;

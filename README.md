@@ -49,6 +49,19 @@ Every frame is rendered live in the browser; [`scripts/capture-media.mjs`](#medi
 | ![FinFET transistors, 50 nm](docs/media/06-finfet.png) 6 · FinFET transistors, 50 nm | ![Silicon lattice, 2 nm](docs/media/07-lattice.png) 7 · Silicon lattice, 2 nm |
 | ![Silicon atom, 0.2 nm](docs/media/08-atom.png) 8 · Silicon atom, 0.2 nm             | ![Finale](docs/media/09-finale.png) Finale                                    |
 
+## Side branch: memory
+
+**[▶ Open the memory branch](https://olehhavrilko.github.io/3dgpuanimation/memory.html)** · a second descent that leaves the main one at the PCB and follows the data instead of the GPU: from one GDDR7 chip down to the capacitor that holds a single bit. It is its own page (`memory.html`) on the same engine: the same seams between scales, Explore and inspect, labels, sources & glossary, EN/RU, and a Play button (`Space`).
+
+| #   | Scale              | Scale  | What happens                                                                                                                                                                            |
+| --- | ------------------ | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | GDDR7 chip         | 2 cm   | One of the 16 chips around the GPU. PAM3 symbols (three levels) run on its 32 data lines; it lifts off its 266 balls, coloured by its four 8-bit channels; the mould turns see-through. |
+| 2   | DRAM die           | 5 mm   | Two cell arrays split by a central strip of I/O, command and data-path logic. An ACTIVATE travels from the strip and one row of one bank opens.                                         |
+| 3   | Cell array         | 1 µm   | Buried wordlines every 32.6 nm, bitlines every 37.6 nm, a forest of capacitors. A wordline goes high, the charge shares onto the bitlines, the sense amplifiers latch.                  |
+| 4   | One cell · one bit | 100 nm | One transistor, one capacitor. The ~30,000 electrons of a bit spill out on a read, are written back, leak away and are refreshed.                                                       |
+
+Published figures (GDDR7 channels and PAM3 from JEDEC, the 1b-generation pitches measured by TechInsights, the 16K / 32 ms refresh of Samsung's 16 Gb part) are cited in the branch's own sources list; the rest (package and die size, bank layout, the ~10 fF cell) is marked representative under "How accurate is this?".
+
 ## Interaction
 
 The page has two modes:

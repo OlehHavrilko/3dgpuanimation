@@ -1,0 +1,98 @@
+/* Memory branch page: only what differs from the main descent's HUD (style.css). */
+
+.mem-tag {
+  margin-bottom: 8px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--green-soft);
+}
+
+.mem-brand {
+  color: inherit;
+  text-decoration: none;
+  pointer-events: auto;
+}
+
+.mem-back {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dim);
+  text-decoration: none;
+  border: 1px solid rgba(225, 240, 215, 0.16);
+  padding: 3px 8px;
+  pointer-events: auto;
+  white-space: nowrap;
+  transition:
+    color 0.2s,
+    border-color 0.2s;
+}
+.mem-back:hover,
+.mem-back:focus-visible {
+  color: var(--white);
+  border-color: var(--green);
+}
+
+/* The end of the branch: one line and the way back, low on the screen so the bit stays visible. */
+#mem-end {
+  position: fixed;
+  left: 50%;
+  bottom: calc(96px + var(--safe-bottom));
+  z-index: 8;
+  width: min(560px, calc(100vw - 32px));
+  padding: 18px 20px;
+  text-align: center;
+  background: rgba(2, 5, 4, 0.72);
+  border: 1px solid rgba(225, 240, 215, 0.14);
+  backdrop-filter: blur(6px);
+  transform: translate(-50%, 12px);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 0.8s ease,
+    transform 0.8s ease,
+    visibility 0.8s ease;
+}
+#mem-end.on {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translate(-50%, 0);
+}
+#mem-end p {
+  margin: 0 0 14px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--white);
+}
+#mem-end .fin-actions {
+  justify-content: center;
+}
+#mem-end .fin-actions a.primary {
+  color: #061000;
+  background: var(--green);
+  border: 1px solid var(--green);
+  padding: 12px 18px;
+  font-size: 12px;
+}
+
+/* At the end card the level text steps aside, so the two never overlap. */
+body.mem-ended .hud-main {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+}
+
+@media (max-width: 640px) {
+  /* The phone top bar has no room for the long label: the brand links back instead. */
+  .mem-back {
+    display: none;
+  }
+  #mem-end {
+    bottom: calc(132px + var(--safe-bottom));
+  }
+}

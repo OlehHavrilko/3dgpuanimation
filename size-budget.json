@@ -1,8 +1,18 @@
 {
   "rules": [
-    { "name": "JavaScript (all chunks)", "match": "^assets/.*\\.js$", "maxGzipKB": 280 },
+    {
+      "name": "JavaScript (main page)",
+      "match": "^assets/.*\\.js$",
+      "exclude": "^assets/memory-",
+      "maxGzipKB": 280
+    },
     { "name": "CSS", "match": "^assets/.*\\.css$", "maxGzipKB": 9 },
     { "name": "HTML", "match": "^index\\.html$", "maxGzipKB": 6 },
+    {
+      "name": "Memory branch (own page + code)",
+      "match": "^(memory\\.html|assets/memory-.*)$",
+      "maxGzipKB": 28
+    },
     { "name": "Everything in dist", "match": ".", "maxGzipKB": 520 }
   ]
 }

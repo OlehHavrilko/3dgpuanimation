@@ -65,6 +65,7 @@ export const ui: typeof en = {
     starGithub: '\u2605 Звезда на GitHub',
     sourcesGlossary: 'Источники и глоссарий',
     sourceCredits: 'Код и авторы',
+    memoryBranch: 'Боковая ветка: память ▸',
     introTitle1: 'Один спуск.',
     introTitle2: 'Четырнадцать порядков величины.',
     introLede:
