@@ -83,11 +83,11 @@ test('log ruler follows the view; reverse zoom ends on "You were looking at one.
   await goToLevel(page, 8, 0.99);
   await expect.poll(() => page.evaluate(() => (window as any).__teardown.story.finaleVisible)).toBe(true);
   // The 20 s fly-up is wall-clock; software rendering runs at a frame every few seconds, so
-  // let gsap use real elapsed time and run the timeline fast.
+  // let the tween engine use real elapsed time and run fast.
   await page.evaluate(() => {
-    const { gsap } = (window as any).__teardown;
-    gsap.ticker.lagSmoothing(0);
-    gsap.globalTimeline.timeScale(40);
+    const { tweens } = (window as any).__teardown;
+    tweens.lagSmoothing = false;
+    tweens.timeScale = 40;
   });
   await page.locator('#fin-zoomout').click();
   await expect.poll(() => page.evaluate(() => (window as any).__teardown.settings.progress)).toBeLessThan(0.9);

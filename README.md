@@ -6,7 +6,7 @@
 
 [![GPU → Atom: the descent from the graphics card to a single silicon atom](docs/media/descent.gif)](https://olehhavrilko.github.io/3dgpuanimation/)
 
-**Stack:** TypeScript · Three.js · hand-written GLSL · GSAP ScrollTrigger · postprocessing · Web Audio API · Vite · Vitest · Playwright · GitHub Actions / Pages
+**Stack:** TypeScript · Three.js · hand-written GLSL · postprocessing · Web Audio API · Vite · Vitest · Playwright · GitHub Actions / Pages
 
 ## What I built
 
@@ -251,7 +251,7 @@ Open `http://localhost:5173/?debug` to get a lil-gui panel with:
 - jump buttons for every level
 - bloom, depth-of-field, grain and chromatic-aberration controls
 
-In debug mode, `window.__teardown` exposes `{ settings, manager, renderer, ctx, interaction, profiler, post, tour, story, labels, gsap, clock }` for console scripting and tests, and every level activation is logged as `[level] {…timings}`. `?cache=0` turns the level cache off (A/B benchmarks).
+In debug mode, `window.__teardown` exposes `{ settings, manager, renderer, ctx, interaction, profiler, post, tour, story, labels, tweens, clock }` for console scripting and tests, and every level activation is logged as `[level] {…timings}`. `?cache=0` turns the level cache off (A/B benchmarks).
 
 ## Architecture
 
@@ -371,7 +371,7 @@ Everything is procedural: no external models or textures.
 
 ## Stack
 
-Vite, TypeScript, Three.js r186, GSAP ScrollTrigger, [postprocessing](https://github.com/pmndrs/postprocessing), lil-gui, the Web Audio API and hand-written GLSL (FXAA, the thin-film shader, per-instance glow). No model, texture or audio files ship with the project.
+Vite, TypeScript, Three.js r186, [postprocessing](https://github.com/pmndrs/postprocessing), lil-gui, the Web Audio API and hand-written GLSL (FXAA, the thin-film shader, per-instance glow). No model, texture or audio files ship with the project.
 
 ## License
 
