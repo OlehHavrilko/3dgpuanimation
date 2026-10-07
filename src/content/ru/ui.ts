@@ -67,6 +67,7 @@ export const ui: typeof en = {
     sourcesGlossary: 'Источники и глоссарий',
     sourceCredits: 'Код и авторы',
     memoryBranch: 'Боковая ветка: память ▸',
+    computeBranch: 'Боковая ветка: вычисления ▸',
     introTitle1: 'Один спуск.',
     introTitle2: 'Четырнадцать порядков величины.',
     introLede:
