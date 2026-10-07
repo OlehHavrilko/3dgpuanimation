@@ -555,6 +555,7 @@ function renderFrame(rawDt: number) {
   if (!firstFrameRendered) {
     firstFrameRendered = true;
     intro.classList.add('loaded');
+    void manager.loadAll(); // the other scales' scene code, in the background
   }
   // Freeze one frame per dive for the boundary dissolve. Copying the drawing buffer is not
   // free (it can flush the GPU), so this is done once, late in the dolly — not every frame.
