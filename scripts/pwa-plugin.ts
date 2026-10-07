@@ -65,18 +65,25 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return;
 
-  // Pages: network first so a new deploy shows up, the cached shell when offline.
+  // Pages (the descent and its side branches): network first so a new deploy shows up; offline,
+  // the cached copy of that same page (any query string), else the main shell.
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then((response) => {
           if (response.ok) {
             const copy = response.clone();
-            caches.open(CACHE).then((cache) => cache.put('./', copy));
+            const page = new URL(request.url);
+            page.search = '';
+            caches.open(CACHE).then((cache) => cache.put(page.href, copy));
           }
           return response;
         })
-        .catch(() => caches.match('./', { cacheName: CACHE })),
+        .catch(() =>
+          caches
+            .match(request, { cacheName: CACHE, ignoreSearch: true })
+            .then((hit) => hit || caches.match('./', { cacheName: CACHE })),
+        ),
     );
     return;
   }

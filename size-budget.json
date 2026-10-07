@@ -3,7 +3,7 @@
     {
       "name": "JavaScript (main page)",
       "match": "^assets/.*\\.js$",
-      "exclude": "^assets/memory-",
+      "exclude": "^assets/(memory|compute)-",
       "maxGzipKB": 280
     },
     { "name": "CSS", "match": "^assets/.*\\.css$", "maxGzipKB": 9 },
@@ -11,6 +11,11 @@
     {
       "name": "Memory branch (own page + code)",
       "match": "^(memory\\.html|assets/memory-.*)$",
+      "maxGzipKB": 28
+    },
+    {
+      "name": "Compute branch (own page + code)",
+      "match": "^(compute\\.html|assets/compute-.*)$",
       "maxGzipKB": 28
     },
     { "name": "Everything in dist", "match": ".", "exclude": "^voice/", "maxGzipKB": 520 },
