@@ -21,6 +21,7 @@ import { AdaptiveResolution } from './app/AdaptiveResolution';
 import { createSettings } from './app/settings';
 import { setupFollow } from './app/follow';
 import { setupSound } from './app/sound';
+import { setupVoice } from './app/voiceControl';
 import { setupPalette } from './app/palette';
 import { setupDebugPanel } from './app/debugPanel';
 import { applyStaticText } from './app/staticText';
@@ -106,6 +107,7 @@ const dissolve = new FrameDissolve(document.getElementById('dissolve') as HTMLCa
 const labels = new Labels();
 labels.onPick = (hit) => interaction.selectEntity(hit);
 const sound = setupSound();
+const voice = setupVoice();
 /** Level index whose outgoing frame is already frozen for the next dissolve. */
 let dissolveCapturedFor = -1;
 
@@ -130,6 +132,7 @@ manager.onSwap = (index, level) => {
 };
 
 interaction.onSound = () => sound.toggleFromKey();
+interaction.onVoice = () => voice.toggle();
 interaction.onSelect = (hit) => {
   sound.ambience.blip(!!hit);
   // Inspecting a part is deliberate input: take the tour out of autopilot.
@@ -312,6 +315,7 @@ const story = new Story({
   levelName: (i) => LEVELS[i].meta.name,
   levelScale: (i) => LEVELS[i].meta.scale,
   levelCaption: () => manager.current?.caption ?? '',
+  narrate: (text, holdMs) => voice.announce(text, holdMs),
   stopTour: () => tour.stop(),
   replay: () => tour.restart(),
   zoomOut: (done) => {
@@ -505,7 +509,9 @@ function renderFrame(rawDt: number) {
   if (!reference.open) syncHash(state.local);
   const exploreFocus = interaction.getFocusOverride();
 
-  overlay.setCaption(ctx.journey.follow && level.followCaption ? level.followCaption : level.caption);
+  const caption = ctx.journey.follow && level.followCaption ? level.followCaption : level.caption;
+  overlay.setCaption(caption);
+  if (introDone) voice.caption(caption);
   overlay.setFov(
     exploreFocus
       ? 2 *
