@@ -42,6 +42,7 @@ export function formatMeters(m: number): string {
     [1e-9, 'nm'],
     [1e-10, 'Å'],
     [1e-12, 'pm'],
+    [1e-15, 'fm'],
   ];
   const { decimal, units: names } = content.ui.number;
   const fmt = (v: number, u: string) =>
@@ -49,7 +50,7 @@ export function formatMeters(m: number): string {
   for (const [f, u] of units) {
     if (m >= f) return fmt(m / f, u);
   }
-  return fmt(m / 1e-12, 'pm');
+  return fmt(m / 1e-15, 'fm');
 }
 
 const UNIT: Record<string, number> = {
@@ -60,6 +61,7 @@ const UNIT: Record<string, number> = {
   nm: 1e-9,
   Å: 1e-10,
   pm: 1e-12,
+  fm: 1e-15,
   // Russian labels ("30 см", "0,2 нм").
   м: 1,
   см: 1e-2,
@@ -67,6 +69,7 @@ const UNIT: Record<string, number> = {
   мкм: 1e-6,
   нм: 1e-9,
   пм: 1e-12,
+  фм: 1e-15,
 };
 const SUP: Record<string, string> = {
   '-': '⁻',

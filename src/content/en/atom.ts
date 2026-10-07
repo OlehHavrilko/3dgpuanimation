@@ -10,7 +10,7 @@ export const atom = {
     description: '14 protons, 14 neutrons, 14 electrons. Where every transistor ultimately happens.',
   },
   follow:
-    "Finally it is one of silicon's four valence electrons, in a 3p orbital: not a dot, but a cloud of probability. End of the journey.",
+    "Finally it is one of silicon's four valence electrons, in a 3p orbital: not a dot, but a cloud of probability. One scale left: what the cloud is held by.",
   captions: [
     'Silicon: 14 protons, 14 neutrons, 14 electrons',
     'That cloud is |ψ|²: where its electrons are likely to be — where a transistor really lives',

@@ -6,9 +6,9 @@ import { bodyHas, expectNoErrors, goToLevel, openApp, waitForLevel } from './hel
  * Functional checks only (SwiftShader gives no meaningful frame rate).
  */
 
-test('all 8 levels build, render and swap without errors', async ({ page }) => {
+test('all 9 levels build, render and swap without errors', async ({ page }) => {
   const errors = await openApp(page);
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 9; i++) {
     await goToLevel(page, i, 0.5);
     const state = await page.evaluate(() => {
       const t = (window as any).__teardown;
@@ -23,7 +23,7 @@ test('all 8 levels build, render and swap without errors', async ({ page }) => {
 
 test('scrolling the page drives the timeline', async ({ page }) => {
   const errors = await openApp(page);
-  await page.evaluate(() => window.scrollTo(0, 0.62 * (document.documentElement.scrollHeight - innerHeight)));
+  await page.evaluate(() => window.scrollTo(0, 0.5 * (document.documentElement.scrollHeight - innerHeight)));
   await waitForLevel(page, 4);
   expectNoErrors(errors);
 });
@@ -169,11 +169,11 @@ test('levels release GPU resources when swapped out', async ({ page }) => {
   await settle();
   const first = await mem();
   expect(await cached()).toEqual([0, 1]);
-  for (const i of [1, 2, 3, 4, 5, 6, 7, 6, 5, 4, 3, 2, 1, 0]) {
+  for (const i of [1, 2, 3, 4, 5, 6, 7, 8, 7, 6, 5, 4, 3, 2, 1, 0]) {
     await goToLevel(page, i, 0.5);
     await settle();
     // Only the current level and its neighbours stay built.
-    expect(await cached()).toEqual([i - 1, i, i + 1].filter((k) => k >= 0 && k < 8));
+    expect(await cached()).toEqual([i - 1, i, i + 1].filter((k) => k >= 0 && k < 9));
   }
   const again = await mem();
   // Same window, same scenes: the counts must come back to where they were.

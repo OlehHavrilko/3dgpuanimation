@@ -9,8 +9,18 @@ import type { EntityInfo } from '../../src/core/types';
 const levels = Object.entries(content.levels);
 
 describe('content dictionary', () => {
-  it('has all eight levels with name, scale, description and a follow narration', () => {
-    expect(levels.map(([k]) => k)).toEqual(['card', 'pcb', 'package', 'die', 'metal', 'transistor', 'lattice', 'atom']);
+  it('has all nine levels with name, scale, description and a follow narration', () => {
+    expect(levels.map(([k]) => k)).toEqual([
+      'card',
+      'pcb',
+      'package',
+      'die',
+      'metal',
+      'transistor',
+      'lattice',
+      'atom',
+      'nucleus',
+    ]);
     for (const [, l] of levels) {
       expect(l.meta.name.length).toBeGreaterThan(0);
       expect(powerOfTen(l.meta.scale)).toMatch(/^10[⁻⁰¹²³⁴⁵⁶⁷⁸⁹]+ m$/);
@@ -42,7 +52,7 @@ describe('content dictionary', () => {
   });
 
   it('has an accuracy note for every level, each with at least one entry', () => {
-    expect(content.accuracy.levels).toHaveLength(8);
+    expect(content.accuracy.levels).toHaveLength(9);
     for (const n of content.accuracy.levels) {
       expect(n.spec.length + n.representative.length + n.notToScale.length).toBeGreaterThan(0);
     }

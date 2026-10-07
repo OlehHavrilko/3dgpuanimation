@@ -6,6 +6,8 @@ import { mulberry32, pickByT, smoothstep } from '../core/math';
 import { content } from '../content';
 import { pointScale } from '../core/points';
 import { boxFrom, pickObject } from '../interaction/pick';
+import { nucleonJitter, nucleusLayout, nucleusSpin, NUCLEON_R } from './nucleus/cluster';
+import { ATOM_END_DIST, NUCLEUS_APPROACH } from './nucleus/seam';
 
 /**
  * Level 8 — a single silicon atom. Units: stylised (~5 pm per unit).
@@ -62,7 +64,8 @@ const SHELLS: Shell[] = [
 
 const RADIAL_K = 12.4; // display units per a0^0.62
 const RADIAL_EXP = 0.62;
-const NUCLEON_R = 0.42;
+/** Radius of the drawn nucleus cluster. */
+const NUCLEUS_R = 1.4;
 
 export class AtomLevel extends BaseLevel {
   readonly meta = meta;
@@ -76,7 +79,15 @@ export class AtomLevel extends BaseLevel {
   private show = [1, 1, 1, 1, 1];
   private showTarget = [1, 1, 1, 1, 1];
   private m = new THREE.Matrix4();
-  private target: TransitionTarget = { position: new THREE.Vector3(), radius: 1.4 };
+  private target: TransitionTarget = {
+    position: new THREE.Vector3(),
+    radius: NUCLEUS_R,
+    approach: NUCLEUS_APPROACH.clone(),
+  };
+  private jitter = new THREE.Vector3();
+  /** Light at the nucleus: scaled with it while it shrinks, so the nucleons stay lit the same. */
+  private core!: THREE.PointLight;
+  private spinScale = 1;
 
   constructor(ctx: ConstructorParameters<typeof BaseLevel>[0]) {
     super(ctx);
@@ -101,39 +112,40 @@ export class AtomLevel extends BaseLevel {
   protected build() {
     this.scene.background = new THREE.Color(0x020405);
     this.scene.add(new THREE.AmbientLight(0xffffff, 0.15));
-    const core = new THREE.PointLight(0xe8ffd8, 40, 30, 2);
-    this.scene.add(core);
+    this.core = new THREE.PointLight(0xe8ffd8, 40, 30, 2);
+    this.scene.add(this.core);
     const key = new THREE.DirectionalLight(0xffffff, 1.6);
     key.position.set(5, 8, 6);
     this.scene.add(key);
 
     this.buildNucleus();
     this.buildCloud();
+    // The dive moves the camera after update(), so the shrink is applied at render time.
+    this.scene.onBeforeRender = (_r, _s, camera) => this.applyRealSize(camera);
+  }
+
+  /** 1 = drawn ~10⁴× too large; falls with the camera distance during the dive, to true size. */
+  private realSize(camera: THREE.Camera) {
+    if (this.ctx.view.freeCamera) return 1;
+    return Math.min(1, camera.position.length() / ATOM_END_DIST);
+  }
+
+  /**
+   * Diving in, the nucleus shrinks back to its real size as fast as the camera closes in: it holds
+   * its size on screen while the cloud thins out around it, and reaches the next scale true to
+   * scale. The light at its centre scales with it, so the nucleons stay lit the same.
+   */
+  private applyRealSize(camera: THREE.Camera) {
+    const real = this.realSize(camera);
+    this.nucleusGroup.scale.setScalar(this.spinScale * real);
+    this.nucleusGroup.updateMatrixWorld(true);
+    this.core.intensity = 40 * real * real;
+    this.core.distance = 30 * real;
+    this.cloudMat.uniforms.uFade.value = smoothstep(0.12, 0.7, real);
   }
 
   private buildNucleus() {
-    const rng = mulberry32(28);
-    const pts: THREE.Vector3[] = [];
-    for (let i = 0; i < 28; i++) {
-      pts.push(new THREE.Vector3(rng() - 0.5, rng() - 0.5, rng() - 0.5).multiplyScalar(2));
-    }
-    // Relax: hard-sphere repulsion + gentle pull to the centre -> compact cluster.
-    const d = new THREE.Vector3();
-    const minD = NUCLEON_R * 2 * 0.97;
-    for (let it = 0; it < 400; it++) {
-      for (let i = 0; i < pts.length; i++) {
-        pts[i].multiplyScalar(0.985);
-        for (let j = i + 1; j < pts.length; j++) {
-          d.subVectors(pts[j], pts[i]);
-          const len = d.length() || 1e-4;
-          if (len < minD) {
-            d.multiplyScalar((minD - len) / len / 2);
-            pts[i].sub(d);
-            pts[j].add(d);
-          }
-        }
-      }
-    }
+    const { positions: pts, proton: isProton } = nucleusLayout();
     this.nucleonBase = pts;
 
     const geo = new THREE.SphereGeometry(NUCLEON_R, 28, 20);
@@ -148,9 +160,7 @@ export class AtomLevel extends BaseLevel {
     this.nucleus = new THREE.InstancedMesh(geo, mat, pts.length);
     const proton = new THREE.Color(0xfff6ea);
     const neutron = new THREE.Color(0x5f9a12);
-    // Alternate protons / neutrons through the cluster (sorted by angle for an even mix).
-    const order = pts.map((p, i) => ({ i, k: Math.atan2(p.z, p.x) + p.y * 3 })).sort((a, b) => a.k - b.k);
-    order.forEach((o, rank) => this.nucleus.setColorAt(o.i, rank % 2 ? neutron : proton));
+    pts.forEach((_, i) => this.nucleus.setColorAt(i, isProton[i] ? proton : neutron));
     pts.forEach((p, i) => this.nucleus.setMatrixAt(i, this.m.makeTranslation(p.x, p.y, p.z)));
     this.nucleus.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.nucleusGroup.add(this.nucleus);
@@ -219,6 +229,7 @@ export class AtomLevel extends BaseLevel {
         uSize: { value: 0.32 },
         uScale: { value: 1 },
         uShow: { value: this.show },
+        uFade: { value: 1 },
       },
       vertexShader: /* glsl */ `
         #include <clipping_planes_pars_vertex>
@@ -229,6 +240,7 @@ export class AtomLevel extends BaseLevel {
         uniform float uTime;
         uniform float uSize;
         uniform float uScale;
+        uniform float uFade;
         varying vec3 vColor;
         varying float vAlpha;
         void main() {
@@ -245,7 +257,7 @@ export class AtomLevel extends BaseLevel {
           gl_PointSize = min(uSize * uScale * (0.6 + aRand * 0.8) / dist, 48.0);
           vColor = color * (0.75 + 0.35 * pulse);
           // Fade points that get too close to the lens.
-          vAlpha = smoothstep(0.8, 6.0, dist) * aAlpha * uShow[int(aShell + 0.5)];
+          vAlpha = smoothstep(0.8, 6.0, dist) * aAlpha * uShow[int(aShell + 0.5)] * uFade;
         }
       `,
       fragmentShader: /* glsl */ `
@@ -305,21 +317,15 @@ export class AtomLevel extends BaseLevel {
     for (let i = 0; i < 5; i++) this.show[i] += (this.showTarget[i] - this.show[i]) * Math.min(1, dt * 5);
     this.cloudMat.uniforms.uScale.value = pointScale(this.ctx.renderer, this.ctx.camera);
 
-    // Nucleons jitter (zero-point motion, purely decorative).
+    // Nucleons jitter (zero-point motion, purely decorative); the next scale moves them the same way.
     for (let i = 0; i < this.nucleonBase.length; i++) {
-      const b = this.nucleonBase[i];
-      const j = 0.035;
-      this.m.makeTranslation(
-        b.x + Math.sin(time * 7.1 + i * 1.7) * j,
-        b.y + Math.sin(time * 6.3 + i * 2.3) * j,
-        b.z + Math.sin(time * 5.7 + i * 0.9) * j,
-      );
-      this.nucleus.setMatrixAt(i, this.m);
+      const p = nucleonJitter(i, time, this.jitter).add(this.nucleonBase[i]);
+      this.nucleus.setMatrixAt(i, this.m.makeTranslation(p.x, p.y, p.z));
     }
     this.nucleus.instanceMatrix.needsUpdate = true;
-    this.nucleusGroup.rotation.y = time * 0.15;
-    const s = 1 + 0.03 * Math.sin(time * 0.9);
-    this.nucleusGroup.scale.setScalar(s);
+    const spin = nucleusSpin(time);
+    this.nucleusGroup.rotation.y = spin.angle;
+    this.spinScale = spin.scale;
 
     this.caption = pickByT(t, [0.25, 0.5, 0.78], C.captions);
   }
@@ -339,6 +345,7 @@ export class AtomLevel extends BaseLevel {
   }
 
   getTransitionTarget() {
+    this.target.radius = NUCLEUS_R * this.realSize(this.ctx.camera);
     return this.target;
   }
 }

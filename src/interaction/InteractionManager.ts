@@ -210,7 +210,7 @@ export class InteractionManager {
         else if (this.exploring) this.exitExplore();
         break;
       default:
-        if (/^Digit[1-8]$/.test(e.code)) {
+        if (/^Digit[1-9]$/.test(e.code)) {
           const i = Number(e.code.slice(5)) - 1;
           if (i < this.manager.entries.length) this.jumpToLevel(i);
         } else if (this.exploring) {

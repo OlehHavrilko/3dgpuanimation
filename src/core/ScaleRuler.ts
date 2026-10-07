@@ -1,17 +1,17 @@
 import { formatMeters } from './math';
 import { content } from '../content';
 
-/** Decades shown, as exponents of metres: from a few metres down to below the atom. */
+/** Decades shown, as exponents of metres: from a few metres down to a proton. */
 const TOP = 0.5;
-const BOTTOM = -11;
+const BOTTOM = -15.5;
 const SUP = '⁰¹²³⁴⁵⁶⁷⁸⁹';
 const sup = (n: number) => `${n < 0 ? '⁻' : ''}${String(Math.abs(n)).replace(/\d/g, (d) => SUP[+d])}`;
 
 const y = (meters: number) => (TOP - Math.log10(meters)) / (TOP - BOTTOM);
 
 /**
- * One continuous logarithmic ruler for the whole descent: ten decades from a person (1.7 m)
- * to an atom (0.2 nm), a few familiar objects along it, and a marker that rides it with the
+ * One continuous logarithmic ruler for the whole descent: sixteen decades from a person (1.7 m)
+ * to a proton (~1 fm), a few familiar objects along it, and a marker that rides it with the
  * live field of view. It is the only place where "how far have I gone" is visible at once.
  */
 export class ScaleRuler {
@@ -48,7 +48,7 @@ export class ScaleRuler {
 
   /** `meters`: width of the view, in metres. */
   update(meters: number) {
-    const f = Math.min(1, Math.max(0, y(Math.max(meters, 1e-13))));
+    const f = Math.min(1, Math.max(0, y(Math.max(meters, 1e-17))));
     this.marker.style.top = `${f * 100}%`;
     const label = formatMeters(meters);
     if (label !== this.lastLabel) {

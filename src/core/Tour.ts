@@ -21,7 +21,7 @@ const CONTENT_SHARE = 0.84;
 const TOTAL_SECONDS = 118;
 
 /**
- * The guided tour: a self-running pass through all eight scales.
+ * The guided tour: a self-running pass through all nine scales.
  *
  * It drives progress directly (the scroll timeline is frozen) so the pacing is authored
  * rather than tied to how fast someone flicks a wheel. Each scale moves slowly through its

@@ -6,7 +6,7 @@ import { GB202_ATOMS, scientific } from './facts';
 /**
  * The narrative layer: three acts, three anchor numbers, one finale.
  *
- * The eight scales are a chronology; the story is what gives them shape. This module
+ * The nine scales are a chronology; the story is what gives them shape. This module
  * groups them into acts, drops a title card at each act boundary, surfaces a single
  * memorable number at the moment it means something, breathes once with a chrome-free
  * "clean shot" before the last dive, and closes the journey with a proper ending
@@ -27,7 +27,7 @@ export interface Act {
 const ACT_SHAPE = [
   { roman: 'I', levels: [0, 1, 2] },
   { roman: 'II', levels: [3, 4, 5] },
-  { roman: 'III', levels: [6, 7] },
+  { roman: 'III', levels: [6, 7, 8] },
 ];
 export const ACTS: Act[] = ACT_SHAPE.map((a, id) => ({ id, ...a, ...content.story.acts[id] }));
 

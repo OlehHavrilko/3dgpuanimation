@@ -3,7 +3,7 @@ import { test } from '@playwright/test';
 import { goToLevel, openApp } from './helpers';
 
 /**
- * Level activation benchmark: walks 1 -> 8 and back 8 -> 1, recording what the LevelProfiler
+ * Level activation benchmark: walks 1 -> 9 and back 9 -> 1, recording what the LevelProfiler
  * measured for every swap. Only runs with BENCH=<label>; writes bench/<label>.{json,md}.
  *   BENCH=after npx playwright test bench
  *   BENCH=baseline BENCH_QUERY='&cache=0' npx playwright test bench   (level cache off)
@@ -27,7 +27,7 @@ test.use({
 test('level activation benchmark', async ({ page }) => {
   test.setTimeout(900_000);
   await openApp(page, '&nointro&quality=medium' + (process.env.BENCH_QUERY ?? ''));
-  const order = [1, 2, 3, 4, 5, 6, 7, 6, 5, 4, 3, 2, 1, 0];
+  const order = [1, 2, 3, 4, 5, 6, 7, 8, 7, 6, 5, 4, 3, 2, 1, 0];
   for (const i of order) {
     await goToLevel(page, i, 0.5);
     await page.waitForTimeout(1500); // let background work (if any) settle between swaps

@@ -16,7 +16,8 @@ export const ui = {
   static: {
     // Keys match the data-i18n / data-i18n-title / data-i18n-aria attributes in index.html.
     docTitle: 'GPU to Atom',
-    docDescription: 'Scroll-driven 3D teardown of a graphics card, from the shroud down to a single silicon atom.',
+    docDescription:
+      'Scroll-driven 3D teardown of a graphics card, from the shroud down to a single silicon atom and the quarks in its nucleus.',
     brand: 'ATOM',
     language: 'Language',
     crumbs: 'Scale breadcrumb',
@@ -41,15 +42,17 @@ export const ui = {
     soundNo: 'No thanks',
     finTag: 'End of the descent',
     finTitle: 'You reached the bottom.',
-    finSub: 'Nine orders of magnitude. One object, all the way down.',
+    finSub: 'Fourteen orders of magnitude. One object, all the way down.',
     finGpu: 'GPU',
     finTransistor: 'Transistor',
     finSilicon: 'Silicon',
     finAtom: 'Atom',
+    finQuarks: 'Quarks',
     fin30cm: '30 cm',
     fin50nm: '50 nm',
     fin2nm: '2 nm',
     fin02nm: '0.2 nm',
+    fin1fm: '1 fm',
     finTransistorsValue: '92.2 B',
     finTransistors: 'transistors',
     finMetal: 'metal layers',
@@ -63,9 +66,9 @@ export const ui = {
     sourcesGlossary: 'Sources & glossary',
     sourceCredits: 'Source & credits',
     introTitle1: 'One descent.',
-    introTitle2: 'Nine orders of magnitude.',
+    introTitle2: 'Fourteen orders of magnitude.',
     introLede:
-      'From a 30 cm graphics card to the silicon atom at its heart — modelled and rendered live in your browser. No video, no downloaded assets.',
+      'From a 30 cm graphics card to the silicon atom at its heart, and on into the quarks of its nucleus — modelled and rendered live in your browser. No video, no downloaded assets.',
     introStart: 'Start the descent',
     introScroll: 'Scroll it yourself',
     introKeys: 'space play / pause \u00a0·\u00a0 e explore \u00a0·\u00a0 shift+f fullscreen',
@@ -73,7 +76,7 @@ export const ui = {
   /** Length units and the decimal mark for live readouts (scale bar, field of view). */
   number: {
     decimal: '.',
-    units: { m: 'm', cm: 'cm', mm: 'mm', µm: 'µm', nm: 'nm', Å: 'Å', pm: 'pm' },
+    units: { m: 'm', cm: 'cm', mm: 'mm', µm: 'µm', nm: 'nm', Å: 'Å', pm: 'pm', fm: 'fm' },
   },
   /** Choice-control options are stable ids in code; this maps the ones that need a translation. */
   options: {} as Record<string, string>,
@@ -90,6 +93,7 @@ export const ui = {
       { m: 1e-7, text: 'a virus' },
       { m: 2e-9, text: 'DNA' },
       { m: 2e-10, text: 'an atom' },
+      { m: 6e-15, text: 'a nucleus' },
     ] as { m: number; text: string }[],
   },
   palette: {
@@ -114,8 +118,10 @@ export const ui = {
     [4e-8, 'a virus'],
     [5e-9, 'a strand of DNA'],
     [3.5e-10, 'a few silicon atoms'],
+    [5e-11, 'a single atom'],
+    [4e-15, 'an atomic nucleus'],
   ] as [number, string][],
-  scaleAnchorSmallest: 'a single atom',
+  scaleAnchorSmallest: 'a single proton',
   views: {
     view: 'View',
     cut: 'Cut position',

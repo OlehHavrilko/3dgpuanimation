@@ -38,14 +38,14 @@ test('acts and key numbers appear where they belong', async ({ page }) => {
   expectNoErrors(errors);
 });
 
-test('finale opens at the bottom of the atom and Share frame downloads a PNG', async ({ page }) => {
+test('finale opens at the bottom of the nucleus and Share frame downloads a PNG', async ({ page }) => {
   const errors = await openApp(page);
-  await goToLevel(page, 7, 0.99);
+  await goToLevel(page, 8, 0.99);
   await expect.poll(() => page.evaluate(() => (window as any).__teardown.story.finaleVisible)).toBe(true);
   await expect(page.locator('#finale')).toHaveClass(/on/);
   const download = page.waitForEvent('download', { timeout: 60_000 });
   await page.locator('#fin-share').click();
-  expect((await download).suggestedFilename()).toMatch(/^gpu-to-atom-08-.*\.png$/);
+  expect((await download).suggestedFilename()).toMatch(/^gpu-to-atom-09-.*\.png$/);
   expectNoErrors(errors);
 });
 
@@ -86,13 +86,13 @@ test('Sources & glossary: G opens it, tabs switch, a term jumps to its scale', a
   const errors = await openApp(page);
   await page.keyboard.press('g');
   await expect(page.locator('#reference')).toHaveClass(/on/);
-  await expect(page.locator('#ref-glossary dt')).toHaveCount(23);
+  await expect(page.locator('#ref-glossary dt')).toHaveCount(28);
   // While open, scene keys do nothing: F must not start the Trace.
   await page.keyboard.press('f');
   expect(await bodyHas(page, 'following')).toBe(false);
   await page.locator('#ref-tab-sources').click();
   await expect(page.locator('#ref-sources')).toBeVisible();
-  await expect(page.locator('#ref-sources a')).toHaveCount(4);
+  await expect(page.locator('#ref-sources a')).toHaveCount(10);
   await page.keyboard.press('Escape');
   await expect(page.locator('#reference')).not.toHaveClass(/on/);
   // The accuracy note links to the sources.

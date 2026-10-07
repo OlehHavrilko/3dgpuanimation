@@ -4,7 +4,7 @@ export const story = {
   acts: [
     { title: 'The Machine', route: 'GPU · PCB · Package', blurb: 'This is the machine.' },
     { title: 'The Computation', route: 'Die · Metal · Transistor', blurb: 'This is how it thinks.' },
-    { title: 'The Matter', route: 'Lattice · Atom', blurb: 'This is what it is made of.' },
+    { title: 'The Matter', route: 'Lattice · Atom · Nucleus', blurb: 'This is what it is made of.' },
   ],
   act: (roman: string) => `Act ${roman}`,
   /** One per key number, in order (die, metal stack, atom). */
@@ -14,7 +14,7 @@ export const story = {
     {
       value: '≈0.1',
       unit: 'nanometre',
-      caption: "The reach of one atom's outer electrons. Nothing in the machine is smaller.",
+      caption: "The reach of one atom's outer electrons. Everything the chip does happens at this scale or above.",
     },
   ],
   tour: { play: 'Play', pause: 'Pause' },
@@ -22,7 +22,7 @@ export const story = {
   coda: {
     title: 'You were looking at one.',
     body: (atoms: string) =>
-      `The die of this card holds about ${atoms} silicon atoms. The last scale showed one of them.`,
+      `The die of this card holds about ${atoms} silicon atoms. You just went inside one of them.`,
     note: 'Assumes a ~0.78 mm die; the real thickness is not published.',
     again: 'Start again',
     explore: 'Explore',

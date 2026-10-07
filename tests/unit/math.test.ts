@@ -11,10 +11,12 @@ describe('scale formatting', () => {
     expect(formatMeters(5e-8)).toBe('50.0 nm');
     expect(formatMeters(2e-10)).toBe('2.00 Å');
     expect(formatMeters(9e-11)).toBe('90.0 pm');
+    expect(formatMeters(1.5e-15)).toBe('1.50 fm');
+    expect(formatMeters(3e-16)).toBe('0.30 fm');
   });
 
   it('gives the order of magnitude of every level label', () => {
-    expect(['30 cm', '10 cm', '5 cm', '1 cm', '10 µm', '50 nm', '2 nm', '0.2 nm'].map(powerOfTen)).toEqual([
+    expect(['30 cm', '10 cm', '5 cm', '1 cm', '10 µm', '50 nm', '2 nm', '0.2 nm', '1 fm'].map(powerOfTen)).toEqual([
       '10⁻¹ m',
       '10⁻¹ m',
       '10⁻² m',
@@ -23,6 +25,7 @@ describe('scale formatting', () => {
       '10⁻⁸ m',
       '10⁻⁹ m',
       '10⁻¹⁰ m',
+      '10⁻¹⁵ m',
     ]);
   });
 });

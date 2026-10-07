@@ -58,7 +58,7 @@ test('command palette and the sources sheet', async ({ page }) => {
 
 test('finale', async ({ page }) => {
   const errors = await openApp(page);
-  await goToLevel(page, 7, 0.99);
+  await goToLevel(page, 8, 0.99);
   await expect.poll(() => page.evaluate(() => (window as any).__teardown.story.finaleVisible)).toBe(true);
   await audit(page);
   expectNoErrors(errors);
