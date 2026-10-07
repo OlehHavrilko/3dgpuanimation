@@ -102,7 +102,10 @@ export class PostFX {
       this.composer.addPass(new EffectPass(camera, new FxaaEffect()));
     }
     this.dofPass = new EffectPass(camera, this.dof);
-    this.composer.addPass(this.dofPass);
+    // Tiers without DOF (low, phones) never add the pass: the composer then allocates no depth
+    // texture and the CoC / bokeh passes never run. `dofPass.enabled` stays a harmless toggle.
+    if (QUALITY.dof) this.composer.addPass(this.dofPass);
+    else this.dofPass.enabled = false;
     // Phones skip chromatic aberration (QUALITY.chromatic = 0): it only smears fine detail there.
     const grade = [
       this.bloom,
