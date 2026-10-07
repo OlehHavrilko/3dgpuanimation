@@ -20,7 +20,7 @@ export function serviceWorker(): Plugin {
       const outDir = config.build.outDir;
       const files = walk(outDir)
         .map((f) => relative(outDir, f).split(sep).join('/'))
-        .filter((f) => f !== 'sw.js')
+        .filter((f) => f !== 'sw.js' && !f.startsWith('voice/')) // narration clips load on demand
         .sort();
       const hash = createHash('sha256');
       for (const f of files) hash.update(f).update(readFileSync(join(outDir, f)));

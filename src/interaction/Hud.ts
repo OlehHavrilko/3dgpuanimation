@@ -182,6 +182,7 @@ export class Hud {
       } else if (c.kind === 'slider') {
         const input = document.createElement('input');
         input.type = 'range';
+        input.setAttribute('aria-label', c.label);
         input.min = String(c.min);
         input.max = String(c.max);
         input.step = String(c.step);

@@ -29,6 +29,7 @@ export const ui: typeof en = {
     labels: 'Подписи',
     labelsTitle: '3D-подписи (L)',
     soundTitle: 'Фоновый звук (M)',
+    voiceTitle: 'Озвучка (V)',
     scrollHint: 'прокрутите вниз',
     fovLabel: 'поле зрения',
     tipHint: 'нажмите, чтобы рассмотреть',
@@ -115,6 +116,7 @@ export const ui: typeof en = {
   },
   stop: 'Стоп',
   sound: { on: 'Звук вкл', off: 'Звук' },
+  voice: { on: 'Голос вкл', off: 'Голос', hello: 'Озвучка включена.' },
   ruler: {
     label: 'Линейка масштаба, логарифмическая',
     marks: [

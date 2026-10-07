@@ -18,7 +18,7 @@ const kb = (n) => `${(n / 1024).toFixed(1)} kB`;
 const rows = files(DIST).map((path) => {
   const raw = readFileSync(path);
   return {
-    file: relative(DIST, path),
+    file: relative(DIST, path).replaceAll('\\', '/'),
     raw: raw.length,
     gzip: gzipSync(raw, { level: 9 }).length,
     brotli: brotliCompressSync(raw).length,
