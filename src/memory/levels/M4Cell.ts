@@ -3,7 +3,7 @@ import { BaseLevel, addRimLight } from '../../core/BaseLevel';
 import { entry, type CameraKey } from '../../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../../core/types';
 import { clamp, mulberry32, pickByT, range, smoothstep } from '../../core/math';
-import { content } from '../../content';
+import { memoryContent } from '../../content/memory';
 import { QUALITY } from '../../core/quality';
 import { pickObject } from '../../interaction/pick';
 import { pointScale } from '../../core/points';
@@ -15,7 +15,7 @@ import { deviceLights, glowPointsMaterial } from './common';
  * array; we follow the right one (+x). The capacitor plate sits at VDD/2, so a storage node
  * at 0 V holds ~C·VDD/2 of extra electrons: that is the charge drawn here.
  */
-const C = content.memory.cell;
+const C = memoryContent.cell;
 
 export const meta: LevelMeta = {
   ...C.meta,

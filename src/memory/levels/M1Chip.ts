@@ -4,7 +4,7 @@ import type { CameraKey } from '../../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../../core/types';
 import { mulberry32, pickByT, smootherstep, smoothstep } from '../../core/math';
 import { canvasTexture } from '../../core/canvas';
-import { content } from '../../content';
+import { memoryContent } from '../../content/memory';
 import { pickInstancedGroup, pickObject } from '../../interaction/pick';
 import { pam3PulseMaterial, studioLights } from './common';
 
@@ -14,7 +14,7 @@ import { pam3PulseMaterial, studioLights } from './common';
  * 16 mm apart, as on the main PCB level. The chip lifts off its balls (coloured by channel),
  * then its mould turns see-through to show the substrate and the DRAM die.
  */
-const C = content.memory.chip;
+const C = memoryContent.chip;
 
 export const meta: LevelMeta = {
   ...C.meta,

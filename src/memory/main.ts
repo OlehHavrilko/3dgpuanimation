@@ -18,6 +18,7 @@ import { createSettings } from '../app/settings';
 import { setupReference } from '../app/reference';
 import { createWarmup } from '../app/warmup';
 import { content, lang, LANGS, switchLang } from '../content';
+import { memoryContent } from '../content/memory';
 import { MEMORY_GRADE_INDEX, MEMORY_LEVELS } from './levels';
 
 /**
@@ -26,7 +27,7 @@ import { MEMORY_GRADE_INDEX, MEMORY_LEVELS } from './levels';
  * is. It reuses the same engine: LevelManager seams, PostFX, Overlay, Explore / inspect, labels,
  * sources & glossary. Scrolling drives it; Space or Play runs it on its own.
  */
-const M = content.memory;
+const M = memoryContent;
 const LEVELS = MEMORY_LEVELS;
 const debug = new URLSearchParams(location.search).has('debug');
 const settings = createSettings(QUALITY);

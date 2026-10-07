@@ -12,7 +12,6 @@ import { nucleus } from './nucleus';
 import { story } from './story';
 import { accuracy } from './accuracy';
 import { reference } from './reference';
-import { memory } from './memory';
 
 /** Русский словарь: та же форма, что у английского (проверяется типом). */
 export const ru: typeof en = {
@@ -20,6 +19,5 @@ export const ru: typeof en = {
   story,
   accuracy,
   reference,
-  memory,
   levels: { card, pcb, package: pkg, die, metal, transistor, lattice, atom, nucleus },
 };

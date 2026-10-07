@@ -4,7 +4,7 @@ import { entry, type CameraKey } from '../../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../../core/types';
 import { mulberry32, pickByT, range, smoothstep } from '../../core/math';
 import { canvasTexture } from '../../core/canvas';
-import { content } from '../../content';
+import { memoryContent } from '../../content/memory';
 import { pickInstances, pickObject } from '../../interaction/pick';
 import { studioLights } from './common';
 
@@ -14,7 +14,7 @@ import { studioLights } from './common';
  * peripheral strip. Each region holds two of the four channels; each channel is drawn as a
  * 4 × 4 grid of banks made of mats (bank count and layout are representative).
  */
-const C = content.memory.die;
+const C = memoryContent.die;
 
 export const meta: LevelMeta = {
   ...C.meta,

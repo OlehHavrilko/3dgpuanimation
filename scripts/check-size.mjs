@@ -25,12 +25,14 @@ const rows = files(DIST).map((path) => {
   };
 });
 
-// A rule matches files by extension under a folder (assets/*.js, assets/*.css, …).
+// A rule matches files by extension under a folder (assets/*.js, assets/*.css, …) and may
+// exclude some of them (the memory branch ships its own page and is budgeted separately).
 const failures = [];
 const report = [];
 for (const rule of budget.rules) {
   const re = new RegExp(rule.match);
-  const hit = rows.filter((r) => re.test(r.file));
+  const excludeRe = rule.exclude ? new RegExp(rule.exclude) : null;
+  const hit = rows.filter((r) => re.test(r.file) && !(excludeRe && excludeRe.test(r.file)));
   const gzip = hit.reduce((s, r) => s + r.gzip, 0);
   const ok = gzip <= rule.maxGzipKB * 1024;
   if (!ok) failures.push(rule.name);

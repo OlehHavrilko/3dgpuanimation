@@ -3,7 +3,7 @@ import { BaseLevel, addGlowAttribute, addRimLight, makeInstanceGlow } from '../.
 import { entry, type CameraKey } from '../../core/CameraRig';
 import type { LevelMeta, TransitionTarget } from '../../core/types';
 import { mulberry32, pickByT, range, smoothstep } from '../../core/math';
-import { content } from '../../content';
+import { memoryContent } from '../../content/memory';
 import { QUALITY } from '../../core/quality';
 import { pickInstances, pickObject } from '../../interaction/pick';
 import { deviceLights } from './common';
@@ -14,7 +14,7 @@ import { deviceLights } from './common';
  * storage capacitors stand on top in a staggered (honeycomb) grid, one per wordline × bitline
  * crossing, which is what a 6F² cell gives: 32.6 nm × 37.6 nm ≈ 0.00123 µm² per cell.
  */
-const C = content.memory.array;
+const C = memoryContent.array;
 
 export const meta: LevelMeta = {
   ...C.meta,
@@ -105,7 +105,7 @@ export class ArrayLevel extends BaseLevel {
     );
     top.position.y = -30;
     s.add(top);
-    this.pickables.push(pickObject(top, content.memory.cell.entities.substrate, -1));
+    this.pickables.push(pickObject(top, memoryContent.cell.entities.substrate, -1));
 
     // Buried wordlines (TiN), one per row.
     this.wlMat = new THREE.MeshStandardMaterial({ color: 0x566170, metalness: 0.8, roughness: 0.35 });
