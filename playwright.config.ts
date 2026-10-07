@@ -11,7 +11,8 @@ export default defineConfig({
   testDir: 'tests/e2e',
   timeout: 240_000,
   expect: { timeout: 60_000 },
-  fullyParallel: false,
+  // Tests are independent; with this on, --shard splits by test instead of by file (workers stay at 1).
+  fullyParallel: true,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['list'], ['github']] : 'list',
