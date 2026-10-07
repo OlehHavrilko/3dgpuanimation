@@ -16,6 +16,7 @@ import { Labels } from '../interaction/Labels';
 import { AdaptiveResolution } from '../app/AdaptiveResolution';
 import { createSettings } from '../app/settings';
 import { setupReference } from '../app/reference';
+import { setupVoice } from '../app/voiceControl';
 import { createWarmup } from '../app/warmup';
 import { content, lang, LANGS, switchLang } from '../content';
 import { memoryContent } from '../content/memory';
@@ -149,6 +150,8 @@ manager.onSwap = (index, level) => {
 interaction.onSelect = (hit) => {
   if (hit) stopPlay();
 };
+const voice = setupVoice();
+interaction.onVoice = () => voice.toggle();
 const labelsBtn = document.getElementById('nav-labels') as HTMLButtonElement;
 interaction.onLabels = () => labelsBtn.classList.toggle('on', labels.toggle());
 labelsBtn.addEventListener('click', () => interaction.onLabels?.());
@@ -339,6 +342,7 @@ function renderFrame(rawDt: number) {
 
   const exploreFocus = interaction.getFocusOverride();
   overlay.setCaption(level.caption);
+  voice.caption(level.caption);
   overlay.setFov(
     exploreFocus
       ? 2 *

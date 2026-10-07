@@ -13,6 +13,7 @@
       "match": "^(memory\\.html|assets/memory-.*)$",
       "maxGzipKB": 28
     },
-    { "name": "Everything in dist", "match": ".", "maxGzipKB": 520 }
+    { "name": "Everything in dist", "match": ".", "exclude": "^voice/", "maxGzipKB": 520 },
+    { "name": "Voice clips (lazy, both languages)", "match": "^voice/", "maxGzipKB": 6144 }
   ]
 }

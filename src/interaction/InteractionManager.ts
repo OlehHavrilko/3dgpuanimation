@@ -32,6 +32,7 @@ export class InteractionManager {
   onLabels: (() => void) | null = null;
   /** `M` hook, wired to the ambience by the app. */
   onSound: (() => void) | null = null;
+  onVoice: (() => void) | null = null;
   /** Selection change, used for audio feedback. */
   onSelect: ((hit: PickHit | null) => void) | null = null;
 
@@ -193,6 +194,9 @@ export class InteractionManager {
         break;
       case 'KeyM':
         this.onSound?.();
+        break;
+      case 'KeyV':
+        this.onVoice?.();
         break;
       case 'Space':
         // A control with keyboard focus gets Space natively (press the button), not play / pause.
