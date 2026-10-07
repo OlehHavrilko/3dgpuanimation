@@ -50,3 +50,25 @@ test('memory branch: Russian text and sources', async ({ page }) => {
   await expect(page.locator('#reference')).toContainText('JESD239');
   expectNoErrors(errors);
 });
+
+test('memory branch: a failing render loop shows the fallback instead of a silent black page', async ({ page }) => {
+  const errors = await openBranch(page);
+  await expect(page.locator('#fallback')).toBeHidden();
+  await page.evaluate(() => (window as any).__teardown.injectFault(3));
+  await expect(page.locator('#fallback')).toBeVisible();
+  // The failures are still reported as errors (a real bug keeps failing the other tests).
+  expect(errors.filter((e) => e.includes('injected render fault')).length).toBeGreaterThan(0);
+});
+
+test('memory branch: InteractionManager.dispose() removes its listeners', async ({ page }) => {
+  const errors = await openBranch(page);
+  await page.keyboard.press('e');
+  await expect.poll(() => bodyHas(page, 'exploring')).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect.poll(() => bodyHas(page, 'exploring')).toBe(false);
+  await page.evaluate(() => (window as any).__teardown.interaction.dispose());
+  await page.keyboard.press('e');
+  await page.waitForTimeout(300);
+  expect(await bodyHas(page, 'exploring')).toBe(false);
+  expectNoErrors(errors);
+});
