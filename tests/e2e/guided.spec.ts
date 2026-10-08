@@ -45,7 +45,7 @@ test('finale opens at the bottom of the nucleus and Share frame downloads a PNG'
   await expect(page.locator('#finale')).toHaveClass(/on/);
   const download = page.waitForEvent('download', { timeout: 60_000 });
   await page.locator('#fin-share').click();
-  expect((await download).suggestedFilename()).toMatch(/^gpu-to-atom-09-.*\.png$/);
+  expect((await download).suggestedFilename()).toMatch(/^diedive-09-.*\.png$/);
   expectNoErrors(errors);
 });
 

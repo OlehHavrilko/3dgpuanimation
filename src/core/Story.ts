@@ -88,7 +88,7 @@ export interface StoryHooks {
   narrate(text: string, holdMs: number): void;
 }
 
-const SOURCE_URL = 'https://github.com/OlehHavrilko/3dgpuanimation';
+const SOURCE_URL = 'https://github.com/OlehHavrilko/diedive';
 
 export class Story {
   /** 0..1 amount the camera eases back for the finale composition. */
@@ -410,7 +410,7 @@ export class Story {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `gpu-to-atom-${String(state.index + 1).padStart(2, '0')}${slug ? `-${slug}` : ''}.png`;
+      a.download = `diedive-${String(state.index + 1).padStart(2, '0')}${slug ? `-${slug}` : ''}.png`;
       a.click();
       window.setTimeout(() => URL.revokeObjectURL(url), 5000);
     }, 'image/png');
