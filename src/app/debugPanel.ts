@@ -13,7 +13,7 @@ export async function setupDebugPanel(opts: {
 }) {
   const { settings, manager, metas, post, scrollToProgress } = opts;
   const { default: GUI } = await import('lil-gui');
-  const gui = new GUI({ title: 'GPU → Atom debug' });
+  const gui = new GUI({ title: 'DieDive debug' });
   const perf = gui.addFolder('Performance');
   perf.add(settings, 'fps').listen().disable();
   perf.add(settings, 'frameMs').name('frame ms').listen().disable();

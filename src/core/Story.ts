@@ -410,7 +410,7 @@ export class Story {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `gpu-to-atom-${String(state.index + 1).padStart(2, '0')}${slug ? `-${slug}` : ''}.png`;
+      a.download = `diedive-${String(state.index + 1).padStart(2, '0')}${slug ? `-${slug}` : ''}.png`;
       a.click();
       window.setTimeout(() => URL.revokeObjectURL(url), 5000);
     }, 'image/png');

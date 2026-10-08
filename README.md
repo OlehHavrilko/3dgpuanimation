@@ -1,10 +1,10 @@
-# GPU → Atom
+# DieDive
 
 **An interactive WebGL dive from a GeForce RTX 5090 down to a single silicon atom, and on into the quarks of its nucleus.** Nine scales, from 30 cm to 1 fm, in one continuous camera move. Every part is modelled procedurally and rendered live in the browser: no 3D models, textures or video.
 
 **[▶ Open the live demo](https://olehhavrilko.github.io/3dgpuanimation/)** · works in any modern desktop or mobile browser · [skip the intro](https://olehhavrilko.github.io/3dgpuanimation/?nointro)
 
-[![GPU → Atom: the descent from the graphics card to a single silicon atom](docs/media/descent.gif)](https://olehhavrilko.github.io/3dgpuanimation/)
+[![DieDive: the descent from the graphics card to a single silicon atom](docs/media/descent.gif)](https://olehhavrilko.github.io/3dgpuanimation/)
 
 **Stack:** TypeScript · Three.js · hand-written GLSL · postprocessing · Web Audio API · Vite · Vitest · Playwright · GitHub Actions / Pages
 

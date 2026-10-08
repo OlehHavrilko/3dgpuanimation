@@ -10,7 +10,7 @@ export const memory = {
   page: {
     title: 'GPU → Memory → Bit',
     description:
-      'A side branch of the GPU → Atom descent: from one GDDR7 chip of the RTX 5090 to the capacitor that holds a single bit.',
+      'A side branch of the DieDive descent: from one GDDR7 chip of the RTX 5090 to the capacitor that holds a single bit.',
     brand: 'MEMORY',
     branchTag: 'Side branch · memory',
     back: '◂ Back to the main descent',

@@ -15,7 +15,7 @@ export const ui = {
   /** Text that ships in index.html, re-applied from here so every language comes from one place. */
   static: {
     // Keys match the data-i18n / data-i18n-title / data-i18n-aria attributes in index.html.
-    docTitle: 'GPU to Atom',
+    docTitle: 'DieDive',
     docDescription:
       'Scroll-driven 3D teardown of a graphics card, from the shroud down to a single silicon atom and the quarks in its nucleus.',
     brand: 'ATOM',

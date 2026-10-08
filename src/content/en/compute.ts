@@ -11,7 +11,7 @@ export const compute = {
   page: {
     title: 'GPU → Compute → Gate',
     description:
-      'A side branch of the GPU → Atom descent: from one Streaming Multiprocessor of the GB202 die to a single FP32 multiply-add and the logic gates it is made of.',
+      'A side branch of the DieDive descent: from one Streaming Multiprocessor of the GB202 die to a single FP32 multiply-add and the logic gates it is made of.',
     brand: 'COMPUTE',
     branchTag: 'Side branch · compute',
     back: '◂ Back to the main descent',
