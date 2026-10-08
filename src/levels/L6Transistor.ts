@@ -1,7 +1,8 @@
 import * as THREE from 'three';
+import { META } from './meta';
 import { BaseLevel, addGlowAttribute, addRimLight, makeInstanceGlow, setControlValue } from '../core/BaseLevel';
 import { entry, type CameraKey } from '../core/CameraRig';
-import type { LevelMeta, TransitionTarget } from '../core/types';
+import type { TransitionTarget } from '../core/types';
 import { mulberry32, pickByT, smoothstep } from '../core/math';
 import { content } from '../content';
 import { pointScale } from '../core/points';
@@ -20,11 +21,7 @@ import { splineAt } from '../interaction/FollowTracer';
  */
 const C = content.levels.transistor;
 
-export const meta: LevelMeta = {
-  ...C.meta,
-  unitMeters: 1e-9,
-  weight: 1.1,
-};
+const meta = META[5];
 
 const FIN_PITCH = 28;
 const FIN_W = 7;

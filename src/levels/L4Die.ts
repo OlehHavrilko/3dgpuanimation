@@ -1,7 +1,8 @@
 import * as THREE from 'three';
+import { META } from './meta';
 import { BaseLevel, setControlValue } from '../core/BaseLevel';
 import { entry, type CameraKey } from '../core/CameraRig';
-import type { LevelMeta, TransitionTarget } from '../core/types';
+import type { TransitionTarget } from '../core/types';
 import { pickByT, smoothstep } from '../core/math';
 import { content } from '../content';
 import {
@@ -32,11 +33,7 @@ import { splineAt } from '../interaction/FollowTracer';
  */
 const C = content.levels.die;
 
-export const meta: LevelMeta = {
-  ...C.meta,
-  unitMeters: 0.001,
-  weight: 1.1,
-};
+const meta = META[3];
 
 export class DieLevel extends BaseLevel {
   readonly meta = meta;

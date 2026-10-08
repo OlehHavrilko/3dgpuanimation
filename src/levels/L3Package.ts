@@ -1,7 +1,8 @@
 import * as THREE from 'three';
+import { META } from './meta';
 import { BaseLevel, setControlValue } from '../core/BaseLevel';
 import { entry, type CameraKey } from '../core/CameraRig';
-import type { LevelMeta, TransitionTarget } from '../core/types';
+import type { TransitionTarget } from '../core/types';
 import { mulberry32, pickByT, smootherstep, smoothstep } from '../core/math';
 import { content } from '../content';
 import type { LayerId } from '../content/en/package';
@@ -16,11 +17,7 @@ import { pickInstancedGroup, pickObject } from '../interaction/pick';
  */
 const C = content.levels.package;
 
-export const meta: LevelMeta = {
-  ...C.meta,
-  unitMeters: 0.001,
-  weight: 1,
-};
+const meta = META[2];
 
 const SIZE = 50;
 const GAP = 4.2; // exploded spacing between layers

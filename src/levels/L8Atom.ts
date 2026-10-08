@@ -1,7 +1,8 @@
 import * as THREE from 'three';
+import { META } from './meta';
 import { BaseLevel, setControlValue } from '../core/BaseLevel';
 import { entry, type CameraKey } from '../core/CameraRig';
-import type { LevelMeta, TransitionTarget } from '../core/types';
+import type { TransitionTarget } from '../core/types';
 import { mulberry32, pickByT, smoothstep } from '../core/math';
 import { content } from '../content';
 import { pointScale } from '../core/points';
@@ -16,11 +17,7 @@ import { ATOM_END_DIST, NUCLEUS_APPROACH } from './nucleus/seam';
  */
 const C = content.levels.atom;
 
-export const meta: LevelMeta = {
-  ...C.meta,
-  unitMeters: 5e-12,
-  weight: 1.1,
-};
+const meta = META[7];
 
 interface Shell {
   n: number;

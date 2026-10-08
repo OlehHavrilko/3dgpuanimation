@@ -1,19 +1,25 @@
 {
   "rules": [
     {
-      "name": "JavaScript (main page)",
+      "name": "JavaScript (first load)",
+      "match": "^assets/.*\\.js$",
+      "entry": "index.html",
+      "maxGzipKB": 238
+    },
+    {
+      "name": "JavaScript (main page + lazy)",
       "match": "^assets/.*\\.js$",
       "exclude": "^assets/memory-",
-      "maxGzipKB": 280
+      "maxGzipKB": 295
     },
-    { "name": "CSS", "match": "^assets/.*\\.css$", "maxGzipKB": 9 },
-    { "name": "HTML", "match": "^index\\.html$", "maxGzipKB": 6 },
+    { "name": "CSS", "match": "^assets/.*\\.css$", "maxGzipKB": 8.1 },
+    { "name": "HTML", "match": "^index\\.html$", "maxGzipKB": 4.7 },
     {
       "name": "Memory branch (own page + code)",
       "match": "^(memory\\.html|assets/memory-.*)$",
-      "maxGzipKB": 28
+      "maxGzipKB": 25.4
     },
-    { "name": "Everything in dist", "match": ".", "exclude": "^voice/", "maxGzipKB": 520 },
+    { "name": "Everything in dist", "match": ".", "exclude": "^voice/", "maxGzipKB": 473 },
     { "name": "Voice clips (lazy, both languages)", "match": "^voice/", "maxGzipKB": 6144 }
   ]
 }
