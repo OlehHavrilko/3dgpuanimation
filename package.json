@@ -11,7 +11,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:e2e": "vite build && playwright test smoke guided descent i18n pwa a11y phone memory compute voice --workers=1",
+    "test:e2e": "vite build && playwright test smoke guided descent i18n pwa a11y phone memory compute voice section --workers=1",
     "test:visual": "vite build && playwright test visual",
     "bench": "vite build && BENCH=${BENCH:-local} playwright test bench",
     "size": "node scripts/check-size.mjs",

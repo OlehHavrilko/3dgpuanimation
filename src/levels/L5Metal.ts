@@ -266,6 +266,16 @@ export class MetalLevel extends BaseLevel {
     s.add(substrate);
   }
 
+  /**
+   * The deepest layers run 40 µm back, but the camera works within a few pitches of the cut face.
+   * Sweeping the cut over the whole block would hide everything in view for most of the slider.
+   */
+  sectionDepth() {
+    // Horizontal distance to the cut face: the wires sit within a few of these of it.
+    const { x, z } = this.ctx.camera.position;
+    return THREE.MathUtils.clamp(Math.hypot(x, z) * 1.2 + 0.02, 0.05, 40);
+  }
+
   protected animate(t: number, _dt: number, time: number) {
     // Signal activity: a few wires pulse green.
     const arr = this.glow.array as Float32Array;

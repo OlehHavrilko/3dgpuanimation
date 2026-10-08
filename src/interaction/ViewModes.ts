@@ -198,12 +198,20 @@ export class ViewModes {
 
   private placePlane() {
     const c = this.bounds.getCenter(new THREE.Vector3());
-    const half = this.bounds.getSize(new THREE.Vector3()).multiply(this.normal).length() / 2;
+    let half = this.bounds.getSize(new THREE.Vector3()).multiply(this.normal).length() / 2;
+    // A level may confine the sweep to the depth in view (from the cut face at the block's front).
+    const depth = this.level?.sectionDepth?.();
+    if (depth !== undefined && depth > 0 && depth < half * 2) {
+      half = depth / 2;
+      // The cut face is the block's far side along the normal (the camera looks at it from there).
+      c.addScaledVector(this.normal, this.bounds.max.dot(this.normal) - half - c.dot(this.normal));
+    }
     // section = 1: nothing cut; 0: everything cut. The side the normal points to is removed.
     const p = c.addScaledVector(this.normal, (this.section * 2 - 1) * half * 1.02);
     this.plane.setFromNormalAndCoplanarPoint(this.normal.clone().negate(), p);
     if (this.cut) this.cut.position.copy(p).addScaledVector(this.normal, -half * 0.002);
     this.caps.setPlane(this.normal, p);
+    if (depth !== undefined && depth > 0) this.caps.setScale(depth * 3);
   }
 }
 
@@ -462,6 +470,11 @@ class SectionCaps {
     }
   }
 
+  /** Re-pitch the hatch for the scale in view (about 70 lines across `size`). */
+  setScale(size: number) {
+    this.shared.uPitch.value = size / 70;
+  }
+
   setPlane(normal: THREE.Vector3, point: THREE.Vector3) {
     this.shared.uOrigin.value.copy(point);
     this.shared.uNormal.value.copy(normal);
@@ -585,9 +598,15 @@ function makeCapMaterial(color: THREE.Color, shared: Record<string, THREE.IUnifo
         // Engineering-drawing hatch at 45 degrees, in the plane of the cut.
         vec3 d = onPlane - uOrigin;
         float s = (dot(d, uAxisU) + dot(d, uAxisV)) / uPitch;
-        float w = fwidth(s);
+        // Box-filtered line: its half-width (0.09 of the period) widened by the pixel footprint of s,
+        // so edges are antialiased without the thin lines shimmering. Once a pixel spans a good part
+        // of the period (thin wires, grazing views, the plane/ray fallback below) the pattern is
+        // unresolvable: fade to its mean coverage instead of aliasing.
+        float w = clamp(fwidth(s), 1e-4, 1.0);
         float dist = 0.5 - abs(fract(s) - 0.5); // 0 on a line, 0.5 between two
-        float line = 1.0 - smoothstep(0.09, 0.09 + w * 1.5, dist);
+        float halfLine = 0.09;
+        float line = clamp((halfLine + 0.5 * w - dist) / w, 0.0, 1.0);
+        line = mix(line, 2.0 * halfLine, smoothstep(0.2, 0.5, w));
         vec3 c = baseColor(local) * 0.85 + 0.03;
         // A layered part already reads as a section: keep its hatch faint.
         gl_FragColor = vec4(mix(c, c * 0.45, line * (LAYERS > 0 ? 0.25 : 0.6)), 1.0);

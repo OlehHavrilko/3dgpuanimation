@@ -17,6 +17,13 @@ export abstract class BaseLevel implements Level {
   controls: LevelControl[] = [];
   thermal?: ThermalSpec;
   sectionNormal?: [number, number, number];
+  /**
+   * Depth of the part of the scene that matters for the Section cut, measured from the cut face
+   * back along -sectionNormal (scene units). Levels whose geometry reaches far beyond what the
+   * camera sees (the metal stack) return the visible depth, so the slider sweeps through it
+   * instead of spending its whole travel inside empty space.
+   */
+  sectionDepth?(): number;
   followCaption?: string;
 
   protected rig!: CameraRig;
