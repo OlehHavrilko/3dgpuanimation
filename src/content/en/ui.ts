@@ -29,6 +29,7 @@ export const ui = {
     labels: 'Labels',
     labelsTitle: '3D labels (L)',
     soundTitle: 'Ambient sound (M)',
+    voiceTitle: 'Spoken narration (V)',
     scrollHint: 'scroll to descend',
     fovLabel: 'field of view',
     tipHint: 'click to inspect',
@@ -66,6 +67,7 @@ export const ui = {
     sourcesGlossary: 'Sources & glossary',
     sourceCredits: 'Source & credits',
     memoryBranch: 'Side branch: memory ▸',
+    computeBranch: 'Side branch: compute ▸',
     introTitle1: 'One descent.',
     introTitle2: 'Fourteen orders of magnitude.',
     introLede:
@@ -83,6 +85,7 @@ export const ui = {
   options: {} as Record<string, string>,
   stop: 'Stop',
   sound: { on: 'Sound on', off: 'Sound' },
+  voice: { on: 'Voice on', off: 'Voice', hello: 'Narration on.' },
   /** The logarithmic ruler: familiar objects at their real size (metres). */
   ruler: {
     label: 'Scale ruler, logarithmic',

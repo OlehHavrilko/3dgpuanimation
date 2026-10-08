@@ -21,12 +21,14 @@ import { AdaptiveResolution } from './app/AdaptiveResolution';
 import { createSettings } from './app/settings';
 import { setupFollow } from './app/follow';
 import { setupSound } from './app/sound';
+import { setupVoice } from './app/voiceControl';
 import { setupPalette } from './app/palette';
 import { setupDebugPanel } from './app/debugPanel';
 import { applyStaticText } from './app/staticText';
 import { setupReference } from './app/reference';
 import { createWarmup } from './app/warmup';
 import { registerServiceWorker } from './app/pwa';
+import { createFrameGuard } from './app/frameGuard';
 
 applyStaticText();
 registerServiceWorker();
@@ -106,6 +108,7 @@ const dissolve = new FrameDissolve(document.getElementById('dissolve') as HTMLCa
 const labels = new Labels();
 labels.onPick = (hit) => interaction.selectEntity(hit);
 const sound = setupSound();
+const voice = setupVoice();
 /** Level index whose outgoing frame is already frozen for the next dissolve. */
 let dissolveCapturedFor = -1;
 
@@ -130,6 +133,7 @@ manager.onSwap = (index, level) => {
 };
 
 interaction.onSound = () => sound.toggleFromKey();
+interaction.onVoice = () => voice.toggle();
 interaction.onSelect = (hit) => {
   sound.ambience.blip(!!hit);
   // Inspecting a part is deliberate input: take the tour out of autopilot.
@@ -312,6 +316,7 @@ const story = new Story({
   levelName: (i) => LEVELS[i].meta.name,
   levelScale: (i) => LEVELS[i].meta.scale,
   levelCaption: () => manager.current?.caption ?? '',
+  narrate: (text, holdMs) => voice.announce(text, holdMs),
   stopTour: () => tour.stop(),
   replay: () => tour.restart(),
   zoomOut: (done) => {
@@ -463,9 +468,31 @@ const clock = {
 };
 if (debug) Object.assign((window as unknown as { __teardown: object }).__teardown, { clock });
 
+// A render exception must not end the loop silently (black page): see createFrameGuard.
+const guard = createFrameGuard(() => {
+  document.getElementById('intro')?.remove();
+  document.getElementById('fallback')!.hidden = false;
+});
+/** Debug/test hook: make the next N frames throw. */
+let injectedFaults = 0;
+if (debug)
+  Object.assign((window as unknown as { __teardown: object }).__teardown, {
+    injectFault: (n = 3) => (injectedFaults = n),
+  });
+
 function frame(now: number) {
   timer.update(now);
-  if (!contextLost && !clock.paused) renderFrame(Math.min(timer.getDelta(), 0.1));
+  if (!contextLost && !clock.paused) {
+    const dt = Math.min(timer.getDelta(), 0.1);
+    const ok = guard.run(() => {
+      if (injectedFaults > 0) {
+        injectedFaults--;
+        throw new Error('injected render fault');
+      }
+      renderFrame(dt);
+    });
+    if (!ok) return;
+  }
   requestAnimationFrame(frame);
 }
 
@@ -505,7 +532,9 @@ function renderFrame(rawDt: number) {
   if (!reference.open) syncHash(state.local);
   const exploreFocus = interaction.getFocusOverride();
 
-  overlay.setCaption(ctx.journey.follow && level.followCaption ? level.followCaption : level.caption);
+  const caption = ctx.journey.follow && level.followCaption ? level.followCaption : level.caption;
+  overlay.setCaption(caption);
+  if (introDone) voice.caption(caption);
   overlay.setFov(
     exploreFocus
       ? 2 *
@@ -555,6 +584,7 @@ function renderFrame(rawDt: number) {
   if (!firstFrameRendered) {
     firstFrameRendered = true;
     intro.classList.add('loaded');
+    void manager.loadAll(); // the other scales' scene code, in the background
   }
   // Freeze one frame per dive for the boundary dissolve. Copying the drawing buffer is not
   // free (it can flush the GPU), so this is done once, late in the dolly — not every frame.

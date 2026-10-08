@@ -18,7 +18,7 @@ const kb = (n) => `${(n / 1024).toFixed(1)} kB`;
 const rows = files(DIST).map((path) => {
   const raw = readFileSync(path);
   return {
-    file: relative(DIST, path),
+    file: relative(DIST, path).replaceAll('\\', '/'),
     raw: raw.length,
     gzip: gzipSync(raw, { level: 9 }).length,
     brotli: brotliCompressSync(raw).length,
@@ -26,13 +26,21 @@ const rows = files(DIST).map((path) => {
 });
 
 // A rule matches files by extension under a folder (assets/*.js, assets/*.css, …) and may
-// exclude some of them (the memory branch ships its own page and is budgeted separately).
+// exclude some of them or restrict to the entry page's own scripts (the memory branch ships its own page and is budgeted separately).
 const failures = [];
 const report = [];
 for (const rule of budget.rules) {
   const re = new RegExp(rule.match);
   const excludeRe = rule.exclude ? new RegExp(rule.exclude) : null;
-  const hit = rows.filter((r) => re.test(r.file) && !(excludeRe && excludeRe.test(r.file)));
+  // `entry`: only files the page itself loads up front (its script and modulepreloads), not lazy chunks.
+  const upfront = rule.entry
+    ? new Set(
+        [...readFileSync(join(DIST, rule.entry), 'utf8').matchAll(/(?:src|href)="\.\/([^"]+)"/g)].map((m) => m[1]),
+      )
+    : null;
+  const hit = rows.filter(
+    (r) => re.test(r.file) && !(excludeRe && excludeRe.test(r.file)) && (!upfront || upfront.has(r.file)),
+  );
   const gzip = hit.reduce((s, r) => s + r.gzip, 0);
   const ok = gzip <= rule.maxGzipKB * 1024;
   if (!ok) failures.push(rule.name);

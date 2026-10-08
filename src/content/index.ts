@@ -1,5 +1,5 @@
 import { en } from './en';
-import { ru } from './ru';
+import type { ru } from './ru';
 
 /**
  * All user-facing text, per language. Levels and UI read from `content`; nothing user-visible
@@ -9,13 +9,14 @@ import { ru } from './ru';
  * so switching language stores the choice and reloads (keeping the #l=…&p=… position).
  */
 export type Content = typeof en;
+// Dictionaries must stay interchangeable: this fails to compile when `ru` drifts from the shape of `en`.
+export type RuMatches = typeof ru extends Content ? true : never;
 export type Lang = 'en' | 'ru';
 
 export const LANGS: { id: Lang; label: string; name: string }[] = [
   { id: 'en', label: 'EN', name: 'English' },
   { id: 'ru', label: 'RU', name: 'Русский' },
 ];
-const dictionaries: Record<Lang, Content> = { en, ru };
 const STORAGE_KEY = 'gpu-atom:lang';
 
 const isLang = (v: unknown): v is Lang => v === 'en' || v === 'ru';
@@ -51,7 +52,8 @@ function storeLang(lang: Lang) {
 }
 
 export const lang: Lang = detectLang();
-export const content: Content = dictionaries[lang];
+// English ships with the page; Russian is a separate chunk fetched only when it is the active language.
+export const content: Content = lang === 'ru' ? (await import('./ru')).ru : en;
 
 /** Remember the choice and reload in that language, at the same place in the descent. */
 export function switchLang(next: Lang) {

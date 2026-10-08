@@ -29,6 +29,7 @@ export const ui: typeof en = {
     labels: 'Подписи',
     labelsTitle: '3D-подписи (L)',
     soundTitle: 'Фоновый звук (M)',
+    voiceTitle: 'Озвучка (V)',
     scrollHint: 'прокрутите вниз',
     fovLabel: 'поле зрения',
     tipHint: 'нажмите, чтобы рассмотреть',
@@ -66,6 +67,7 @@ export const ui: typeof en = {
     sourcesGlossary: 'Источники и глоссарий',
     sourceCredits: 'Код и авторы',
     memoryBranch: 'Боковая ветка: память ▸',
+    computeBranch: 'Боковая ветка: вычисления ▸',
     introTitle1: 'Один спуск.',
     introTitle2: 'Четырнадцать порядков величины.',
     introLede:
@@ -115,6 +117,7 @@ export const ui: typeof en = {
   },
   stop: 'Стоп',
   sound: { on: 'Звук вкл', off: 'Звук' },
+  voice: { on: 'Голос вкл', off: 'Голос', hello: 'Озвучка включена.' },
   ruler: {
     label: 'Линейка масштаба, логарифмическая',
     marks: [

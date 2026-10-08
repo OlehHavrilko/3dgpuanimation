@@ -1,10 +1,12 @@
 import * as THREE from 'three';
+import { META } from './meta';
 import { BaseLevel, setControlValue } from '../core/BaseLevel';
 import { entry, type CameraKey } from '../core/CameraRig';
-import type { LevelMeta, TransitionTarget } from '../core/types';
+import type { TransitionTarget } from '../core/types';
 import { mulberry32, pickByT, smoothstep } from '../core/math';
 import { content } from '../content';
 import { pointScale } from '../core/points';
+import { QUALITY } from '../core/quality';
 import { boxFrom, pickObject } from '../interaction/pick';
 import { nucleonJitter, nucleusLayout, nucleusSpin, NUCLEON_R } from './nucleus/cluster';
 import { ATOM_END_DIST, NUCLEUS_APPROACH } from './nucleus/seam';
@@ -16,11 +18,7 @@ import { ATOM_END_DIST, NUCLEUS_APPROACH } from './nucleus/seam';
  */
 const C = content.levels.atom;
 
-export const meta: LevelMeta = {
-  ...C.meta,
-  unitMeters: 5e-12,
-  weight: 1.1,
-};
+const meta = META[7];
 
 interface Shell {
   n: number;
@@ -170,7 +168,11 @@ export class AtomLevel extends BaseLevel {
 
   private buildCloud() {
     const rng = mulberry32(14);
-    const total = SHELLS.reduce((s, sh) => s + sh.points, 0);
+    // Low tier draws half the electron points (each a bit brighter): the cloud is vertex- and
+    // fill-bound, and sprites are already scaled down by pointBudget there. Other tiers unchanged.
+    const density = QUALITY.tier === 'low' ? 0.5 : 1;
+    const counts = SHELLS.map((sh) => Math.round(sh.points * density));
+    const total = counts.reduce((s, n) => s + n, 0);
     const positions = new Float32Array(total * 3);
     const shellIdx = new Float32Array(total);
     const alpha = new Float32Array(total);
@@ -182,7 +184,7 @@ export class AtomLevel extends BaseLevel {
 
     const radSum = SHELLS.map(() => 0);
     SHELLS.forEach((sh, si) => {
-      const n = sh.points;
+      const n = counts[si];
       const sampleR = radialSampler(sh.n, sh.l, sh.zeff);
       c.set(sh.color);
       for (let i = 0; i < n; i++) {
@@ -201,7 +203,7 @@ export class AtomLevel extends BaseLevel {
         positions[k * 3 + 1] = dir.y * rd;
         positions[k * 3 + 2] = dir.z * rd;
         shellIdx[k] = si;
-        alpha[k] = sh.alpha;
+        alpha[k] = Math.min(1, sh.alpha / density ** 0.85);
         rand[k] = rng();
         colors[k * 3] = c.r;
         colors[k * 3 + 1] = c.g;
@@ -210,7 +212,7 @@ export class AtomLevel extends BaseLevel {
       }
     });
 
-    this.shellR = radSum.map((sum, si) => sum / SHELLS[si].points);
+    this.shellR = radSum.map((sum, si) => sum / counts[si]);
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geo.setAttribute('aShell', new THREE.BufferAttribute(shellIdx, 1));

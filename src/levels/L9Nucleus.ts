@@ -1,7 +1,8 @@
 import * as THREE from 'three';
+import { META } from './meta';
 import { BaseLevel, setControlValue } from '../core/BaseLevel';
 import type { CameraKey } from '../core/CameraRig';
-import type { LevelMeta, PickHit, TransitionTarget } from '../core/types';
+import type { PickHit, TransitionTarget } from '../core/types';
 import { mulberry32, pickByT, smoothstep } from '../core/math';
 import { content } from '../content';
 import { pointScale } from '../core/points';
@@ -21,11 +22,7 @@ import { ATOM_END_DIST, NUCLEUS_APPROACH, NUCLEUS_SCALE } from './nucleus/seam';
  */
 const C = content.levels.nucleus;
 
-export const meta: LevelMeta = {
-  ...C.meta,
-  unitMeters: 1e-16,
-  weight: 1.1,
-};
+const meta = META[8];
 
 const PROTON_R = NUCLEON_R * NUCLEUS_SCALE;
 /** Colour charge, by convention red / green / blue (it has nothing to do with light). */

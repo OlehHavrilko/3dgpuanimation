@@ -55,6 +55,26 @@ describe('LevelManager', () => {
     expect(manager.progressForLevel(2, 0.5)).toBeCloseTo(0.625);
   });
 
+  it('holds the scroll on the last downloaded level until the next one has loaded', async () => {
+    const { manager, created, flush } = setup(3);
+    let loaded = false;
+    const entry = manager.entries[1];
+    const create = entry.create;
+    entry.ready = () => loaded;
+    entry.load = async () => void (loaded = true);
+    entry.create = create;
+    manager.setProgress(manager.progressForLevel(2, 0.5));
+    const held = manager.tick(0.016, 0);
+    expect(held.index).toBe(0);
+    expect(held.dive).toBe(0);
+    expect(created[1].length).toBe(0);
+    await flush();
+    await manager.whenIdle();
+    expect(loaded).toBe(true);
+    manager.tick(0.016, 0.016);
+    expect(manager.currentIndex).toBe(2);
+  });
+
   it('builds the level for the current progress, once', () => {
     const { manager, created } = setup();
     manager.setProgress(manager.progressForLevel(1, 0.5));

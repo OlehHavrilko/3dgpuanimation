@@ -16,7 +16,9 @@ import { Labels } from '../interaction/Labels';
 import { AdaptiveResolution } from '../app/AdaptiveResolution';
 import { createSettings } from '../app/settings';
 import { setupReference } from '../app/reference';
+import { setupVoice } from '../app/voiceControl';
 import { createWarmup } from '../app/warmup';
+import { createFrameGuard } from '../app/frameGuard';
 import { content, lang, LANGS, switchLang } from '../content';
 import { memoryContent } from '../content/memory';
 import { MEMORY_GRADE_INDEX, MEMORY_LEVELS } from './levels';
@@ -149,6 +151,8 @@ manager.onSwap = (index, level) => {
 interaction.onSelect = (hit) => {
   if (hit) stopPlay();
 };
+const voice = setupVoice();
+interaction.onVoice = () => voice.toggle();
 const labelsBtn = document.getElementById('nav-labels') as HTMLButtonElement;
 interaction.onLabels = () => labelsBtn.classList.toggle('on', labels.toggle());
 labelsBtn.addEventListener('click', () => interaction.onLabels?.());
@@ -296,9 +300,30 @@ if (debug) {
   };
 }
 
+// A render exception must not end the loop silently (black page): see createFrameGuard.
+const guard = createFrameGuard(() => {
+  document.getElementById('fallback')!.hidden = false;
+});
+/** Debug/test hook: make the next N frames throw. */
+let injectedFaults = 0;
+if (debug)
+  Object.assign((window as unknown as { __teardown: object }).__teardown, {
+    injectFault: (n = 3) => (injectedFaults = n),
+  });
+
 function frame(now: number) {
   timer.update(now);
-  if (!contextLost && !clock.paused) renderFrame(Math.min(timer.getDelta(), 0.1));
+  if (!contextLost && !clock.paused) {
+    const dt = Math.min(timer.getDelta(), 0.1);
+    const ok = guard.run(() => {
+      if (injectedFaults > 0) {
+        injectedFaults--;
+        throw new Error('injected render fault');
+      }
+      renderFrame(dt);
+    });
+    if (!ok) return;
+  }
   requestAnimationFrame(frame);
 }
 
@@ -339,6 +364,7 @@ function renderFrame(rawDt: number) {
 
   const exploreFocus = interaction.getFocusOverride();
   overlay.setCaption(level.caption);
+  voice.caption(level.caption);
   overlay.setFov(
     exploreFocus
       ? 2 *

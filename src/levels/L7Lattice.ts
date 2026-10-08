@@ -1,7 +1,9 @@
 import * as THREE from 'three';
+import { META } from './meta';
+import { QUALITY } from '../core/quality';
 import { BaseLevel, setControlValue } from '../core/BaseLevel';
 import type { CameraKey } from '../core/CameraRig';
-import type { LevelMeta, TransitionTarget } from '../core/types';
+import type { TransitionTarget } from '../core/types';
 import { pickByT, smoothstep } from '../core/math';
 import { content } from '../content';
 import { pointScale } from '../core/points';
@@ -15,11 +17,7 @@ import { splineAt } from '../interaction/FollowTracer';
  */
 const C = content.levels.lattice;
 
-export const meta: LevelMeta = {
-  ...C.meta,
-  unitMeters: 1e-10,
-  weight: 1,
-};
+const meta = META[6];
 
 const A = 5.431;
 const CELLS = 4;
@@ -143,7 +141,11 @@ export class LatticeLevel extends BaseLevel {
       clearcoat: 0.8,
       clearcoatRoughness: 0.3,
     });
-    const atoms = new THREE.InstancedMesh(new THREE.SphereGeometry(ATOM_R, 24, 16), this.atomMat, this.atoms.length);
+    const atoms = new THREE.InstancedMesh(
+      new THREE.SphereGeometry(ATOM_R, ...(QUALITY.tier === 'low' ? [14, 10] : [24, 16])),
+      this.atomMat,
+      this.atoms.length,
+    );
     this.atoms.forEach((p, i) => {
       const scale = this.dopants.has(i) ? 1.15 : 1;
       atoms.setMatrixAt(i, m.compose(p, q.identity(), v.setScalar(scale)));

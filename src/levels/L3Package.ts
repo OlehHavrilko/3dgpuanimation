@@ -1,12 +1,17 @@
 import * as THREE from 'three';
+import { META } from './meta';
+import { QUALITY } from '../core/quality';
 import { BaseLevel, setControlValue } from '../core/BaseLevel';
 import { entry, type CameraKey } from '../core/CameraRig';
-import type { LevelMeta, TransitionTarget } from '../core/types';
+import type { TransitionTarget } from '../core/types';
 import { mulberry32, pickByT, smootherstep, smoothstep } from '../core/math';
 import { content } from '../content';
 import type { LayerId } from '../content/en/package';
 import { canvasTexture, route45 } from '../core/canvas';
 import { pickInstancedGroup, pickObject } from '../interaction/pick';
+
+/** Sphere segments for the ~8000 bumps and balls; the low tier halves the triangles (645k -> ~330k per frame). */
+const BALL_SEGMENTS: [number, number] = QUALITY.tier === 'low' ? [6, 4] : [8, 6];
 
 /**
  * Level 3 — the GB202 package. Units: millimetres.
@@ -16,11 +21,7 @@ import { pickInstancedGroup, pickObject } from '../interaction/pick';
  */
 const C = content.levels.package;
 
-export const meta: LevelMeta = {
-  ...C.meta,
-  unitMeters: 0.001,
-  weight: 1,
-};
+const meta = META[2];
 
 const SIZE = 50;
 const GAP = 4.2; // exploded spacing between layers
@@ -142,7 +143,7 @@ export class PackageLevel extends BaseLevel {
     topLayer.add(caps);
 
     // C4 micro-bumps between die and substrate
-    const bumpGeo = new THREE.SphereGeometry(0.16, 8, 6);
+    const bumpGeo = new THREE.SphereGeometry(0.16, ...BALL_SEGMENTS);
     const bumpMat = new THREE.MeshStandardMaterial({ color: 0xd8dde3, metalness: 1, roughness: 0.25 });
     const nx = 58;
     const nz = 52;
@@ -180,7 +181,7 @@ export class PackageLevel extends BaseLevel {
     // BGA solder balls under the substrate (~5000)
     const n = 72;
     const pitch = 0.66;
-    const ballGeo = new THREE.SphereGeometry(0.27, 8, 6); // ~5000 instances: keep it light
+    const ballGeo = new THREE.SphereGeometry(0.27, ...BALL_SEGMENTS); // ~5000 instances: keep it light
     const ballMat = new THREE.MeshStandardMaterial({ color: 0xc9cdd3, metalness: 1, roughness: 0.28 });
     const pos: [number, number][] = [];
     for (let i = 0; i < n; i++) {

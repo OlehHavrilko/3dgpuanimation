@@ -84,6 +84,8 @@ export interface StoryHooks {
   enterExplore(): void;
   /** The live WebGL canvas, for Share frame. */
   getCanvas(): HTMLCanvasElement;
+  /** Read a story beat aloud (act card, anchor number); `holdMs` keeps captions from cutting in. */
+  narrate(text: string, holdMs: number): void;
 }
 
 const SOURCE_URL = 'https://github.com/OlehHavrilko/3dgpuanimation';
@@ -218,6 +220,7 @@ export class Story {
     this.card.classList.add('on');
     this.cardTimer = CARD_SECONDS;
     this.cardCooldown = CARD_COOLDOWN + CARD_SECONDS;
+    this.hook.narrate(`${act.title}. ${act.blurb}`, 9000);
   }
 
   private showKey(kn: KeyNumber) {
@@ -228,6 +231,7 @@ export class Story {
     void this.key.offsetWidth;
     this.key.classList.add('on');
     this.keyTimer = KEY_SECONDS;
+    this.hook.narrate(`${kn.value} ${kn.unit}. ${kn.caption}`, 8000);
     // The number takes the centre of the screen; the HUD steps back so the two never overlap.
     document.body.classList.add('keynum-on');
   }

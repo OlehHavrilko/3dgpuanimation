@@ -30,9 +30,16 @@ jobs:
       - run: npm run build
       - run: npm run size
 
+  # The e2e suite is ~45 min of serial work on SwiftShader (one worker per 2-core runner, since
+  # parallel workers starve each other), so it is sharded over separate runners.
   smoke:
+    name: smoke (${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -41,17 +48,22 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
+      - run: npm run test:e2e -- --shard=${{ matrix.shard }}/4
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-results
+          name: playwright-results-${{ matrix.shard }}
           path: test-results
           retention-days: 7
 
   visual:
+    name: visual (${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -60,11 +72,11 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:visual
+      - run: npm run test:visual -- --shard=${{ matrix.shard }}/3
       # Expected / actual / diff PNGs for every frame that moved.
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: visual-diffs
+          name: visual-diffs-${{ matrix.shard }}
           path: test-results
           retention-days: 7

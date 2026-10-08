@@ -31,6 +31,7 @@ export function applyStaticText() {
   }
   document.getElementById('nav-follow')!.textContent = content.ui.follow;
   document.getElementById('nav-sound')!.textContent = content.ui.sound.off;
+  document.getElementById('nav-voice')!.textContent = content.ui.voice.off;
   setupLangSwitches();
 }
 

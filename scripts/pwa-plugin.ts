@@ -20,7 +20,7 @@ export function serviceWorker(): Plugin {
       const outDir = config.build.outDir;
       const files = walk(outDir)
         .map((f) => relative(outDir, f).split(sep).join('/'))
-        .filter((f) => f !== 'sw.js')
+        .filter((f) => f !== 'sw.js' && !f.startsWith('voice/')) // narration clips load on demand
         .sort();
       const hash = createHash('sha256');
       for (const f of files) hash.update(f).update(readFileSync(join(outDir, f)));
@@ -65,18 +65,25 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return;
 
-  // Pages: network first so a new deploy shows up, the cached shell when offline.
+  // Pages (the descent and its side branches): network first so a new deploy shows up; offline,
+  // the cached copy of that same page (any query string), else the main shell.
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then((response) => {
           if (response.ok) {
             const copy = response.clone();
-            caches.open(CACHE).then((cache) => cache.put('./', copy));
+            const page = new URL(request.url);
+            page.search = '';
+            caches.open(CACHE).then((cache) => cache.put(page.href, copy));
           }
           return response;
         })
-        .catch(() => caches.match('./', { cacheName: CACHE })),
+        .catch(() =>
+          caches
+            .match(request, { cacheName: CACHE, ignoreSearch: true })
+            .then((hit) => hit || caches.match('./', { cacheName: CACHE })),
+        ),
     );
     return;
   }

@@ -1,7 +1,8 @@
 import * as THREE from 'three';
+import { META } from './meta';
 import { BaseLevel, addGlowAttribute, makeInstanceGlow } from '../core/BaseLevel';
 import type { CameraKey } from '../core/CameraRig';
-import type { LevelMeta, TransitionTarget } from '../core/types';
+import type { TransitionTarget } from '../core/types';
 import { mulberry32, pickByT, smoothstep } from '../core/math';
 import { content } from '../content';
 import type { EntityInfo } from '../core/types';
@@ -17,11 +18,7 @@ import { pickInstancedGroup, pickInstances } from '../interaction/pick';
  */
 const C = content.levels.metal;
 
-export const meta: LevelMeta = {
-  ...C.meta,
-  unitMeters: 1e-6,
-  weight: 1.1,
-};
+const meta = META[4];
 
 interface MetalLayer {
   name: string;

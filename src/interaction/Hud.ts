@@ -33,6 +33,8 @@ export class Hud {
   /** Cached inspector bounds: `getBoundingClientRect()` forces a layout, so never call it per frame. */
   private rect: DOMRect | null = null;
   private rectDirty = true;
+  /** Cached tooltip size: reading offsetWidth/Height forces a layout, so only re-measure on change. */
+  private tipSize: { w: number; h: number } | null = null;
 
   onClose: (() => void) | null = null;
 
@@ -51,6 +53,7 @@ export class Hud {
   /** Called when the viewport changes and the cached inspector bounds may be stale. */
   invalidateRect() {
     this.rectDirty = true;
+    this.tipSize = null;
   }
 
   /** Inspector bounds while it is open (for keeping the subject clear of it). */
@@ -70,6 +73,7 @@ export class Hud {
   showTip(key: string, info: EntityInfo, x: number, y: number) {
     if (key !== this.tipKey) {
       this.tipKey = key;
+      this.tipSize = null;
       this.tipKind.textContent = info.kind;
       this.tipTitle.textContent = info.title;
       this.tipSpecs.innerHTML = '';
@@ -82,8 +86,17 @@ export class Hud {
       });
     }
     // Card up-right of the target, flipped when it would leave the screen.
-    const w = this.tip.offsetWidth || 200;
-    const h = this.tip.offsetHeight || 80;
+    if (!this.tipSize) {
+      const mw = this.tip.offsetWidth;
+      const mh = this.tip.offsetHeight;
+      // 0 means not laid out yet: use the estimate for this frame and measure again next time.
+      this.tipSize = mw && mh ? { w: mw, h: mh } : null;
+      if (!this.tipSize) return this.placeTip(x, y, 200, 80);
+    }
+    this.placeTip(x, y, this.tipSize.w, this.tipSize.h);
+  }
+
+  private placeTip(x: number, y: number, w: number, h: number) {
     const flipX = x + 70 + w > window.innerWidth - 12;
     const flipY = y - 60 - h < 12;
     // Clamp to the viewport (narrow phones: neither side may have room).
@@ -182,6 +195,7 @@ export class Hud {
       } else if (c.kind === 'slider') {
         const input = document.createElement('input');
         input.type = 'range';
+        input.setAttribute('aria-label', c.label);
         input.min = String(c.min);
         input.max = String(c.max);
         input.step = String(c.step);
