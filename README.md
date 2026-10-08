@@ -62,6 +62,19 @@ Every frame is rendered live in the browser; [`scripts/capture-media.mjs`](#medi
 
 Published figures (GDDR7 channels and PAM3 from JEDEC, the 1b-generation pitches measured by TechInsights, the 16K / 32 ms refresh of Samsung's 16 Gb part) are cited in the branch's own sources list; the rest (package and die size, bank layout, the ~10 fF cell) is marked representative under "How accurate is this?".
 
+## Side branch: compute
+
+**[▶ Open the compute branch](https://olehhavrilko.github.io/3dgpuanimation/compute.html)** · a third path, offered next to the memory branch at the end of the descent: from one Streaming Multiprocessor of the GB202 die down to a single FP32 multiply-add and the logic gates it is made of. Its own page (`compute.html`) on the same engine, with the same seams, Explore and inspect, labels, sources & glossary, EN/RU, spoken narration and a Play button (`Space`). It ends where the main FinFET scale starts.
+
+| #   | Scale                    | Scale  | What happens                                                                                                                                                                                                               |
+| --- | ------------------------ | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Streaming Multiprocessor | 1 mm   | Four sub-partitions, each with a warp scheduler, a register file, 32 CUDA cores (128 per SM), a tensor core; L1 / shared memory in front. A scheduler issues one instruction to a warp of 32 threads.                      |
+| 2   | One warp                 | 400 µm | Thirty-two lanes execute `FFMA R4, R1, R2, R3` in the same clock, each on its own a, b, c; the result bars grow together.                                                                                                  |
+| 3   | FP32 multiply-add        | 50 µm  | π × e + 0.25 as real float32 bits (1 sign, 8 exponent, 23 mantissa): exponent adder, a 24 × 24 array of partial products, alignment, wide adder, one rounding, the result row. A bright marker carries the number through. |
+| 4   | Logic gates              | 1 µm   | A full adder from nine NAND gates (36 transistors) stepping through all eight input cases; one gate opens to its two PMOS and two NMOS fins, where the main FinFET scale begins.                                           |
+
+Published figures (the SM's counts from NVIDIA's RTX Blackwell whitepaper, the 32-thread warp from the CUDA programming guide, binary32 and the single-rounding FMA from IEEE 754) are cited in the branch's own sources list; the floorplan, the unit's internal structure and the gate layout are marked representative under "How accurate is this?". The bit patterns and the full adder are computed by tested pure functions (`src/compute/fma.ts`, `logic.ts`).
+
 ## Interaction
 
 The page has two modes:

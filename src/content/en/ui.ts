@@ -67,6 +67,7 @@ export const ui = {
     sourcesGlossary: 'Sources & glossary',
     sourceCredits: 'Source & credits',
     memoryBranch: 'Side branch: memory ▸',
+    computeBranch: 'Side branch: compute ▸',
     introTitle1: 'One descent.',
     introTitle2: 'Fourteen orders of magnitude.',
     introLede:

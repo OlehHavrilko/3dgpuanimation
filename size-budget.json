@@ -9,7 +9,7 @@
     {
       "name": "JavaScript (main page + lazy)",
       "match": "^assets/.*\\.js$",
-      "exclude": "^assets/memory-",
+      "exclude": "^assets/(memory|compute)-",
       "maxGzipKB": 295
     },
     { "name": "CSS", "match": "^assets/.*\\.css$", "maxGzipKB": 8.1 },
@@ -19,7 +19,12 @@
       "match": "^(memory\\.html|assets/memory-.*)$",
       "maxGzipKB": 25.4
     },
-    { "name": "Everything in dist", "match": ".", "exclude": "^voice/", "maxGzipKB": 473 },
+    {
+      "name": "Compute branch (own page + code)",
+      "match": "^(compute\\.html|assets/compute-.*)$",
+      "maxGzipKB": 28
+    },
+    { "name": "Everything in dist", "match": ".", "exclude": "^voice/", "maxGzipKB": 520 },
     { "name": "Voice clips (lazy, both languages)", "match": "^voice/", "maxGzipKB": 6144 }
   ]
 }
