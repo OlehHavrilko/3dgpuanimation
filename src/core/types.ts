@@ -183,6 +183,8 @@ export interface Level {
   onViewModeChange?(mode: string): void;
   /** Section-plane normal for this level (the side it points to is cut away). */
   sectionNormal?: [number, number, number];
+  /** Depth behind the cut face that is actually in view; limits the Section slider's travel (see BaseLevel). */
+  sectionDepth?(): number;
   /** Thermal model; levels without one do not offer the Thermal view. */
   thermal?: ThermalSpec;
   /** Signal-trace waypoints for this level when journey.trace is set. */
