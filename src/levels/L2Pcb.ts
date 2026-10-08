@@ -1,7 +1,8 @@
 import * as THREE from 'three';
+import { META } from './meta';
 import { BaseLevel, addGlowAttribute, makeInstanceGlow } from '../core/BaseLevel';
 import { entry, type CameraKey } from '../core/CameraRig';
-import type { LevelMeta, PickHit, TransitionTarget } from '../core/types';
+import type { PickHit, TransitionTarget } from '../core/types';
 import { mulberry32, pickByT, range, smoothstep } from '../core/math';
 import { content } from '../content';
 import { canvasTexture, route45 } from '../core/canvas';
@@ -17,11 +18,7 @@ import { boardStack } from '../core/sectionStack';
  */
 const C = content.levels.pcb;
 
-export const meta: LevelMeta = {
-  ...C.meta,
-  unitMeters: 0.001,
-  weight: 1,
-};
+const meta = META[1];
 
 const W = 150;
 const D = 115;

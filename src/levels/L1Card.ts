@@ -1,7 +1,8 @@
 import * as THREE from 'three';
+import { META } from './meta';
 import { BaseLevel, setControlValue } from '../core/BaseLevel';
 import type { CameraKey } from '../core/CameraRig';
-import type { LevelMeta, TransitionTarget } from '../core/types';
+import type { TransitionTarget } from '../core/types';
 import { pickByT, smoothstep, smootherstep } from '../core/math';
 import { content } from '../content';
 import { pickInstancedGroup, pickInstances, pickObject } from '../interaction/pick';
@@ -21,11 +22,7 @@ const CARD_BOARD_STACK = scaleStack(boardStack(1.6, 0.8), 0.1);
  */
 const C = content.levels.card;
 
-export const meta: LevelMeta = {
-  ...C.meta,
-  unitMeters: 0.01,
-  weight: 1.3,
-};
+const meta = META[0];
 
 const LEN = 30.4;
 const HGT = 13.7;

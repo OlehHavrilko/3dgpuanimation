@@ -28,6 +28,7 @@ import { applyStaticText } from './app/staticText';
 import { setupReference } from './app/reference';
 import { createWarmup } from './app/warmup';
 import { registerServiceWorker } from './app/pwa';
+import { createFrameGuard } from './app/frameGuard';
 
 applyStaticText();
 registerServiceWorker();
@@ -467,9 +468,31 @@ const clock = {
 };
 if (debug) Object.assign((window as unknown as { __teardown: object }).__teardown, { clock });
 
+// A render exception must not end the loop silently (black page): see createFrameGuard.
+const guard = createFrameGuard(() => {
+  document.getElementById('intro')?.remove();
+  document.getElementById('fallback')!.hidden = false;
+});
+/** Debug/test hook: make the next N frames throw. */
+let injectedFaults = 0;
+if (debug)
+  Object.assign((window as unknown as { __teardown: object }).__teardown, {
+    injectFault: (n = 3) => (injectedFaults = n),
+  });
+
 function frame(now: number) {
   timer.update(now);
-  if (!contextLost && !clock.paused) renderFrame(Math.min(timer.getDelta(), 0.1));
+  if (!contextLost && !clock.paused) {
+    const dt = Math.min(timer.getDelta(), 0.1);
+    const ok = guard.run(() => {
+      if (injectedFaults > 0) {
+        injectedFaults--;
+        throw new Error('injected render fault');
+      }
+      renderFrame(dt);
+    });
+    if (!ok) return;
+  }
   requestAnimationFrame(frame);
 }
 
@@ -561,6 +584,7 @@ function renderFrame(rawDt: number) {
   if (!firstFrameRendered) {
     firstFrameRendered = true;
     intro.classList.add('loaded');
+    void manager.loadAll(); // the other scales' scene code, in the background
   }
   // Freeze one frame per dive for the boundary dissolve. Copying the drawing buffer is not
   // free (it can flush the GPU), so this is done once, late in the dolly — not every frame.

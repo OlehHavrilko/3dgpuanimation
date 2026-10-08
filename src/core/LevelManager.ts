@@ -7,6 +7,12 @@ import type { LevelProfiler } from './LevelProfiler';
 export interface LevelEntry {
   meta: LevelMeta;
   create: (ctx: LevelContext) => Level;
+  /**
+   * Entries whose scene code is a separate chunk: `ready()` says whether `create` may be called yet,
+   * `load()` fetches it (idempotent). Entries without them are always ready.
+   */
+  ready?: () => boolean;
+  load?: () => Promise<void>;
 }
 
 interface Segment {
@@ -97,6 +103,9 @@ export class LevelManager {
   private readonly prepare?: (level: Level) => Promise<number>;
   private readonly schedule: (fn: () => void) => void;
   private progress = 0;
+  /** Progress actually shown: `progress` held back while the scene code of a level it needs is still downloading. */
+  private shown = 0;
+  private loads = new Set<Promise<void>>();
   private lastProgress = -1;
   private readonly seamMap = new SeamMap();
   private readonly seamLook = new THREE.Vector3();
@@ -161,7 +170,40 @@ export class LevelManager {
 
   /** Resolves when no background preparation is running. */
   async whenIdle() {
-    while (this.preparing) await this.preparing;
+    while (this.preparing || this.loads.size) await Promise.all([this.preparing, ...this.loads]);
+  }
+
+  private isReady(index: number) {
+    return this.entries[index].ready?.() ?? true;
+  }
+
+  /** Fetch the scene code of a level (no-op when it is already there). Failures are retried on the next request. */
+  load(index: number): Promise<void> {
+    const entry = this.entries[index];
+    if (!entry.load || this.isReady(index)) return Promise.resolve();
+    const p: Promise<void> = entry.load().then(
+      () => void this.loads.delete(p),
+      () => void this.loads.delete(p),
+    );
+    this.loads.add(p);
+    return p;
+  }
+
+  /** Fetch the scene code of every level, nearest first (call once the first frame is out). */
+  async loadAll() {
+    await Promise.all(this.entries.map((_, i) => this.load(i)));
+  }
+
+  /**
+   * Furthest progress the scroll may show now. Levels download in order; until the next level's code is
+   * there the view stays on the last downloaded level's content (no dive into something missing).
+   */
+  private progressCap() {
+    let ready = 0;
+    while (ready < this.entries.length && this.isReady(ready)) ready++;
+    if (ready === this.entries.length) return 1;
+    const seg = this.segments[Math.max(ready - 1, 0)];
+    return seg.start + (seg.end - seg.start) * CONTENT_SHARE;
   }
 
   private build(index: number): Slot {
@@ -205,7 +247,7 @@ export class LevelManager {
     const next = this.segments[a + 1];
     const hi = next.start + (next.end - next.start) * ARRIVAL;
     const inSeam = (p: number) => p >= lo && p <= hi;
-    return inSeam(this.lastProgress) && inSeam(this.progress);
+    return inSeam(this.lastProgress) && inSeam(this.shown);
   }
 
   /** Dispose built levels outside [index - keep, index + max(keep, 1)] (the next level is needed for the seam). */
@@ -227,9 +269,15 @@ export class LevelManager {
     if (todo === undefined) return;
     this.preparing = new Promise<void>((resolve) => {
       this.schedule(async () => {
+        let stalled = false;
         try {
           // The user may have moved on while we waited for idle time.
           if (Math.abs(todo - this.currentIndex) <= this.keep && todo !== this.currentIndex) {
+            await this.load(todo);
+            if (!this.isReady(todo)) {
+              stalled = true; // download failed: retry on the next swap, not in a tight loop
+              return;
+            }
             const slot = this.cache.get(todo) ?? this.build(todo);
             if (!slot.prepared && this.prepare) slot.warmupMs = await this.prepare(slot.level);
             slot.prepared = true;
@@ -239,14 +287,20 @@ export class LevelManager {
           resolve();
           // A swap during preparation may have pushed this level out of the window.
           this.evict(this.currentIndex);
-          this.prepareNeighbours();
+          if (!stalled) this.prepareNeighbours();
         }
       });
     });
   }
 
   tick(dt: number, time: number): FrameState {
-    const p = this.progress;
+    let p = this.progress;
+    const cap = this.progressCap();
+    if (p > cap) {
+      p = cap;
+      for (let i = 0; i < this.entries.length && this.indexFor(this.progress) >= i; i++) void this.load(i);
+    }
+    this.shown = p;
     const index = this.indexFor(p);
     if (index !== this.currentIndex) this.activate(index);
     this.lastProgress = p;
