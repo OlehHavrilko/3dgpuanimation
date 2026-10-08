@@ -88,7 +88,7 @@ export interface StoryHooks {
   narrate(text: string, holdMs: number): void;
 }
 
-const SOURCE_URL = 'https://github.com/OlehHavrilko/3dgpuanimation';
+const SOURCE_URL = 'https://github.com/OlehHavrilko/diedive';
 
 export class Story {
   /** 0..1 amount the camera eases back for the finale composition. */

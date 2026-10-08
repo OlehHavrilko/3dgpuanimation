@@ -2,9 +2,9 @@
 
 **An interactive WebGL dive from a GeForce RTX 5090 down to a single silicon atom, and on into the quarks of its nucleus.** Nine scales, from 30 cm to 1 fm, in one continuous camera move. Every part is modelled procedurally and rendered live in the browser: no 3D models, textures or video.
 
-**[▶ Open the live demo](https://olehhavrilko.github.io/3dgpuanimation/)** · works in any modern desktop or mobile browser · [skip the intro](https://olehhavrilko.github.io/3dgpuanimation/?nointro)
+**[▶ Open the live demo](https://olehhavrilko.github.io/diedive/)** · works in any modern desktop or mobile browser · [skip the intro](https://olehhavrilko.github.io/diedive/?nointro)
 
-[![DieDive: the descent from the graphics card to a single silicon atom](docs/media/descent.gif)](https://olehhavrilko.github.io/3dgpuanimation/)
+[![DieDive: the descent from the graphics card to a single silicon atom](docs/media/descent.gif)](https://olehhavrilko.github.io/diedive/)
 
 **Stack:** TypeScript · Three.js · hand-written GLSL · postprocessing · Web Audio API · Vite · Vitest · Playwright · GitHub Actions / Pages
 
@@ -51,7 +51,7 @@ Every frame is rendered live in the browser; [`scripts/capture-media.mjs`](#medi
 
 ## Side branch: memory
 
-**[▶ Open the memory branch](https://olehhavrilko.github.io/3dgpuanimation/memory.html)** · a second descent that leaves the main one at the PCB and follows the data instead of the GPU: from one GDDR7 chip down to the capacitor that holds a single bit. It is its own page (`memory.html`) on the same engine: the same seams between scales, Explore and inspect, labels, sources & glossary, EN/RU, and a Play button (`Space`).
+**[▶ Open the memory branch](https://olehhavrilko.github.io/diedive/memory.html)** · a second descent that leaves the main one at the PCB and follows the data instead of the GPU: from one GDDR7 chip down to the capacitor that holds a single bit. It is its own page (`memory.html`) on the same engine: the same seams between scales, Explore and inspect, labels, sources & glossary, EN/RU, and a Play button (`Space`).
 
 | #   | Scale              | Scale  | What happens                                                                                                                                                                            |
 | --- | ------------------ | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -64,7 +64,7 @@ Published figures (GDDR7 channels and PAM3 from JEDEC, the 1b-generation pitches
 
 ## Side branch: compute
 
-**[▶ Open the compute branch](https://olehhavrilko.github.io/3dgpuanimation/compute.html)** · a third path, offered next to the memory branch at the end of the descent: from one Streaming Multiprocessor of the GB202 die down to a single FP32 multiply-add and the logic gates it is made of. Its own page (`compute.html`) on the same engine, with the same seams, Explore and inspect, labels, sources & glossary, EN/RU, spoken narration and a Play button (`Space`). It ends where the main FinFET scale starts.
+**[▶ Open the compute branch](https://olehhavrilko.github.io/diedive/compute.html)** · a third path, offered next to the memory branch at the end of the descent: from one Streaming Multiprocessor of the GB202 die down to a single FP32 multiply-add and the logic gates it is made of. Its own page (`compute.html`) on the same engine, with the same seams, Explore and inspect, labels, sources & glossary, EN/RU, spoken narration and a Play button (`Space`). It ends where the main FinFET scale starts.
 
 | #   | Scale                    | Scale  | What happens                                                                                                                                                                                                               |
 | --- | ------------------------ | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
