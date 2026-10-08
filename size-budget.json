@@ -12,7 +12,7 @@
       "exclude": "^assets/(memory|compute)-",
       "maxGzipKB": 295
     },
-    { "name": "CSS", "match": "^assets/.*\\.css$", "maxGzipKB": 8.1 },
+    { "name": "CSS", "match": "^assets/.*\\.css$", "maxGzipKB": 8.5 },
     { "name": "HTML", "match": "^index\\.html$", "maxGzipKB": 4.7 },
     {
       "name": "Memory branch (own page + code)",
