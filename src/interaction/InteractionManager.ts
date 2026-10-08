@@ -65,32 +65,50 @@ export class InteractionManager {
       this.select(hit);
     });
 
-    canvas.addEventListener('pointermove', (e) => this.onPointerMove(e));
-    canvas.addEventListener('pointerleave', (e) => {
-      if (e.pointerType === 'touch') return; // touch "leaves" after every tap; keep the tooltip
+    this.listen(canvas, 'pointermove', (e) => this.onPointerMove(e as PointerEvent));
+    this.listen(canvas, 'pointerleave', (e) => {
+      if ((e as PointerEvent).pointerType === 'touch') return; // touch "leaves" after every tap; keep the tooltip
       this.pointerInside = false;
       this.setHover(null);
     });
-    canvas.addEventListener('pointerdown', (e) => (this.downAt = { x: e.clientX, y: e.clientY, t: performance.now() }));
-    canvas.addEventListener('pointerup', (e) => this.onPointerUp(e));
-    window.addEventListener('wheel', () => this.onScrollish(), { passive: true });
-    window.addEventListener('scroll', () => this.onScrollish(), { passive: true });
-    window.addEventListener('keydown', (e) => this.onKey(e));
-    window.addEventListener('resize', () => this.hud.invalidateRect());
-    window.addEventListener('pointermove', (e) => {
-      this.cam.mouse.set((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1);
+    this.listen(
+      canvas,
+      'pointerdown',
+      (e) => (this.downAt = { x: (e as PointerEvent).clientX, y: (e as PointerEvent).clientY, t: performance.now() }),
+    );
+    this.listen(canvas, 'pointerup', (e) => this.onPointerUp(e as PointerEvent));
+    this.listen(window, 'wheel', () => this.onScrollish(), { passive: true });
+    this.listen(window, 'scroll', () => this.onScrollish(), { passive: true });
+    this.listen(window, 'keydown', (e) => this.onKey(e as KeyboardEvent));
+    this.listen(window, 'resize', () => this.hud.invalidateRect());
+    this.listen(window, 'pointermove', (e) => {
+      const m = e as PointerEvent;
+      this.cam.mouse.set((m.clientX / window.innerWidth) * 2 - 1, (m.clientY / window.innerHeight) * 2 - 1);
       this.wake();
     });
 
-    document.getElementById('nav-explore')!.addEventListener('click', () => this.toggleExplore());
-    document.getElementById('nav-prev')!.addEventListener('click', () => this.go(-1));
-    document.getElementById('nav-next')!.addEventListener('click', () => this.go(1));
+    this.listen(document.getElementById('nav-explore')!, 'click', () => this.toggleExplore());
+    this.listen(document.getElementById('nav-prev')!, 'click', () => this.go(-1));
+    this.listen(document.getElementById('nav-next')!, 'click', () => this.go(1));
     this.hud.onClose = () => {
       this.stopTrace();
       if (this.selected) this.select(null);
       else this.exitExplore();
     };
     this.wake();
+  }
+
+  private listeners: { target: EventTarget; type: string; fn: EventListener; opts?: AddEventListenerOptions }[] = [];
+  private listen(target: EventTarget, type: string, fn: EventListener, opts?: AddEventListenerOptions) {
+    target.addEventListener(type, fn, opts);
+    this.listeners.push({ target, type, fn, opts });
+  }
+
+  /** Remove every window / canvas / nav listener this manager added. Safe to call twice. */
+  dispose() {
+    for (const { target, type, fn, opts } of this.listeners) target.removeEventListener(type, fn, opts);
+    this.listeners = [];
+    window.clearTimeout(this.idleTimer);
   }
 
   // ---------------------------------------------------------------- level lifecycle
