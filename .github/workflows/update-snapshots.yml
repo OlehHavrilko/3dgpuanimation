@@ -2,8 +2,15 @@ name: Update visual snapshots
 
 # Run by hand on a branch after an intended visual change: re-renders every frame in
 # tests/e2e/visual*.spec.ts on the same runner image as CI and commits the new baselines.
+# Give `spec` (e.g. tests/e2e/visual-branch2.spec.ts) to re-render just one spec; the full run
+# renders every frame on one runner and is close to the job limit.
 on:
   workflow_dispatch:
+    inputs:
+      spec:
+        description: 'Only update this spec file (default: all visual specs)'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -25,7 +32,16 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:visual -- --update-snapshots=all
+      - name: Render baselines
+        env:
+          SPEC: ${{ inputs.spec }}
+        run: |
+          if [ -n "$SPEC" ]; then
+            npx vite build
+            npx playwright test "$SPEC" --update-snapshots=all
+          else
+            npm run test:visual -- --update-snapshots=all
+          fi
       - name: Commit changed baselines
         run: |
           git add tests/e2e/*-snapshots
